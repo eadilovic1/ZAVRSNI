@@ -1,0 +1,78 @@
+@model ePinPong.Models.Liga
+@{
+    ViewData["Title"] = "Kreiraj Ligu";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-lg overflow-hidden">
+                <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
+                    <h3 class="text-white fw-bold mb-0"><i class="bi bi-trophy-fill text-orange me-2"></i>Kreiranje Amaterske Lige</h3>
+                    <p class="text-white-50 small mb-0 mt-1">Konfigurišite novu stolnotenisku ligu i generišite raspored.</p>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Create" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label asp-for="Naziv" class="form-label text-white fw-bold">Naziv Lige</label>
+                            <input asp-for="Naziv" class="form-control bg-dark-input placeholder-muted border-dark-glow text-white" placeholder="Npr. Amater Liga Sarajevo 2026" required />
+                            <span asp-validation-for="Naziv" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Sezona" class="form-label text-white fw-bold">Sezona</label>
+                            <input asp-for="Sezona" class="form-control bg-dark-input placeholder-muted border-dark-glow text-white" placeholder="Npr. 2026" required />
+                            <span asp-validation-for="Sezona" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="DatumPocetka" class="form-label text-white fw-bold">Datum Početka (Prvi Mjesec Lige)</label>
+                            <input asp-for="DatumPocetka" type="date" class="form-control bg-dark-input border-dark-glow text-white" required />
+                            <small class="text-muted d-block mt-1">Zadnja nedjelja u odabranom mjesecu bit će datum 1. kola lige.</small>
+                            <span asp-validation-for="DatumPocetka" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Opis" class="form-label text-white fw-bold">Opis Lige</label>
+                            <textarea asp-for="Opis" rows="4" class="form-control bg-dark-input placeholder-muted border-dark-glow text-white" placeholder="Unesite opis pravila lige, nagrada i lokacija..." required></textarea>
+                            <span asp-validation-for="Opis" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-4 p-3 bg-dark-input border border-dark-glow rounded-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input custom-checkbox" type="checkbox" name="autoGenerisiTurnire" id="autoGenerisiTurnire" value="true" checked>
+                                <label class="form-check-label text-white fw-bold ms-2" for="autoGenerisiTurnire">Automatski generiši turnire za cijelu sezonu</label>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                Sistem će automatski generisati 9 mjesečnih turnira (zadnja nedjelja u mjesecu) i 10. završni Masters turnir.
+                            </small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-orange text-white fw-bold px-4 py-2 flex-grow-1">Kreiraj Ligu</button>
+                            <a asp-action="Index" class="btn btn-outline-light-glow px-4 py-2">Odustani</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Postavi današnji datum kao defaultni ako je prazan
+        const dateInput = document.querySelector('input[type="date"]');
+        if (dateInput && !dateInput.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            let mm = today.getMonth() + 1;
+            let dd = today.getDate();
+            if (mm < 10) mm = '0' + mm;
+            if (dd < 10) dd = '0' + dd;
+            dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+    </script>
+}

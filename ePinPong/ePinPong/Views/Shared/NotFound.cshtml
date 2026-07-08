@@ -1,0 +1,12 @@
+@{
+    ViewData["Title"] = "Stranica nije pronađena";
+}
+
+<div class="row justify-content-center py-5 text-center">
+    <div class="col-12 col-md-6 py-5">
+        <div class="error-badge bg-orange text-dark rounded-circle mx-auto fw-bold d-flex align-items-center justify-content-center mb-4 display-4 font-monospace shadow-glow" style="width: 120px; height: 120px;">404</div>
+        <h2 class="text-white fw-bold mb-3">Stranica nije pronađena</h2>
+        <p class="text-white-50 fs-5 mb-5">@ViewBag.ErrorMessage</p>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-orange btn-lg text-white fw-bold px-4 shadow-glow"><i class="bi bi-house-door-fill me-2"></i>Nazad na Početnu</a>
+    </div>
+</div>

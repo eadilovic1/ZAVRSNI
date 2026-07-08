@@ -1,0 +1,669 @@
+using ePinPong.Data;
+using ePinPong.Interfaces;
+using ePinPong.Models;
+using ePinPong.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace ePinPong.Controllers
+{
+    public class MecController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IBracketService _bracketService;
+        private readonly IMailService _mailService;
+
+        public MecController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBracketService bracketService, IMailService mailService)
+        {
+            _context = context;
+            _userManager = userManager;
+            _bracketService = bracketService;
+            _mailService = mailService;
+        }
+
+        // POST: /Mec/GenerirajBracket/5
+        [HttpPost]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> GenerirajBracket(int turnirId, string? playerPotsJson)
+        {
+            var turnir = await _context.Turniri
+                .Include(t => t.Registracije)
+                .FirstOrDefaultAsync(t => t.ID == turnirId);
+
+            if (turnir == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            int count = turnir.Registracije.Count;
+            if (count < 3 || count == 5)
+            {
+                TempData["Error"] = "Broj igrača mora biti najmanje 3, a ne može biti tačno 5 (jer se ne mogu formirati grupe od 3 i 4 igrača).";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            // Snimi ili auto-generiši šešire
+            if (!string.IsNullOrEmpty(playerPotsJson))
+            {
+                try
+                {
+                    var playerPots = JsonSerializer.Deserialize<List<PlayerPotDto>>(playerPotsJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (playerPots != null)
+                    {
+                        foreach (var pp in playerPots)
+                        {
+                            var reg = turnir.Registracije.FirstOrDefault(r => r.KorisnikID == pp.KorisnikId);
+                            if (reg != null)
+                            {
+                                reg.Sesir = pp.Sesir;
+                            }
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                catch (Exception)
+                {
+                    await AutoRasporediSesire(turnir);
+                }
+            }
+            else
+            {
+                // Ako nema poslanih šešira (npr. direktan klik bez drag/drop-a),
+                // provjeri jesu li već raspoređeni. Ako su svi na 1 (default), pokreni automatsku raspodjelu.
+                bool sviDefault = turnir.Registracije.All(r => r.Sesir == 1);
+                if (sviDefault)
+                {
+                    await AutoRasporediSesire(turnir);
+                }
+            }
+
+            // Obriši stare mečeve ako postoje (samo singles mečeve, ne parove!)
+            var stariMecevi = _context.Mecevi.Where(m => m.TurnirID == turnirId && m.TipMeca != TipMeca.TurnirParova);
+            _context.Mecevi.RemoveRange(stariMecevi);
+
+            var igracIds = turnir.Registracije.Select(r => r.KorisnikID).ToList();
+
+            // Generiši samo grupnu fazu
+            var meceviGrupneFaze = _bracketService.GenerirajGrupe(turnir, igracIds);
+
+            _context.Mecevi.AddRange(meceviGrupneFaze);
+            turnir.Status = StatusTurnira.UToku; // Turnir počinje
+            await _context.SaveChangesAsync();
+
+            // Slanje obavještenja svim igračima na turniru
+            foreach (var registracija in turnir.Registracije)
+            {
+                var notifikacija = new Notifikacija
+                {
+                    KorisnikId = registracija.KorisnikID,
+                    Sadrzaj = $"Raspored mečeva za turnir <strong>{turnir.Naziv}</strong> je generisan! Grupna faza je počela.",
+                    DatumKreiranja = DateTime.Now,
+                    Procitana = false
+                };
+                _context.Notifikacije.Add(notifikacija);
+
+                var igrac = await _userManager.FindByIdAsync(registracija.KorisnikID);
+                if (igrac != null && !string.IsNullOrEmpty(igrac.Email))
+                {
+                    await _mailService.SendEmailAsync(
+                        igrac.Email, 
+                        "Počeo turnir na ePinPong!", 
+                        $"Zdravo {igrac.Ime},<br><br>Raspored za turnir <b>{turnir.Naziv}</b> je generisan. Turnir počinje grupnom fazom."
+                    );
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Grupna faza je uspješno generisana!";
+            return RedirectToAction("Details", "Turnir", new { id = turnirId });
+        }
+
+        // GET: /Mec/UnosRezultata/5
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> UnosRezultata(int id)
+        {
+            var mec = await _context.Mecevi
+                .Include(m => m.Turnir)
+                .Include(m => m.Igrac1)
+                .Include(m => m.Igrac2)
+                .Include(m => m.Igrac1Partner)
+                .Include(m => m.Igrac2Partner)
+                .FirstOrDefaultAsync(m => m.ID == id);
+
+            if (mec == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (mec.Turnir?.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            return View(mec);
+        }
+
+        // POST: /Mec/UnosRezultata/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> UnosRezultata(int id, int poeniIgrac1, int poeniIgrac2)
+        {
+            var mec = await _context.Mecevi
+                .Include(m => m.Turnir)
+                .Include(m => m.Igrac1)
+                .Include(m => m.Igrac2)
+                .Include(m => m.Igrac1Partner)
+                .Include(m => m.Igrac2Partner)
+                .FirstOrDefaultAsync(m => m.ID == id);
+
+            if (mec == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (mec.Turnir?.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            // Validacija da meč ide do tačno 3 osvojena seta
+            if (!((poeniIgrac1 == 3 && poeniIgrac2 >= 0 && poeniIgrac2 <= 2) || (poeniIgrac2 == 3 && poeniIgrac1 >= 0 && poeniIgrac1 <= 2)))
+            {
+                TempData["Error"] = "Rezultat meča mora biti do 3 dobijena seta (npr. 3:0, 3:1, 3:2).";
+                return RedirectToAction("UnosRezultata", new { id = id });
+            }
+
+            mec.PoeniIgrac1 = poeniIgrac1;
+            mec.PoeniIgrac2 = poeniIgrac2;
+            mec.Odigran = true;
+            // Propagira pobjednika i gubitnika dalje (za Završnicu, Razigravanje, Utješni i TurnirParova)
+            if (mec.TipMeca == TipMeca.Zavrsnica || mec.TipMeca == TipMeca.Razigravanje || mec.TipMeca == TipMeca.Utjesni || mec.TipMeca == TipMeca.TurnirParova)
+            {
+                string winnerId = poeniIgrac1 == 3 ? mec.Igrac1ID! : mec.Igrac2ID!;
+                string loserId  = poeniIgrac1 == 3 ? mec.Igrac2ID! : mec.Igrac1ID!;
+                string? winnerPartnerId = poeniIgrac1 == 3 ? mec.Igrac1PartnerID : mec.Igrac2PartnerID;
+                string? loserPartnerId  = poeniIgrac1 == 3 ? mec.Igrac2PartnerID : mec.Igrac1PartnerID;
+
+                // Pobjednik ide u sljedeći meč(eve)
+                if (!string.IsNullOrEmpty(mec.WinnerNextMatchCode))
+                {
+                    var destinations = mec.WinnerNextMatchCode.Split(';');
+                    foreach (var dest in destinations)
+                    {
+                        if (string.IsNullOrEmpty(dest)) continue;
+                        var parts = dest.Split(':');
+                        string targetCode = parts[0];
+                        int slot = (parts.Length > 1 && int.TryParse(parts[1], out int s)) ? s : (mec.WinnerNextMatchSlot ?? 1);
+
+                        var sljedeciMec = await _context.Mecevi.FirstOrDefaultAsync(m => m.TurnirID == mec.TurnirID && m.MatchCode == targetCode);
+                        if (sljedeciMec != null)
+                        {
+                            if (slot == 1)
+                            {
+                                sljedeciMec.Igrac1ID = winnerId;
+                                sljedeciMec.Igrac1PartnerID = winnerPartnerId;
+                            }
+                            else
+                            {
+                                sljedeciMec.Igrac2ID = winnerId;
+                                sljedeciMec.Igrac2PartnerID = winnerPartnerId;
+                            }
+                        }
+                    }
+                }
+
+                // Gubitnik ide u razigravanje / sljedeći meč(eve)
+                if (!string.IsNullOrEmpty(mec.LoserNextMatchCode))
+                {
+                    var destinations = mec.LoserNextMatchCode.Split(';');
+                    foreach (var dest in destinations)
+                    {
+                        if (string.IsNullOrEmpty(dest)) continue;
+                        var parts = dest.Split(':');
+                        string targetCode = parts[0];
+                        int slot = (parts.Length > 1 && int.TryParse(parts[1], out int s)) ? s : (mec.LoserNextMatchSlot ?? 1);
+
+                        var sljedeciMec = await _context.Mecevi.FirstOrDefaultAsync(m => m.TurnirID == mec.TurnirID && m.MatchCode == targetCode);
+                        if (sljedeciMec != null)
+                        {
+                            if (slot == 1)
+                            {
+                                sljedeciMec.Igrac1ID = loserId;
+                                sljedeciMec.Igrac1PartnerID = loserPartnerId;
+                            }
+                            else
+                            {
+                                sljedeciMec.Igrac2ID = loserId;
+                                sljedeciMec.Igrac2PartnerID = loserPartnerId;
+                            }
+                        }
+                    }
+                }
+
+                // Provjeri: ako su svi mečevi neke runde završnice gotovi, generiši odgovarajući plasman/razigravanje
+                if (mec.TipMeca == TipMeca.Zavrsnica && mec.MatchCode.StartsWith("Z_"))
+                {
+                    await ProvjeriIGenerirajRazigravanja(mec.TurnirID);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            // POSALJI OBAVJEŠTENJE IGRAČIMA (in-app i email)
+            var obavjestenjeTekst = $"Uneseni su rezultati meča između <strong>{mec.Igrac1?.Ime}</strong> i <strong>{mec.Igrac2?.Ime}</strong>: {poeniIgrac1} - {poeniIgrac2}.";
+            
+            if (mec.Igrac1ID != null)
+            {
+                _context.Notifikacije.Add(new Notifikacija
+                {
+                    KorisnikId = mec.Igrac1ID,
+                    Sadrzaj = obavjestenjeTekst,
+                    DatumKreiranja = DateTime.Now
+                });
+
+                if (mec.Igrac1 != null && !string.IsNullOrEmpty(mec.Igrac1.Email))
+                {
+                    await _mailService.SendEmailAsync(mec.Igrac1.Email, "Novi rezultati meča", $"Zdravo {mec.Igrac1.Ime},<br><br>Organizator je unio rezultat vašeg meča: {mec.Igrac1.Ime} {poeniIgrac1} : {poeniIgrac2} {mec.Igrac2?.Ime}.<br>Posjetite ePinPong.");
+                }
+            }
+
+            if (mec.Igrac2ID != null)
+            {
+                _context.Notifikacije.Add(new Notifikacija
+                {
+                    KorisnikId = mec.Igrac2ID,
+                    Sadrzaj = obavjestenjeTekst,
+                    DatumKreiranja = DateTime.Now
+                });
+
+                if (mec.Igrac2 != null && !string.IsNullOrEmpty(mec.Igrac2.Email))
+                {
+                    await _mailService.SendEmailAsync(mec.Igrac2.Email, "Novi rezultati meča", $"Zdravo {mec.Igrac2.Ime},<br><br>Organizator je unio rezultat vašeg meča: {mec.Igrac1?.Ime} {poeniIgrac1} : {poeniIgrac2} {mec.Igrac2.Ime}.<br>Posjetite ePinPong.");
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Provjera da li su svi mečevi odigrani - ako jesu i završnica je generisana, zatvori turnir i proglasi pobjednika
+            if (mec.TipMeca != TipMeca.TurnirParova)
+            {
+                var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == mec.TurnirID).ToListAsync();
+                var imaZavrsnicu = sviMecevi.Any(m => m.TipMeca == TipMeca.Zavrsnica);
+
+                if (sviMecevi.All(m => m.Odigran && m.TipMeca != TipMeca.TurnirParova) && imaZavrsnicu)
+                {
+                    var turnir = await _context.Turniri.FindAsync(mec.TurnirID);
+                    if (turnir != null)
+                    {
+                        turnir.Status = StatusTurnira.Zavrsen;
+
+                        // Nađi finalni meč (završnica, bez sljedećeg meča)
+                        var finalMec = sviMecevi.FirstOrDefault(m => m.TipMeca == TipMeca.Zavrsnica && string.IsNullOrEmpty(m.WinnerNextMatchCode));
+                        if (finalMec != null && finalMec.Odigran)
+                        {
+                            turnir.PobjednikID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac1ID : finalMec.Igrac2ID;
+                            turnir.DrugoplasiraniID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac2ID : finalMec.Igrac1ID;
+                        }
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+
+            TempData["Success"] = "Rezultat meča je uspješno unesen!";
+            return RedirectToAction("Details", "Turnir", new { id = mec.TurnirID });
+        }
+
+        // POST: /Mec/GenerirajPlasman
+        [HttpPost]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> GenerirajPlasman(int turnirId, int plL, int plR)
+        {
+            var turnir = await _context.Turniri
+                .Include(t => t.Registracije)
+                .FirstOrDefaultAsync(t => t.ID == turnirId);
+
+            if (turnir == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+                return Forbid();
+
+            var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
+
+            // Provjeri da faza još nije generisana
+            string prefiks = $"PL_{plL}_{plR}_R1_M";
+            if (sviMecevi.Any(m => m.MatchCode.StartsWith(prefiks)))
+            {
+                TempData["Error"] = $"Razigravanje za mjesta {plL}–{plR} je već generisano.";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            // Prikupi gubitnike iz odgovarajuće runde Z_ mečeva
+            int ukupnoIgraca = plR - plL + 1; // koliko treba gubitnika
+
+            var zMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith("Z_")).ToList();
+            var zPoRundama = zMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+
+            // Nađi rundu koja ima točno ukupnoIgraca mečeva
+            var ciljnaRunda = zPoRundama.FirstOrDefault(g => g.Count() == ukupnoIgraca);
+            if (ciljnaRunda == null || !ciljnaRunda.All(m => m.Odigran))
+            {
+                TempData["Error"] = $"Svi mečevi odgovarajuće runde moraju biti odigrani prije generisanja razigravanja za mjesta {plL}–{plR}.";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            // Izvuci gubitnike
+            var gubitnici = new List<string?>();
+            foreach (var zm in ciljnaRunda)
+            {
+                string? loserId = null;
+                if (zm.Igrac1ID != null && zm.Igrac2ID != null)
+                {
+                    loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
+                }
+                gubitnici.Add(loserId);
+            }
+
+            if (gubitnici.Count != ukupnoIgraca)
+            {
+                TempData["Error"] = $"Nije moguće odrediti gubitnike za razigravanje {plL}–{plR}. Provjeri odigrane mečeve.";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            var noviMecevi = _bracketService.GenerirajPlasmanFazu(turnir, plL, plR, gubitnici, sviMecevi);
+            if (noviMecevi.Any())
+            {
+                _context.Mecevi.AddRange(noviMecevi);
+                await _context.SaveChangesAsync();
+                TempData["Success"] = $"Razigravanje za mjesta {plL}–{plR} je uspješno generisano!";
+            }
+            else
+            {
+                TempData["Error"] = "Došlo je do greške pri generisanju razigravanja.";
+            }
+
+            return RedirectToAction("Details", "Turnir", new { id = turnirId });
+        }
+
+        private async Task ProvjeriIGenerirajRazigravanja(int turnirId)
+        {
+            var turnir = await _context.Turniri.FindAsync(turnirId);
+            if (turnir == null) return;
+
+            var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
+            var zMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith("Z_")).ToList();
+            
+            // Grupiši knockout mečeve po rundi
+            var zPoRundama = zMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+
+            foreach (var rundaGroup in zPoRundama)
+            {
+                int runda = rundaGroup.Key;
+                var meceviRunde = rundaGroup.ToList();
+                int M = meceviRunde.Count;
+
+                if (M <= 1) continue; // Finale ili nevažeća runda
+
+                int L = M + 1;
+                int R = 2 * M;
+
+                // Provjeri jesu li svi mečevi ove runde odigrani
+                if (!meceviRunde.All(m => m.Odigran)) continue;
+
+                // Provjeri je li razigravanje za ove pozicije već generisano
+                string prefiks = $"PL_{L}_{R}_R1_M";
+                if (sviMecevi.Any(m => m.MatchCode.StartsWith(prefiks))) continue;
+
+                // Izvuci gubitnike
+                var gubitnici = new List<string?>();
+                foreach (var zm in meceviRunde)
+                {
+                    string? loserId = null;
+                    if (zm.Igrac1ID != null && zm.Igrac2ID != null)
+                    {
+                        loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
+                    }
+                    gubitnici.Add(loserId);
+                }
+
+                if (gubitnici.Count != M) continue;
+
+                // Generiši plasman fazu L-R
+                var noviMecevi = _bracketService.GenerirajPlasmanFazu(turnir, L, R, gubitnici, sviMecevi);
+                if (noviMecevi.Any())
+                {
+                    _context.Mecevi.AddRange(noviMecevi);
+                    sviMecevi.AddRange(noviMecevi); // Izbjegavanje ponovnog generisanja u istoj petlji
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        // POST: /Mec/GenerirajZavrsnicu
+        [HttpPost]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> GenerirajZavrsnicu(int turnirId)
+        {
+            var turnir = await _context.Turniri
+                .Include(t => t.Registracije)
+                .FirstOrDefaultAsync(t => t.ID == turnirId);
+
+            if (turnir == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
+            var grupniMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
+            var imaZavrsnicu = sviMecevi.Any(m => m.TipMeca == TipMeca.Zavrsnica);
+
+            if (!grupniMecevi.All(m => m.Odigran))
+            {
+                TempData["Error"] = "Svi mečevi grupne faze moraju biti odigrani prije generisanja završnice.";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            if (imaZavrsnicu)
+            {
+                TempData["Error"] = "Završnica je već generisana.";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            var meceviZavrsnice = _bracketService.GenerirajZavrsnicu(turnir, grupniMecevi);
+            if (meceviZavrsnice.Any())
+            {
+                _context.Mecevi.AddRange(meceviZavrsnice);
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Završnica (parovi) je uspješno generisana!";
+            }
+            else
+            {
+                TempData["Error"] = "Došlo je do greške prilikom generisanja parova završnice.";
+            }
+
+            return RedirectToAction("Details", "Turnir", new { id = turnirId });
+        }
+
+        private class PlayerPotDto
+        {
+            public string KorisnikId { get; set; } = string.Empty;
+            public int Sesir { get; set; }
+        }
+
+        private async Task<Dictionary<string, int>> GetLeaguePointsForTurnirAsync(Turnir turnir)
+        {
+            var playerPoints = new Dictionary<string, int>();
+            foreach (var reg in turnir.Registracije)
+            {
+                playerPoints[reg.KorisnikID] = 0;
+            }
+
+            if (turnir.LigaID != null)
+            {
+                var finishedTournaments = await _context.Turniri
+                    .Where(t => t.LigaID == turnir.LigaID && t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID)
+                    .Include(t => t.Registracije)
+                        .ThenInclude(r => r.Korisnik)
+                    .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.Igrac1)
+                    .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.Igrac2)
+                    .ToListAsync();
+
+                foreach (var ft in finishedTournaments)
+                {
+                    var plasmani = _bracketService.IzracunajPlasman(ft);
+                    foreach (var pl in plasmani)
+                    {
+                        if (playerPoints.ContainsKey(pl.KorisnikId))
+                        {
+                            playerPoints[pl.KorisnikId] += pl.Bodovi;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var finishedTournaments = await _context.Turniri
+                    .Where(t => t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID)
+                    .Include(t => t.Registracije)
+                        .ThenInclude(r => r.Korisnik)
+                    .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.Igrac1)
+                    .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.Igrac2)
+                    .ToListAsync();
+
+                foreach (var ft in finishedTournaments)
+                {
+                    var plasmani = _bracketService.IzracunajPlasman(ft);
+                    foreach (var pl in plasmani)
+                    {
+                        if (playerPoints.ContainsKey(pl.KorisnikId))
+                        {
+                            playerPoints[pl.KorisnikId] += pl.Bodovi;
+                        }
+                    }
+                }
+            }
+
+            return playerPoints;
+        }
+
+        private async Task AutoRasporediSesire(Turnir turnir)
+        {
+            var registrations = turnir.Registracije.ToList();
+            int N = registrations.Count;
+            if (N < 3 || N == 5) return;
+
+            var points = await GetLeaguePointsForTurnirAsync(turnir);
+
+            var sortedRegs = registrations
+                .OrderByDescending(r => points.ContainsKey(r.KorisnikID) ? points[r.KorisnikID] : 0)
+                .ThenBy(r => r.DatumRegistracije)
+                .ToList();
+
+            int x = 0;
+            int y = 0;
+            for (int candX = N / 4; candX >= 0; candX--)
+            {
+                int ostalo = N - (candX * 4);
+                if (ostalo % 3 == 0)
+                {
+                    x = candX;
+                    y = ostalo / 3;
+                    break;
+                }
+            }
+            int G = x + y;
+
+            for (int i = 0; i < N; i++)
+            {
+                if (i < G)
+                    sortedRegs[i].Sesir = 1;
+                else if (i < 2 * G)
+                    sortedRegs[i].Sesir = 2;
+                else if (i < 3 * G)
+                    sortedRegs[i].Sesir = 3;
+                else
+                    sortedRegs[i].Sesir = 4;
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // POST: /Mec/GenerirajTurnirParova/5
+        [HttpPost]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> GenerirajTurnirParova(int turnirId)
+        {
+            var turnir = await _context.Turniri
+                .Include(t => t.Registracije)
+                .Include(t => t.TurnirParovi)
+                .FirstOrDefaultAsync(t => t.ID == turnirId);
+
+            if (turnir == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            if (turnir.Status != StatusTurnira.Zavrsen)
+            {
+                TempData["Error"] = "Mečevi parova se mogu generisati tek po završetku glavnog turnira.";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            int count = turnir.TurnirParovi.Count;
+            if (count < 2)
+            {
+                TempData["Error"] = "Za generisanje turnira parova potrebna su najmanje 2 para.";
+                return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            }
+
+            // Obriši stare mečeve parova ako postoje
+            var stariMeceviParova = _context.Mecevi.Where(m => m.TurnirID == turnirId && m.TipMeca == TipMeca.TurnirParova);
+            _context.Mecevi.RemoveRange(stariMeceviParova);
+
+            // Generiši turnir parova
+            var meceviParova = _bracketService.GenerirajTurnirParova(turnir, turnir.TurnirParovi.ToList());
+
+            _context.Mecevi.AddRange(meceviParova);
+            await _context.SaveChangesAsync();
+
+            // Slanje obavještenja igračima koji su prijavljeni u parovima
+            var registrovaniKorisnikIdsInPairs = turnir.TurnirParovi.SelectMany(p => new[] { p.Igrac1ID, p.Igrac2ID }).Distinct().ToList();
+            foreach (var igracId in registrovaniKorisnikIdsInPairs)
+            {
+                var notifikacija = new Notifikacija
+                {
+                    KorisnikId = igracId,
+                    Sadrzaj = $"Raspored za <strong>Turnir Parova</strong> u sklopu turnira <strong>{turnir.Naziv}</strong> je generisan!",
+                    DatumKreiranja = DateTime.Now,
+                    Procitana = false
+                };
+                _context.Notifikacije.Add(notifikacija);
+            }
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Turnir parova je uspješno generisan!";
+            return RedirectToAction("Details", "Turnir", new { id = turnirId });
+        }
+    }
+}

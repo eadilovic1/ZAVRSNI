@@ -1,0 +1,172 @@
+@using Microsoft.AspNetCore.Identity
+@using ePinPong.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject ePinPong.Data.ApplicationDbContext DbContext
+
+@{
+    int neprocitaneNotifikacije = 0;
+    if (SignInManager.IsSignedIn(User))
+    {
+        var userId = UserManager.GetUserId(User);
+        if (userId != null)
+        {
+            neprocitaneNotifikacije = DbContext.Notifikacije.Count(n => n.KorisnikId == userId && !n.Procitana);
+        }
+    }
+}
+
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ePinPong</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark-glass fixed-top shadow-lg">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span class="logo-icon me-2">🏓</span>
+                    <span class="brand-text">e<span class="text-orange">Pin</span>Pong</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-white-50 hover-glow" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-house-door-fill me-1"></i>Početna
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white-50 hover-glow" asp-controller="Liga" asp-action="Index">
+                                <i class="bi bi-trophy-fill me-1"></i>Lige
+                            </a>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || User.IsInRole("Organizator")))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 hover-glow" asp-controller="Turnir" asp-action="Create">
+                                    <i class="bi bi-plus-circle-fill me-1"></i>Objavi Turnir
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 hover-glow" asp-controller="Liga" asp-action="Create">
+                                    <i class="bi bi-plus-square-fill me-1"></i>Kreiraj Ligu
+                                </a>
+                            </li>
+                        }
+                        @if (User.IsInRole("Administrator"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 hover-glow" asp-controller="UserManagement" asp-action="Index">
+                                    <i class="bi bi-people-fill me-1"></i>Korisnici (Admin)
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                    
+                    <div class="d-flex align-items-center">
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            <a class="nav-link text-white-50 me-4 position-relative hover-glow" asp-controller="Notifikacija" asp-action="Index">
+                                <i class="bi bi-bell-fill fs-5"></i>
+                                @if (neprocitaneNotifikacije > 0)
+                                {
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
+                                        @neprocitaneNotifikacije
+                                    </span>
+                                }
+                            </a>
+                        }
+                        <partial name="_LoginPartial" />
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="main-content-wrapper">
+        <div class="container main-container">
+            <main role="main" class="pb-3">
+                <!-- Traka za simulaciju uloga (Rana faza razvoja) -->
+                <div class="mb-4 p-2 bg-light border rounded shadow-sm d-flex flex-wrap align-items-center justify-content-between text-dark" style="font-size: 0.9rem; border-left: 5px solid #ff6b00 !important;">
+                    <div class="d-flex align-items-center mb-2 mb-md-0">
+                        <span class="fw-bold me-2"><i class="bi bi-person-gear"></i> Aktivna uloga za testiranje:</span>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            if (User.IsInRole("Administrator"))
+                            {
+                                <span class="badge bg-danger">Administrator (Babo)</span>
+                            }
+                            else if (User.IsInRole("Organizator"))
+                            {
+                                <span class="badge bg-warning text-dark">Organizator turnira</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary">Igrač</span>
+                            }
+                            <span class="ms-2 text-muted">(@User.Identity.Name)</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Gost</span>
+                        }
+                    </div>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="/Home/SimulateRole?role=Gost&returnUrl=@(Context.Request.Path + Context.Request.QueryString)" class="btn btn-outline-dark @(User.Identity?.IsAuthenticated != true ? "active" : "")">Gost</a>
+                        <a href="/Home/SimulateRole?role=Igrac&returnUrl=@(Context.Request.Path + Context.Request.QueryString)" class="btn btn-outline-dark @(User.Identity?.IsAuthenticated == true && User.IsInRole("Korisnik") && !User.IsInRole("Organizator") && !User.IsInRole("Administrator") ? "active" : "")">Igrač</a>
+                        <a href="/Home/SimulateRole?role=Organizator&returnUrl=@(Context.Request.Path + Context.Request.QueryString)" class="btn btn-outline-dark @(User.Identity?.IsAuthenticated == true && User.IsInRole("Organizator") && !User.IsInRole("Administrator") ? "active" : "")">Organizator</a>
+                        <a href="/Home/SimulateRole?role=Admin&returnUrl=@(Context.Request.Path + Context.Request.QueryString)" class="btn btn-outline-dark @(User.Identity?.IsAuthenticated == true && User.IsInRole("Administrator") ? "active" : "")">Administrator (Babo)</a>
+                    </div>
+                </div>
+
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show custom-alert shadow-lg" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        @TempData["Success"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show custom-alert shadow-lg" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        @TempData["Error"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <footer class="footer bg-dark-glass border-top border-dark-glow text-white-50 py-4 mt-auto">
+        <div class="container text-center">
+            <div class="d-flex justify-content-center align-items-center mb-3">
+                <span class="logo-icon me-2">🏓</span>
+                <span class="brand-text text-white">e<span class="text-orange">Pin</span>Pong</span>
+            </div>
+            <p class="mb-1 text-muted small">&copy; 2026 - ePinPong. Sva prava zadržana.</p>
+            <p class="text-muted extra-small">Razvijeno u skladu sa najvišim standardima za stolni tenis.</p>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

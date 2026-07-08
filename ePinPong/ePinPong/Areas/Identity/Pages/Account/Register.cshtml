@@ -1,0 +1,75 @@
+@page
+@model ePinPong.Areas.Identity.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Registracija";
+}
+
+<div class="row justify-content-center py-5">
+    <div class="col-12 col-lg-6">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-lg overflow-hidden">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 text-center">
+                <h3 class="text-white fw-bold mb-1"><i class="bi bi-person-plus-fill text-orange me-2"></i>Registracija</h3>
+                <p class="text-white-50 mb-0">Kreirajte račun za učešće na turnirima i ligama.</p>
+            </div>
+            <div class="card-body p-4">
+                <form asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-4"></div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Input.Ime" class="form-label text-white fw-semibold">Ime</label>
+                            <input asp-for="Input.Ime" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="Unesite ime..." />
+                            <span asp-validation-for="Input.Ime" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Input.Prezime" class="form-label text-white fw-semibold">Prezime</label>
+                            <input asp-for="Input.Prezime" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="Unesite prezime..." />
+                            <span asp-validation-for="Input.Prezime" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Input.Grad" class="form-label text-white fw-semibold">Grad</label>
+                            <input asp-for="Input.Grad" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="Unesite grad..." />
+                            <span asp-validation-for="Input.Grad" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Input.DatumRodjenja" class="form-label text-white fw-semibold">Datum rođenja</label>
+                            <input asp-for="Input.DatumRodjenja" type="date" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <span asp-validation-for="Input.DatumRodjenja" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Input.Email" class="form-label text-white fw-semibold">Email adresa</label>
+                            <input asp-for="Input.Email" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="primjer@email.com..." />
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Input.Password" class="form-label text-white fw-semibold">Lozinka</label>
+                            <input asp-for="Input.Password" type="password" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="********" />
+                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Input.ConfirmPassword" class="form-label text-white fw-semibold">Potvrda lozinke</label>
+                            <input asp-for="Input.ConfirmPassword" type="password" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="********" />
+                            <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-orange w-100 py-2 text-white fw-bold shadow-glow mt-4">Registruj se <i class="bi bi-check2-circle ms-1"></i></button>
+
+                    <div class="text-center mt-3">
+                        <p class="text-white-50 small mb-0">Već imate račun? <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="text-orange fw-bold text-decoration-none">Prijavite se ovdje</a>.</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

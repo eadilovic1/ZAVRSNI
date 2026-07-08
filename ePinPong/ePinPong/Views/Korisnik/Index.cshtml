@@ -1,0 +1,426 @@
+@model ePinPong.Models.ViewModels.KorisnikTurniriViewModel
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = $"{Model.Korisnik.Ime} {Model.Korisnik.Prezime}";
+    var trenutniUserId = UserManager.GetUserId(User);
+}
+
+<div class="row g-4 py-5">
+    <!-- Lijevi dio: Profilna kartica i praćenje -->
+    <div class="col-12 col-lg-4">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 p-4 text-center shadow-lg">
+            <div class="user-avatar-large mx-auto mb-3">
+                <span>@((Model.Korisnik.Ime.Length > 0 ? Model.Korisnik.Ime[0].ToString() : "?") + (Model.Korisnik.Prezime.Length > 0 ? Model.Korisnik.Prezime[0].ToString() : "?"))</span>
+            </div>
+            
+            <h3 class="text-white fw-bold">@Model.Korisnik.Ime @Model.Korisnik.Prezime</h3>
+            @if (Model.Korisnik.IsGost)
+            {
+                <span class="badge bg-secondary border border-secondary text-white-50 px-3 py-2 rounded-pill fw-bold mb-3">GOST IGRAČ</span>
+            }
+            else
+            {
+                <span class="badge bg-dark-glow border border-dark-glow text-orange px-3 py-2 rounded-pill fw-bold mb-3">STONOTENISER</span>
+            }
+            
+            <div class="text-white-50 small mb-4">
+                <div class="mb-1"><i class="bi bi-geo-alt-fill text-orange me-2"></i>@Model.Korisnik.Grad</div>
+                <div><i class="bi bi-calendar-check-fill text-orange me-2"></i>Član od: @Model.Korisnik.DatumRegistracije.ToShortDateString()</div>
+            </div>
+
+            <!-- Broj pratioca / praćenih -->
+            <div class="row g-2 border-top border-bottom border-dark-glow py-3 mb-4">
+                <div class="col-6 border-end border-dark-glow">
+                    <span class="d-block text-white fw-bold fs-4">@Model.BrojPratilaca</span>
+                    <small class="text-muted text-uppercase extra-small">Pratioci</small>
+                </div>
+                <div class="col-6">
+                    <span class="d-block text-white fw-bold fs-4">@Model.BrojPracenih</span>
+                    <small class="text-muted text-uppercase extra-small">Prati</small>
+                </div>
+            </div>
+
+            <!-- Karijerna statistika -->
+            <div class="pb-3 border-bottom border-dark-glow mb-4">
+                <h6 class="text-white-50 text-uppercase extra-small fw-bold mb-3 text-start"><i class="bi bi-bar-chart-line-fill text-orange me-2"></i>Statistika mečeva</h6>
+                @{
+                    var odigraniMecevi = Model.Mecevi.Where(m => m.Odigran).ToList();
+                    var ukupnoOdigrano = odigraniMecevi.Count;
+                    var pobjede = odigraniMecevi.Count(m => 
+                        (m.Igrac1ID == Model.Korisnik.Id && m.PoeniIgrac1 > m.PoeniIgrac2) || 
+                        (m.Igrac2ID == Model.Korisnik.Id && m.PoeniIgrac2 > m.PoeniIgrac1)
+                    );
+                    var winRate = ukupnoOdigrano > 0 ? (double)pobjede / ukupnoOdigrano * 100 : 0.0;
+                }
+                
+                <div class="row g-2 text-center">
+                    <div class="col-4 border-end border-dark-glow">
+                        <span class="d-block text-white fw-bold fs-5">@ukupnoOdigrano</span>
+                        <small class="text-muted extra-small text-uppercase">Odigrano</small>
+                    </div>
+                    <div class="col-4 border-end border-dark-glow">
+                        <span class="d-block text-success fw-bold fs-5">@pobjede</span>
+                        <small class="text-muted extra-small text-uppercase">Pobjede</small>
+                    </div>
+                    <div class="col-4">
+                        <span class="d-block text-orange fw-bold fs-5">@winRate.ToString("0.#")%</span>
+                        <small class="text-muted extra-small text-uppercase">Winrate</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Follow / Unfollow akcija (kopira ePazar logic) -->
+            @if (User.Identity?.IsAuthenticated == true && trenutniUserId != Model.Korisnik.Id)
+            {
+                if (Model.DaLiPratim)
+                {
+                    <form asp-controller="Pracenje" asp-action="Unfollow" method="post">
+                        <input type="hidden" name="praceniId" value="@Model.Korisnik.Id" />
+                        <button type="submit" class="btn btn-outline-danger w-100 py-2 fw-bold"><i class="bi bi-person-dash-fill me-2"></i>Otprati igrača</button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-controller="Pracenje" asp-action="Follow" method="post">
+                        <input type="hidden" name="praceniId" value="@Model.Korisnik.Id" />
+                        <button type="submit" class="btn btn-orange w-100 py-2 text-white fw-bold shadow-glow"><i class="bi bi-person-plus-fill me-2"></i>Zaprati igrača</button>
+                    </form>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Desni dio: Turniri i Mečevi (aktivnosti) -->
+    <div class="col-12 col-lg-8">
+        <!-- Tabs za navigaciju -->
+        <ul class="nav nav-tabs border-dark-glow mb-4" id="profileTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active text-orange bg-transparent border-0 fw-bold border-bottom-orange px-3 py-2" id="mecevi-tab" data-bs-toggle="tab" data-bs-target="#mecevi" type="button" role="tab" aria-controls="mecevi" aria-selected="true">
+                    <i class="bi bi-controller me-2"></i>Mečevi (@Model.Mecevi.Count())
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-white-50 bg-transparent border-0 fw-bold hover-orange px-3 py-2" id="turniri-tab" data-bs-toggle="tab" data-bs-target="#turniri" type="button" role="tab" aria-controls="turniri" aria-selected="false">
+                    <i class="bi bi-trophy-fill me-2"></i>Turniri (@Model.Registracije.Count())
+                </button>
+            </li>
+            @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || trenutniUserId == Model.Korisnik.Id))
+            {
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link text-white-50 bg-transparent border-0 fw-bold hover-orange px-3 py-2" id="organizator-tab" data-bs-toggle="tab" data-bs-target="#organizator" type="button" role="tab" aria-controls="organizator" aria-selected="false">
+                        <i class="bi bi-shield-shaded me-2"></i>Organizovani turniri (@Model.Turniri.Count())
+                    </button>
+                </li>
+            }
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-white-50 bg-transparent border-0 fw-bold hover-orange px-3 py-2" id="lige-tab" data-bs-toggle="tab" data-bs-target="#lige" type="button" role="tab" aria-controls="lige" aria-selected="false">
+                    <i class="bi bi-list-ol me-2"></i>Lige (@Model.LigeStandings.Count())
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="profileTabsContent">
+            <!-- Mečevi -->
+            <div class="tab-pane fade show active" id="mecevi" role="tabpanel" aria-labelledby="mecevi-tab">
+                @if (!Model.Mecevi.Any())
+                {
+                    <div class="text-center py-5 bg-dark-card border border-dark-glow rounded-4 text-white-50">
+                        <i class="bi bi-info-circle fs-3 mb-2 d-block"></i>Igrač nema zakazanih ili odigranih mečeva.
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var mec in Model.Mecevi)
+                        {
+                            var jePobjednik = false;
+                            if (mec.Odigran)
+                            {
+                                if (mec.Igrac1ID == Model.Korisnik.Id && mec.PoeniIgrac1 > mec.PoeniIgrac2) jePobjednik = true;
+                                if (mec.Igrac2ID == Model.Korisnik.Id && mec.PoeniIgrac2 > mec.PoeniIgrac1) jePobjednik = true;
+                            }
+
+                            if (!mec.Odigran)
+                            {
+                                <div class="card bg-dark-card border border-warning rounded-3 p-3 overflow-hidden" style="background-color: rgba(255, 193, 7, 0.05) !important;">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="small text-muted mb-1">
+                                            <i class="bi bi-trophy me-1"></i>@mec.Turnir?.Naziv
+                                            @if (!string.IsNullOrEmpty(mec.NazivGrupe))
+                                            {
+                                                <span class="ms-2 text-warning font-monospace">(@mec.NazivGrupe)</span>
+                                            }
+                                        </div>
+                                        <span class="badge bg-warning text-dark rounded-pill px-2 py-1 small fw-bold">
+                                            <i class="bi bi-hourglass-split me-1"></i>Predstojeći meč
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-center text-center py-2">
+                                        <span class="text-white fw-bold pe-3">@mec.Igrac1?.Ime @mec.Igrac1?.Prezime</span>
+                                        
+                                        <div class="px-3 py-1 rounded bg-dark border border-dark-glow mx-2">
+                                            <span class="text-muted small">VS</span>
+                                        </div>
+                                        
+                                        <span class="text-white fw-bold ps-3">@mec.Igrac2?.Ime @mec.Igrac2?.Prezime</span>
+                                    </div>
+                                    <div class="text-center mt-2 text-muted small">
+                                        <i class="bi bi-clock me-1"></i> @mec.VrijemeMeca.ToString("dd.MM.yyyy u HH:mm")
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="card bg-dark-card border @(jePobjednik ? "border-success" : "border-danger") rounded-3 p-3 overflow-hidden" style="background-color: @(jePobjednik ? "rgba(40, 167, 69, 0.05)" : "rgba(220, 53, 69, 0.05)") !important;">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="small text-muted mb-1"><i class="bi bi-trophy me-1"></i>@mec.Turnir?.Naziv</div>
+                                        <span class="badge @(jePobjednik ? "bg-success" : "bg-danger") rounded-pill px-2 py-1 small">
+                                            @(jePobjednik ? "Pobjeda" : "Poraz")
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-center text-center py-2">
+                                        <span class="text-white fw-bold pe-3">@mec.Igrac1?.Ime @mec.Igrac1?.Prezime</span>
+                                        
+                                        <div class="px-3 py-1 rounded bg-dark border border-dark-glow mx-2">
+                                            <strong class="text-orange fs-5">@mec.PoeniIgrac1 : @mec.PoeniIgrac2</strong>
+                                        </div>
+                                        
+                                        <span class="text-white fw-bold ps-3">@mec.Igrac2?.Ime @mec.Igrac2?.Prezime</span>
+                                    </div>
+                                    <div class="text-center mt-2 text-muted small">
+                                        <i class="bi bi-check2-circle me-1"></i> Odigrano: @mec.VrijemeMeca.ToString("dd.MM.yyyy u HH:mm")
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Turniri -->
+            <div class="tab-pane fade" id="turniri" role="tabpanel" aria-labelledby="turniri-tab">
+                @if (!Model.Registracije.Any())
+                {
+                    <div class="text-center py-5 bg-dark-card border border-dark-glow rounded-4 text-white-50">
+                        <i class="bi bi-info-circle fs-3 mb-2 d-block"></i>Igrač se nije prijavio na turnire.
+                    </div>
+                }
+                else
+                {
+                    var sortiraneRegistracije = Model.Registracije
+                        .OrderBy(r => r.Turnir?.Status switch
+                        {
+                            StatusTurnira.Aktivan => 1,
+                            StatusTurnira.UToku => 1,
+                            StatusTurnira.Planiran => 2,
+                            StatusTurnira.Zavrsen => 3,
+                            StatusTurnira.Otkazan => 4,
+                            _ => 5
+                        })
+                        .ThenByDescending(r => r.Turnir?.DatumPocetka)
+                        .ToList();
+
+                    <div class="row g-3">
+                        @foreach (var reg in sortiraneRegistracije)
+                        {
+                            <div class="col-12 col-md-6">
+                                <div class="card bg-dark-card border border-dark-glow rounded-4 p-4 h-100 d-flex flex-column transition-transform">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h5 class="text-white fw-bold mb-0">@reg.Turnir?.Naziv</h5>
+                                        @{
+                                            var statusClass = reg.Turnir?.Status switch
+                                            {
+                                                StatusTurnira.Planiran => "bg-primary text-white",
+                                                StatusTurnira.Aktivan => "bg-success text-white",
+                                                StatusTurnira.UToku => "bg-warning text-dark",
+                                                StatusTurnira.Zavrsen => "bg-secondary text-white",
+                                                StatusTurnira.Otkazan => "bg-danger text-white",
+                                                _ => "bg-primary text-white"
+                                            };
+                                        }
+                                        <span class="badge @statusClass rounded-pill px-2 py-1 small">@reg.Turnir?.Status</span>
+                                    </div>
+                                    <div class="text-white-50 small mb-3">
+                                        <div class="mb-1"><i class="bi bi-geo-alt-fill text-orange me-2"></i>@reg.Turnir?.Lokacija</div>
+                                        <div><i class="bi bi-calendar-event-fill text-orange me-2"></i>Početak: @reg.Turnir?.DatumPocetka.ToString("dd.MM.yyyy")</div>
+                                    </div>
+                                    
+                                    @if (reg.Turnir?.Status == StatusTurnira.Zavrsen)
+                                    {
+                                        string rank = "-";
+                                        if (Model.TurnirRankings.TryGetValue(reg.TurnirID, out var userRank))
+                                        {
+                                            rank = userRank;
+                                        }
+                                        <div class="mt-2 p-2 bg-dark-input border border-warning rounded-3 d-flex align-items-center justify-content-between mb-3">
+                                            <span class="text-white-50 small">Konačni plasman:</span>
+                                            <span class="badge bg-warning text-dark fw-bold px-3 py-1 fs-6">
+                                                <i class="bi bi-trophy-fill me-1"></i> @rank
+                                            </span>
+                                        </div>
+                                    }
+                                    
+                                    <a href="/Turnir/Details/@reg.TurnirID" class="btn btn-orange-outline btn-sm text-orange fw-bold mt-auto align-self-start">
+                                        Detalji turnira <i class="bi bi-chevron-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || trenutniUserId == Model.Korisnik.Id))
+            {
+                <!-- Organizovani turniri -->
+                <div class="tab-pane fade" id="organizator" role="tabpanel" aria-labelledby="organizator-tab">
+                    @if (!Model.Turniri.Any())
+                    {
+                        <div class="text-center py-5 bg-dark-card border border-dark-glow rounded-4 text-white-50">
+                            <i class="bi bi-info-circle fs-3 mb-2 d-block"></i>Korisnik nije organizovao turnire.
+                        </div>
+                    }
+                    else
+                    {
+                        var sortiraniOrganizovaniTurniri = Model.Turniri
+                            .OrderBy(t => t.Status switch
+                            {
+                                StatusTurnira.Aktivan => 1,
+                                StatusTurnira.UToku => 1,
+                                StatusTurnira.Planiran => 2,
+                                StatusTurnira.Zavrsen => 3,
+                                StatusTurnira.Otkazan => 4,
+                                _ => 5
+                            })
+                            .ThenByDescending(t => t.DatumPocetka)
+                            .ToList();
+
+                        <div class="row g-3">
+                            @foreach (var turnir in sortiraniOrganizovaniTurniri)
+                            {
+                                <div class="col-12 col-md-6">
+                                    <div class="card bg-dark-card border border-dark-glow rounded-4 p-4 h-100 d-flex flex-column">
+                                        <div class="d-flex justify-content-between align-items-start mb-3">
+                                            <h5 class="text-white fw-bold mb-0">@turnir.Naziv</h5>
+                                            @{
+                                                var statusClass = turnir.Status switch
+                                                {
+                                                    StatusTurnira.Planiran => "bg-primary text-white",
+                                                    StatusTurnira.Aktivan => "bg-success text-white",
+                                                    StatusTurnira.UToku => "bg-warning text-dark",
+                                                    StatusTurnira.Zavrsen => "bg-secondary text-white",
+                                                    StatusTurnira.Otkazan => "bg-danger text-white",
+                                                    _ => "bg-primary text-white"
+                                                };
+                                            }
+                                            <span class="badge @statusClass rounded-pill px-2 py-1 small">@turnir.Status</span>
+                                        </div>
+                                        <div class="text-white-50 small mb-3">
+                                            <div class="mb-1"><i class="bi bi-geo-alt-fill text-orange me-2"></i>@turnir.Lokacija</div>
+                                            <div class="mb-1"><i class="bi bi-calendar-event-fill text-orange me-2"></i>Datum: @turnir.DatumPocetka.ToString("dd.MM.yyyy")</div>
+                                            <div><i class="bi bi-people-fill text-orange me-2"></i>Igrači: <span class="text-white">@turnir.Registracije.Count / @turnir.MaxIgraca</span></div>
+                                        </div>
+                                        <a href="/Turnir/Details/@turnir.ID" class="btn btn-orange-outline btn-sm text-orange fw-bold mt-auto align-self-start">
+                                            Upravljaj turnirom <i class="bi bi-chevron-right ms-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Lige -->
+            <div class="tab-pane fade" id="lige" role="tabpanel" aria-labelledby="lige-tab">
+                @if (!Model.LigeStandings.Any())
+                {
+                    <div class="text-center py-5 bg-dark-card border border-dark-glow rounded-4 text-white-50">
+                        <i class="bi bi-info-circle fs-3 mb-2 d-block"></i>Igrač još nije učestvovao u ligama.
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var ls in Model.LigeStandings)
+                        {
+                            <div class="col-12 col-md-6">
+                                <div class="card bg-dark-card border border-dark-glow rounded-4 p-4 h-100 d-flex flex-column justify-content-between">
+                                    <div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-orange text-dark fw-bold rounded-pill px-3 py-1">Sezona @ls.Liga.Sezona</span>
+                                            @if (ls.NijeZapoceo)
+                                            {
+                                                <span class="badge bg-primary rounded-pill px-2 py-1 small">Predstojeća / Učestvuje</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success rounded-pill px-2 py-1 small">Aktivna / Završena</span>
+                                            }
+                                        </div>
+                                        <h5 class="text-white fw-bold mb-3">@ls.Liga.Naziv</h5>
+                                        <p class="text-white-50 small line-clamp-2">@ls.Liga.Opis</p>
+                                    </div>
+                                    
+                                    <div class="mt-3 p-3 bg-dark-input border border-dark-glow rounded-3">
+                                        <div class="row text-center g-2">
+                                            <div class="col-4 border-end border-dark-glow">
+                                                <span class="d-block text-white fw-bold fs-5">
+                                                    @if (ls.NijeZapoceo)
+                                                    {
+                                                        <span class="text-muted">-</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-warning">#@ls.Pozicija</span><span class="text-muted small">/@ls.UkupnoUcesnika</span>
+                                                    }
+                                                </span>
+                                                <small class="text-muted extra-small text-uppercase">Plasman</small>
+                                            </div>
+                                            <div class="col-4 border-end border-dark-glow">
+                                                <span class="d-block text-orange fw-bold fs-5">@ls.UkupnoBodova</span>
+                                                <small class="text-muted extra-small text-uppercase">Bodovi</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <span class="d-block text-white fw-bold fs-5">@ls.BrojOdigranihTurnira</span>
+                                                <small class="text-muted extra-small text-uppercase">Turniri</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a asp-controller="Liga" asp-action="Details" asp-route-id="@ls.Liga.ID" class="btn btn-orange-outline btn-sm text-orange fw-bold w-100">
+                                            Pogledaj ligu <i class="bi bi-chevron-right ms-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // JS za prebacivanje tabova (bootstrap tab init)
+        var triggerTabList = [].slice.call(document.querySelectorAll('#profileTabs button'))
+        triggerTabList.forEach(function (triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl)
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault()
+                tabTrigger.show()
+                
+                // Održavaj vizuelni stil aktivnog taba
+                document.querySelectorAll('#profileTabs button').forEach(function(btn) {
+                    btn.classList.remove('text-orange', 'border-bottom-orange');
+                    btn.classList.add('text-white-50');
+                });
+                triggerEl.classList.remove('text-white-50');
+                triggerEl.classList.add('text-orange', 'border-bottom-orange');
+            })
+        })
+    </script>
+}

@@ -1,0 +1,91 @@
+@model ePinPong.Models.Turnir
+@{
+    ViewData["Title"] = "Objavi novi turnir";
+}
+
+<div class="row justify-content-center py-5">
+    <div class="col-12 col-lg-8">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-lg overflow-hidden">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
+                <h3 class="text-white fw-bold mb-1"><i class="bi bi-trophy-fill text-orange me-2"></i>Objavi novi turnir</h3>
+                <p class="text-white-50 mb-0">Popunite podatke ispod kako biste kreirali novi stolnoteniski turnir.</p>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-4"></div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="Naziv" class="form-label text-white fw-semibold">Naziv turnira</label>
+                            <input asp-for="Naziv" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="Unesite naziv turnira..." />
+                            <span asp-validation-for="Naziv" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="MaxIgraca" class="form-label text-white fw-semibold">Maksimalan broj igrača</label>
+                            <input asp-for="MaxIgraca" type="number" min="2" class="form-control bg-dark-input border-dark-glow text-white" placeholder="Npr. 16, 32..." />
+                            <span asp-validation-for="MaxIgraca" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="LigaID" class="form-label text-white fw-semibold">Liga kojoj turnir pripada</label>
+                            @if (ViewBag.LockedLigaId != null)
+                            {
+                                <div class="form-control bg-dark-input border-dark-glow text-white d-flex align-items-center" style="cursor:not-allowed; opacity:.85;">
+                                    <i class="bi bi-lock-fill text-orange me-2"></i>
+                                    <span>@ViewBag.LockedLigaNaziv</span>
+                                </div>
+                                <input type="hidden" asp-for="LigaID" />
+                                <small class="text-white-50">Liga je automatski odabrana jer ste turnir kreirali iz pregleda te lige.</small>
+                            }
+                            else
+                            {
+                                <select asp-for="LigaID" class="form-select bg-dark-input border-dark-glow text-white" asp-items="ViewBag.Lige"></select>
+                                <span asp-validation-for="LigaID" class="text-danger small"></span>
+                            }
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="DatumPocetka" class="form-label text-white fw-semibold">Datum početka</label>
+                            <input asp-for="DatumPocetka" type="datetime-local" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <span asp-validation-for="DatumPocetka" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="DatumKraja" class="form-label text-white fw-semibold">Datum završetka</label>
+                            <input asp-for="DatumKraja" type="datetime-local" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <span asp-validation-for="DatumKraja" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Lokacija" class="form-label text-white fw-semibold">Lokacija / Dvorana</label>
+                            <input asp-for="Lokacija" class="form-control bg-dark-input border-dark-glow text-white" placeholder="Npr. Dvorana KSC, Sarajevo..." />
+                            <span asp-validation-for="Lokacija" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="SlikaUrl" class="form-label text-white fw-semibold">URL Slike turnira (Opcionalno)</label>
+                            <input asp-for="SlikaUrl" class="form-control bg-dark-input border-dark-glow text-white" placeholder="https://example.com/slika.jpg..." />
+                            <span asp-validation-for="SlikaUrl" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Opis" class="form-label text-white fw-semibold">Opis i pravila turnira</label>
+                            <textarea asp-for="Opis" rows="4" class="form-control bg-dark-input border-dark-glow text-white" placeholder="Unesite detaljan opis turnira, pravila, učešće, nagrade..."></textarea>
+                            <span asp-validation-for="Opis" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-dark-glow">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-light-glow text-white fw-bold"><i class="bi bi-arrow-left me-2"></i>Nazad</a>
+                        <button type="submit" class="btn btn-orange px-4 py-2 text-white fw-bold shadow-glow">Objavi Turnir <i class="bi bi-check2-circle ms-2"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,60 @@
+@model IEnumerable<ePinPong.Models.Liga>
+@{
+    ViewData["Title"] = "Lige";
+    var isAdminOrOrg = User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || User.IsInRole("Organizator"));
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="text-white fw-bold mb-0">🏆 Amaterske Lige</h1>
+            <p class="text-white-50 mb-0">Pratite sezonska takmičenja, rezultate i trenutni plasman igrača.</p>
+        </div>
+        @if (isAdminOrOrg)
+        {
+            <a asp-action="Create" class="btn btn-orange text-white fw-bold">
+                <i class="bi bi-plus-circle me-2"></i>Kreiraj Novu Ligu
+            </a>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card bg-dark-card border border-dark-glow p-5 text-center rounded-4 shadow-lg">
+            <div class="py-4">
+                <i class="bi bi-trophy text-white-50 display-1 mb-3"></i>
+                <h4 class="text-white mt-3">Trenutno nema aktivnih liga</h4>
+                <p class="text-white-50 max-width-500 mx-auto">Kreirajte novu ligu kako biste započeli devetomjesečnu sezonu sa turnirima svake zadnje nedjelje u mjesecu.</p>
+                @if (isAdminOrOrg)
+                {
+                    <a asp-action="Create" class="btn btn-orange text-white fw-bold mt-3 px-4">Započni ligu</a>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var liga in Model)
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg h-100 d-flex flex-column">
+                        <div class="p-4 flex-grow-1">
+                            <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-1">Sezona @liga.Sezona</span>
+                            <h3 class="text-white fw-bold mb-3">@liga.Naziv</h3>
+                            <p class="text-white-50 line-clamp-3 small mb-0">@liga.Opis</p>
+                        </div>
+                        <div class="card-footer bg-dark-card-footer border-top border-dark-glow p-4 d-flex justify-content-between align-items-center">
+                            <span class="text-white-50 small">
+                                <i class="bi bi-calendar-check me-2"></i>Od @liga.DatumPocetka.ToString("MM.yyyy")
+                            </span>
+                            <a asp-action="Details" asp-route-id="@liga.ID" class="btn btn-sm btn-orange-outline">
+                                Pogledaj Ligu <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

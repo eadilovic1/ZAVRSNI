@@ -1,0 +1,80 @@
+@model IEnumerable<ePinPong.Controllers.UserRoleViewModel>
+@{
+    ViewData["Title"] = "Upravljanje korisnicima";
+}
+
+<div class="row justify-content-center py-5">
+    <div class="col-12 col-xl-10">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
+                <h3 class="text-white fw-bold mb-1"><i class="bi bi-people-fill text-orange me-2"></i>Upravljanje Korisnicima</h3>
+                <p class="text-white-50 mb-0">Pregledajte listu registrovanih korisnika i upravljajte njihovim ulogama na platformi.</p>
+            </div>
+            
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover border border-dark-glow align-middle">
+                        <thead>
+                            <tr class="border-bottom border-dark-glow">
+                                <th scope="col" class="py-3 px-4">Ime i Prezime</th>
+                                <th scope="col" class="py-3">Email</th>
+                                <th scope="col" class="py-3">Grad</th>
+                                <th scope="col" class="py-3">Uloge</th>
+                                <th scope="col" class="py-3 text-end px-4">Akcije</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Model)
+                            {
+                                <tr class="border-bottom border-dark-glow">
+                                    <td class="py-3 px-4 fw-bold">
+                                        <div class="d-flex align-items-center">
+                                            <div class="user-avatar-mini me-2">
+                                                <span>@((user.Ime.Length > 0 ? user.Ime[0].ToString() : "?") + (user.Prezime.Length > 0 ? user.Prezime[0].ToString() : "?"))</span>
+                                            </div>
+                                            @user.Ime @user.Prezime
+                                            @if (user.IsGost)
+                                            {
+                                                <span class="badge bg-secondary text-muted ms-2 rounded-pill px-2 py-0.5" style="font-size: 0.7rem; vertical-align: middle;">Gost</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="py-3">@(user.IsGost ? "[Nema profila]" : user.Email)</td>
+                                    <td class="py-3">@user.Grad</td>
+                                    <td class="py-3">
+                                        @foreach (var role in user.Uloge)
+                                        {
+                                            var ulogaBadgeKlasa = role switch
+                                            {
+                                                "Administrator" => "bg-danger",
+                                                "Organizator" => "bg-warning text-dark",
+                                                "Korisnik" => "bg-info text-dark",
+                                                _ => "bg-secondary"
+                                            };
+                                            <span class="badge @ulogaBadgeKlasa me-1 rounded-pill px-2 py-1 small fw-bold">@role</span>
+                                        }
+                                    </td>
+                                    <td class="py-3 text-end px-4">
+                                        <div class="d-inline-flex gap-2">
+                                            <a asp-action="EditRoles" asp-route-id="@user.UserId" class="btn btn-outline-warning btn-sm fw-bold px-3">
+                                                <i class="bi bi-pencil-fill me-1"></i> Uloge
+                                            </a>
+                                            
+                                            <form asp-action="DeleteUser" asp-route-id="@user.UserId" method="post" 
+                                                  onsubmit="return confirm('Da li ste potpuno sigurni da želite obrisati ovog korisnika? SVI podaci (turniri, registracije, mečevi) vezani za njega će biti kaskadno obrisani!');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-danger btn-sm fw-bold px-3">
+                                                    <i class="bi bi-trash-fill me-1"></i> Briši
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

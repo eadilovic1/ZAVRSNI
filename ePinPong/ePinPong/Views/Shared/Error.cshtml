@@ -1,0 +1,22 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Greška";
+}
+
+<div class="row justify-content-center py-5 text-center">
+    <div class="col-12 col-md-6 py-5">
+        <div class="error-badge bg-danger text-white rounded-circle mx-auto fw-bold d-flex align-items-center justify-content-center mb-4 display-4 font-monospace shadow-md" style="width: 120px; height: 120px;"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <h2 class="text-white fw-bold mb-3">Došlo je do greške</h2>
+        <p class="text-white-50 fs-5 mb-4">Molimo vas da pokušate ponovo kasnije ili kontaktirate administratora.</p>
+        
+        @if (Model?.ShowRequestId == true)
+        {
+            <div class="p-3 bg-dark-card border border-dark-glow rounded-3 text-start mb-5 max-width-500 mx-auto">
+                <span class="text-muted d-block small">ID Zahtjeva:</span>
+                <code class="text-warning">@Model.RequestId</code>
+            </div>
+        }
+        
+        <a asp-controller="Home" asp-action="Index" class="btn btn-orange btn-lg text-white fw-bold px-4 shadow-glow"><i class="bi bi-house-door-fill me-2"></i>Vrati se na Početnu</a>
+    </div>
+</div>

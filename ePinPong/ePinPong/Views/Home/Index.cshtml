@@ -1,0 +1,154 @@
+@model IEnumerable<ePinPong.Models.Turnir>
+@{
+    ViewData["Title"] = "Početna stranica";
+}
+
+<!-- Hero Sekcija sa premium vizualnim izgledom -->
+<div class="hero-banner mb-5 text-center position-relative overflow-hidden rounded-4 shadow-lg">
+    <div class="hero-overlay"></div>
+    <div class="hero-content position-relative z-1 py-5 px-3">
+        <span class="badge bg-orange text-dark fw-bold mb-2 uppercase tracking-wide">STONOTENISKA PLATFORMA</span>
+        <h1 class="display-4 text-white fw-extrabold mb-3">e<span class="text-orange">Pin</span>Pong</h1>
+        <p class="lead text-white-75 mb-4">Organizujte, pratite i igrajte stolnoteniske turnire kao profesionalac.</p>
+        @if (!User.Identity?.IsAuthenticated == true)
+        {
+            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-orange btn-lg px-4 fw-bold shadow-glow text-white">Započni odmah</a>
+        }
+        else
+        {
+            <span class="text-white fw-medium fs-5">Dobrodošli nazad, <span class="text-orange">@User.Identity?.Name</span>! 🏓</span>
+        }
+    </div>
+</div>
+
+<!-- Filter i Pretraga Forma (identičan raspored kao u ePazaru!) -->
+<div class="filter-card bg-dark-card border border-dark-glow rounded-4 p-4 mb-5 shadow-lg">
+    <h5 class="text-white mb-3"><i class="bi bi-funnel-fill text-orange me-2"></i>Pronađite turnir</h5>
+    <form asp-controller="Home" asp-action="Index" method="get">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark-input border-dark-glow text-white-50"><i class="bi bi-search"></i></span>
+                    <input type="text" name="searchQuery" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" 
+                           placeholder="Pretraži po nazivu ili lokaciji..." value="@ViewBag.CurrentSearch" />
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <select name="statusId" class="form-select bg-dark-input border-dark-glow text-white" asp-items="ViewBag.StatusOptions">
+                    <option value="">Svi statusi</option>
+                </select>
+            </div>
+            <div class="col-8 col-md-3">
+                <select name="sortBy" class="form-select bg-dark-input border-dark-glow text-white" asp-items="ViewBag.SortOptions">
+                </select>
+            </div>
+            <div class="col-4 col-md-1">
+                <button type="submit" class="btn btn-orange w-100 text-white fw-bold"><i class="bi bi-sliders me-1"></i>Filtriraj</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Naslov Sekcije -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="text-white fw-bold"><i class="bi bi-trophy-fill text-orange me-2"></i>Aktuelni turniri</h3>
+    <span class="text-white-50">Ukupno pronađeno: <strong>@Model.Count()</strong></span>
+</div>
+
+<!-- Grid sa karticama turnira (kopira ePazar card grid) -->
+@if (!Model.Any())
+{
+    <div class="text-center py-5 rounded-4 bg-dark-card border border-dark-glow">
+        <i class="bi bi-journal-x text-white-50 fs-1 mb-3"></i>
+        <h4 class="text-white">Nije pronađen nijedan turnir</h4>
+        <p class="text-white-50">Pokušajte sa drugačijim kriterijumima pretrage.</p>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var turnir in Model)
+        {
+            var popunjenoProcenat = (int)((double)turnir.Registracije.Count / turnir.MaxIgraca * 100);
+            var statusKlasa = turnir.Status switch
+            {
+                StatusTurnira.Planiran => "bg-primary",
+                StatusTurnira.Aktivan => "bg-success",
+                StatusTurnira.UToku => "bg-warning text-dark",
+                StatusTurnira.Zavrsen => "bg-secondary",
+                StatusTurnira.Otkazan => "bg-danger",
+                _ => "bg-primary"
+            };
+
+            <div class="col">
+                <div class="card h-100 tournament-card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg transition-transform">
+                    <div class="card-image-wrapper position-relative">
+                        @if (!string.IsNullOrEmpty(turnir.SlikaUrl))
+                        {
+                            <img src="@turnir.SlikaUrl" class="card-img-top tournament-img" alt="@turnir.Naziv" />
+                        }
+                        else
+                        {
+                            <div class="tournament-img-placeholder d-flex align-items-center justify-content-center">
+                                <span class="fs-1">🏓</span>
+                            </div>
+                        }
+                        <span class="position-absolute top-3 end-3 badge @statusKlasa px-3 py-2 rounded-pill fw-bold shadow-md">
+                            @turnir.Status
+                        </span>
+                    </div>
+                    <div class="card-body p-4 d-flex flex-column">
+                        <h4 class="card-title text-white fw-bold mb-2">@turnir.Naziv</h4>
+                        
+                        <div class="tournament-meta text-white-50 small mb-3">
+                            <div class="mb-1"><i class="bi bi-geo-alt-fill text-orange me-2"></i>@turnir.Lokacija</div>
+                            <div class="mb-1"><i class="bi bi-calendar-event-fill text-orange me-2"></i>@turnir.DatumPocetka.ToShortDateString()</div>
+                            @if (turnir.Liga != null)
+                            {
+                                <div><i class="bi bi-trophy-fill text-orange me-2"></i>Liga: <span class="text-white">@turnir.Liga.Naziv</span></div>
+                            }
+                        </div>
+
+                        <p class="card-text text-white-50 mb-4 line-clamp-3">@turnir.Opis</p>
+
+                        <!-- Prikaz kapaciteta -->
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between text-white-50 small mb-1">
+                                <span>Prijavljeni igrači:</span>
+                                <span class="fw-bold text-white">@turnir.Registracije.Count / @turnir.MaxIgraca</span>
+                            </div>
+                            <div class="progress bg-dark border border-dark-glow h-6px rounded-pill mb-4">
+                                <div class="progress-bar bg-orange rounded-pill" role="progressbar" 
+                                     style="width: @popunjenoProcenat%" aria-valuenow="@turnir.Registracije.Count" 
+                                     aria-valuemin="0" aria-valuemax="@turnir.MaxIgraca"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-dark-card-footer border-top border-dark-glow p-4 d-flex align-items-center justify-content-between">
+                        <div class="organizator-info d-flex align-items-center">
+                            <div class="organizator-avatar me-2 small">
+                                @if (turnir.Organizator != null && turnir.Organizator.Ime.Length > 0)
+                                {
+                                    <span>@turnir.Organizator.Ime[0]</span>
+                                }
+                                else
+                                {
+                                    <span>O</span>
+                                }
+                            </div>
+                            <div class="small">
+                                <div class="text-muted extra-small">Organizator</div>
+                                <a href="/Korisnik/Index/@turnir.OrganizatorId" class="text-white hover-orange font-medium">
+                                    @turnir.Organizator?.Ime @turnir.Organizator?.Prezime
+                                </a>
+                            </div>
+                        </div>
+                        <a asp-controller="Turnir" asp-action="Details" asp-route-id="@turnir.ID" class="btn btn-orange-outline px-3 py-2 fw-bold text-orange">
+                            Detalji<i class="bi bi-arrow-right-short ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

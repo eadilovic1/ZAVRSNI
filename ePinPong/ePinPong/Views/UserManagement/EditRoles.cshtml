@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "Izmjena uloga";
+    var userId = ViewBag.UserId as string;
+    var userName = ViewBag.UserName as string;
+    var userRoles = ViewBag.UserRoles as IList<string> ?? new List<string>();
+    var allRoles = ViewBag.AllRoles as List<string> ?? new List<string>();
+}
+
+<div class="row justify-content-center py-5">
+    <div class="col-12 col-md-6">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
+                <h3 class="text-white fw-bold mb-1"><i class="bi bi-shield-lock-fill text-orange me-2"></i>Uredi Uloge</h3>
+                <p class="text-white-50 mb-0">Dodijelite ili uklonite uloge za korisnika: <strong>@userName</strong></p>
+            </div>
+            
+            <div class="card-body p-4">
+                <form asp-action="EditRoles" method="post">
+                    <input type="hidden" name="id" value="@userId" />
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white fw-bold d-block mb-3 fs-5">Dostupne uloge:</label>
+                        
+                        <div class="d-flex flex-column gap-3">
+                            @foreach (var role in allRoles)
+                            {
+                                var isChecked = userRoles.Contains(role);
+                                <div class="p-3 rounded-3 bg-dark-input border border-dark-glow d-flex align-items-center justify-content-between">
+                                    <div class="form-check d-flex align-items-center w-100 cursor-pointer">
+                                        <input class="form-check-input bg-dark border-dark-glow me-3 cursor-pointer custom-checkbox" type="checkbox" name="odabraneUloge" value="@role" id="role_@role" @(isChecked ? "checked" : "")>
+                                        <label class="form-check-label text-white fw-semibold cursor-pointer fs-6 flex-grow-1" for="role_@role">
+                                            @role
+                                            <span class="d-block small text-muted font-normal mt-1">
+                                                @if (role == "Administrator")
+                                                {
+                                                    <span>Pun pristup sistemu, administracija svih korisnika, uloga i turnira.</span>
+                                                }
+                                                else if (role == "Organizator")
+                                                {
+                                                    <span>Kreiranje turnira, rasporeda mečeva i unos rezultata.</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Pregled turnira i prijava za učešće.</span>
+                                                }
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-4 border-top border-dark-glow">
+                        <a asp-action="Index" class="btn btn-outline-light-glow text-white fw-bold"><i class="bi bi-arrow-left me-2"></i>Odustani</a>
+                        <button type="submit" class="btn btn-orange px-4 py-2 text-white fw-bold shadow-glow">Spremi uloge <i class="bi bi-check2-circle ms-2"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
