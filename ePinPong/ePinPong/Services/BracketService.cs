@@ -944,9 +944,8 @@ namespace ePinPong.Services
                         var (l, r) = ParsiranajeRange(m.PlacingRange);
                         return new { Match = m, L = l, R = r };
                     })
-                    .Where(x => x.L > 0)
+                    .Where(x => x.L > 0 && x.R - x.L == 1)
                     .OrderBy(x => x.L)
-                    .ThenBy(x => x.R - x.L)
                     .ToList();
 
                 int currentPos = 3;
@@ -1093,16 +1092,15 @@ namespace ePinPong.Services
                         }
                     }
 
-                    // C) Utješno razigravanje (UT_PL_ mečevi ili drugi UT_ mečevi sa PlacingRange)
+                    // C) Utješno razigravanje (SAMO finalni UT_PL_ mečevi za tačne pozicije)
                     var utPlMatches = utMatches
-                        .Where(m => m != utFinale && !m.MatchCode.StartsWith("UT_RR_"))
+                        .Where(m => m.MatchCode.StartsWith("UT_PL_"))
                         .Select(m => {
                             var (l, r) = ParsiranajeRange(m.PlacingRange);
                             return new { Match = m, L = l, R = r };
                         })
-                        .Where(x => x.L > 0)
+                        .Where(x => x.L > 0 && x.R - x.L == 1)
                         .OrderBy(x => x.L)
-                        .ThenBy(x => x.R - x.L)
                         .ToList();
 
                     foreach (var item in utPlMatches)
