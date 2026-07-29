@@ -1837,11 +1837,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "c:\\Users\\KORISNIK\\Desktop\\TableTennis\\ePinPong\\ePinPong\\ePinPong.csproj",
+      "projectUniqueName": "C:\\Users\\KORISNIK\\Desktop\\TableTennis\\ePinPong\\ePinPong\\ePinPong.csproj",
       "projectName": "ePinPong",
-      "projectPath": "c:\\Users\\KORISNIK\\Desktop\\TableTennis\\ePinPong\\ePinPong\\ePinPong.csproj",
+      "projectPath": "C:\\Users\\KORISNIK\\Desktop\\TableTennis\\ePinPong\\ePinPong\\ePinPong.csproj",
       "packagesPath": "C:\\Users\\KORISNIK\\.nuget\\packages\\",
-      "outputPath": "c:\\Users\\KORISNIK\\Desktop\\TableTennis\\ePinPong\\ePinPong\\obj\\",
+      "outputPath": "C:\\Users\\KORISNIK\\Desktop\\TableTennis\\ePinPong\\ePinPong\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -2335,5 +2335,17 @@
         }
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SQLitePCLRaw.lib.e_sqlite3' 2.1.11 has a known high severity vulnerability, https://github.com/advisories/GHSA-2m69-gcr7-jv3q",
+      "libraryId": "SQLitePCLRaw.lib.e_sqlite3",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
 }
