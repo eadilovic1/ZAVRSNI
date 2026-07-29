@@ -6,14 +6,16 @@ from datetime import datetime
 
 DB_PATH = "epinpong.db"
 BACKUP_PATH = "epinpong_seed_backup.db"
+SEEDED_29_PATH = "epinpong_seeded_29.db"
 
-random.seed(42)
+random.seed(12345)
 
 NAMES = [
     "Adnan","Amar","Armin","Adin","Aldin","Almir","Damir","Denis","Dino","Edin",
     "Eldin","Elmir","Emir","Enes","Ermin","Faruk","Haris","Jasmin","Kenan","Luka",
     "Mahir","Mario","Marko","Mirza","Muamer","Muris","Ned","Nermin","Niko","Omar",
-    "Petar","Rasim","Samir","Sanel","Senad","Tarik","Tomislav","Vedran","Zlatan","Zoran"
+    "Petar","Rasim","Samir","Sanel","Senad","Tarik","Tomislav","Vedran","Zlatan","Zoran",
+    "Bojan","Davor","Filip","Igor","Ivan","Josip","Kristijan","Leon","Mateo","Nikola"
 ]
 SURNAMES = [
     "Ahmetovic","Bajic","Becic","Begic","Colic","Covic","Delic","Djukic","Dzanic","Dzebo",
@@ -95,10 +97,22 @@ org_id = guid()
 insert_user(org_id, "organizator@epinpong.com", "Organizator", "Turnira",
             ADMIN_HASH, ["Organizator","Korisnik"])
 
-# ── 32 GUEST PLAYERS ─────────────────────────────────────────────────────────
-print("Creating 32 guest players...")
+# ── SLOBODAN USER ─────────────────────────────────────────────────────────────
+slobodan_id = "SLOBODAN"
+cur.execute("""
+    INSERT INTO AspNetUsers(
+        Id, UserName, NormalizedUserName, Email, NormalizedEmail,
+        EmailConfirmed, PasswordHash, SecurityStamp, ConcurrencyStamp,
+        PhoneNumberConfirmed, TwoFactorEnabled, LockoutEnabled,
+        AccessFailedCount, Ime, Prezime, Grad, DatumRodjenja, DatumRegistracije
+    ) VALUES(?, 'slobodan@epinpong.local', 'SLOBODAN@EPINPONG.LOCAL', 'slobodan@epinpong.local', 'SLOBODAN@EPINPONG.LOCAL',
+             1, NULL, ?, ?, 0, 0, 1, 0, 'Slobodan', 'Prolaz', 'Sistem', '2000-01-01T00:00:00', '2024-01-01T00:00:00')
+""", (slobodan_id, guid(), guid()))
+
+# ── 40 GUEST PLAYERS ─────────────────────────────────────────────────────────
+print("Creating 40 guest players...")
 guest_ids = []
-for i in range(32):
+for i in range(40):
     ime, prezime = unique_name()
     uid = guid()
     email = f"gost{i+1:02d}@epinpong.local"
@@ -139,7 +153,7 @@ liga_id = cur.lastrowid
 conn.commit()
 print(f"League created (ID={liga_id}).")
 
-# ── enum values (stored as integers in SQLite) ────────────────────────────────
+# ── enum values ───────────────────────────────────────────────────────────────
 TipMeca_GrupnaFaza = 0
 TipMeca_Zavrsnica  = 1
 StatusTurnira_UToku   = 2
@@ -175,208 +189,128 @@ def add_reg(turnir_id, igrac_id, sesir=1):
     """, (turnir_id, igrac_id, datetime(2025,1,15).isoformat(), sesir))
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TOURNAMENT 1 – Fully completed, 32 players
+# TOURNAMENT 1 – 29 Players (Group stage completed)
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\nCreating Tournament 1 (completed, 32 players)...")
+print("\nCreating Tournament 1 (29 players, group stage completed)...")
 
-t1_players = guest_ids[:]
-random.shuffle(t1_players)
+t29_players = guest_ids[:29]
+random.shuffle(t29_players)
 
 cur.execute("""
     INSERT INTO Turniri(
         Naziv, Status, DatumPocetka, DatumKraja, MaxIgraca,
         Lokacija, Opis, SlikaUrl, OrganizatorId, LigaID, Kolo,
-        PobjednikID, DrugoplasiraniID, TrecaplasiraniID
-    ) VALUES(?,?,?,?,?,?,?,NULL,?,?,?,?,?,?)
+        PobjednikID, DrugoplasiraniID, TrecaplasiraniID, TipTakmicenja, SistemTurnira
+    ) VALUES(?,?,?,?,?,?,?,NULL,?,?,?,NULL,NULL,NULL,1,2)
 """, (
-    "Zimski Kup 2025",
-    StatusTurnira_Zavrsen,
-    datetime(2025,1,26,9,30).isoformat(),
-    datetime(2025,1,26,15,0).isoformat(),
-    32,"Sarajevo","Prvo kolo - zimski kup.",
-    org_id, liga_id, 1,
-    t1_players[0], t1_players[1], t1_players[2]
+    "Turnir 29 igrača (Završena grupna faza)",
+    StatusTurnira_UToku,
+    datetime(2025,5,10,9,0).isoformat(),
+    datetime(2025,5,10,18,0).isoformat(),
+    32, "Sarajevo", "Turnir od 29 igrača sa završenom grupnom fazom.",
+    org_id, liga_id, 1
 ))
-t1_id = cur.lastrowid
+t29_id = cur.lastrowid
 
-for i, pid in enumerate(t1_players):
-    sesir = 1 if i < 8 else (2 if i < 16 else (3 if i < 24 else 4))
-    add_reg(t1_id, pid, sesir)
+for i, pid in enumerate(t29_players):
+    add_reg(t29_id, pid, (i % 4) + 1)
 
-# Group stage: 8 groups of 4
-t1_groups = [t1_players[i*4:(i+1)*4] for i in range(8)]
-t1_advancing = []  # top 2 from each group → 16 players
+# 29 players: 5 groups of 4 + 3 groups of 3 = 8 groups total (A to H)
+t29_groups = []
+idx = 0
+for g in range(5):
+    t29_groups.append(t29_players[idx : idx + 4])
+    idx += 4
+for g in range(3):
+    t29_groups.append(t29_players[idx : idx + 3])
+    idx += 3
 
-for g_idx, grp in enumerate(t1_groups):
+for g_idx, grp in enumerate(t29_groups):
     gname = f"Grupa {chr(65+g_idx)}"
-    scores = [0,0,0,0]
-    for p1i,p2i in [(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)]:
-        scores[p1i] += 3
-        insert_mec(t1_id, grp[p1i], grp[p2i], 3, 1, 1,
-                   TipMeca_GrupnaFaza, f"T1_G{g_idx}_{p1i}{p2i}",
-                   naziv_grupe=gname,
-                   vrijeme=datetime(2025,1,26,9,0).isoformat())
-    ranked = sorted(range(4), key=lambda x: -scores[x])
-    t1_advancing.append(grp[ranked[0]])
-    t1_advancing.append(grp[ranked[1]])
-
-# Knockout: R16 → QF → SF → 3rd place + Final
-# R16 (8 matches)
-r16_w = []
-for i in range(0,16,2):
-    p1,p2 = t1_advancing[i], t1_advancing[i+1]
-    insert_mec(t1_id, p1, p2, 3, 1, 2,
-               TipMeca_Zavrsnica, f"T1_R16_{i//2}",
-               placing="17-32",
-               vrijeme=datetime(2025,1,26,11,0).isoformat())
-    r16_w.append(p1)
-
-# QF (4 matches)
-qf_w = []; qf_l = []
-for i in range(0,8,2):
-    p1,p2 = r16_w[i], r16_w[i+1]
-    insert_mec(t1_id, p1, p2, 3, 2, 3,
-               TipMeca_Zavrsnica, f"T1_QF_{i//2}",
-               placing="5-8",
-               vrijeme=datetime(2025,1,26,12,0).isoformat())
-    qf_w.append(p1); qf_l.append(p2)
-
-# SF (2 matches)
-sf_w = []; sf_l = []
-for i in range(0,4,2):
-    p1,p2 = qf_w[i], qf_w[i+1]
-    insert_mec(t1_id, p1, p2, 3, 2, 4,
-               TipMeca_Zavrsnica, f"T1_SF_{i//2}",
-               placing="3-4",
-               vrijeme=datetime(2025,1,26,13,0).isoformat())
-    sf_w.append(p1); sf_l.append(p2)
-
-# 3rd place match
-insert_mec(t1_id, sf_l[0], sf_l[1], 3, 2, 5,
-           TipMeca_Zavrsnica, "T1_3PL",
-           placing="3-4",
-           vrijeme=datetime(2025,1,26,14,0).isoformat())
-
-# Final
-insert_mec(t1_id, sf_w[0], sf_w[1], 3, 1, 5,
-           TipMeca_Zavrsnica, "T1_F",
-           placing="1-2",
-           vrijeme=datetime(2025,1,26,14,30).isoformat())
+    n = len(grp)
+    m_idx = 1
+    for i in range(n):
+        for j in range(i + 1, n):
+            # Random score (3:0, 3:1, 3:2)
+            p1_win = random.choice([True, False])
+            p1_score = 3 if p1_win else random.choice([0, 1, 2])
+            p2_score = random.choice([0, 1, 2]) if p1_win else 3
+            
+            insert_mec(
+                t29_id, grp[i], grp[j], p1_score, p2_score, 1,
+                TipMeca_GrupnaFaza, f"T29_G{g_idx}_M{m_idx}",
+                naziv_grupe=gname,
+                vrijeme=datetime(2025,5,10,9,0).isoformat()
+            )
+            m_idx += 1
 
 conn.commit()
-print(f"Tournament 1 created (ID={t1_id}).")
+print(f"Tournament 1 created (ID={t29_id}). 29 players, 8 groups, all group matches completed.")
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TOURNAMENT 2 – 16 players, group stage done, pairs FORMED, no pair matches
+# TOURNAMENT 2 – 11 Players (Group stage completed)
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\nCreating Tournament 2 (group stage done, pairs formed, no pair matches)...")
+print("\nCreating Tournament 2 (11 players, group stage completed)...")
 
-t2_players = guest_ids[:16]
-random.shuffle(t2_players)
+t11_players = guest_ids[29:40] # 11 players
+random.shuffle(t11_players)
 
 cur.execute("""
     INSERT INTO Turniri(
         Naziv, Status, DatumPocetka, DatumKraja, MaxIgraca,
         Lokacija, Opis, SlikaUrl, OrganizatorId, LigaID, Kolo,
-        PobjednikID, DrugoplasiraniID, TrecaplasiraniID
-    ) VALUES(?,?,?,?,?,?,?,NULL,?,?,?,NULL,NULL,NULL)
+        PobjednikID, DrugoplasiraniID, TrecaplasiraniID, TipTakmicenja, SistemTurnira
+    ) VALUES(?,?,?,?,?,?,?,NULL,?,?,?,NULL,NULL,NULL,1,2)
 """, (
-    "Proljetni Kup 2025",
+    "Turnir 11 igrača (Završena grupna faza)",
     StatusTurnira_UToku,
-    datetime(2025,3,30,9,30).isoformat(),
-    datetime(2025,3,30,15,0).isoformat(),
-    16,"Mostar","Drugo kolo - proljetni kup.",
+    datetime(2025,6,15,9,0).isoformat(),
+    datetime(2025,6,15,18,0).isoformat(),
+    16, "Mostar", "Turnir od 11 igrača sa završenom grupnom fazom.",
     org_id, liga_id, 2
 ))
-t2_id = cur.lastrowid
+t11_id = cur.lastrowid
 
-for i, pid in enumerate(t2_players):
-    sesir = 1 if i < 4 else (2 if i < 8 else (3 if i < 12 else 4))
-    add_reg(t2_id, pid, sesir)
+for i, pid in enumerate(t11_players):
+    add_reg(t11_id, pid, (i % 4) + 1)
 
-# 4 groups of 4
-t2_groups = [t2_players[i*4:(i+1)*4] for i in range(4)]
-t2_gw = []
-for g_idx, grp in enumerate(t2_groups):
-    gname = f"Grupa {chr(65+g_idx)}"
-    scores = [0,0,0,0]
-    for p1i,p2i in [(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)]:
-        scores[p1i] += 3
-        insert_mec(t2_id, grp[p1i], grp[p2i], 3, 1, 1,
-                   TipMeca_GrupnaFaza, f"T2_G{g_idx}_{p1i}{p2i}",
-                   naziv_grupe=gname,
-                   vrijeme=datetime(2025,3,30,9,0).isoformat())
-    ranked = sorted(range(4), key=lambda x: -scores[x])
-    t2_gw.append([grp[ranked[0]], grp[ranked[1]]])
-
-# Form 4 pairs (TurnirParovi) — no matches generated
-pairs = [
-    (t2_gw[0][0], t2_gw[1][1]),
-    (t2_gw[1][0], t2_gw[0][1]),
-    (t2_gw[2][0], t2_gw[3][1]),
-    (t2_gw[3][0], t2_gw[2][1]),
+# 11 players: 2 groups of 4 + 1 group of 3 = 3 groups total (A, B, C)
+t11_groups = [
+    t11_players[0:4],
+    t11_players[4:8],
+    t11_players[8:11]
 ]
-for i1, i2 in pairs:
-    cur.execute("""
-        INSERT INTO TurnirParovi(TurnirID, Igrac1ID, Igrac2ID, DatumPrijave)
-        VALUES(?,?,?,?)
-    """, (t2_id, i1, i2, datetime(2025,3,30,11,0).isoformat()))
 
-conn.commit()
-print(f"Tournament 2 created (ID={t2_id}). {len(pairs)} pairs formed, no pair matches.")
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# TOURNAMENT 3 – 16 players, group stage done, pairs NOT formed
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\nCreating Tournament 3 (group stage done, pairs NOT formed)...")
-
-t3_players = guest_ids[16:]
-random.shuffle(t3_players)
-
-cur.execute("""
-    INSERT INTO Turniri(
-        Naziv, Status, DatumPocetka, DatumKraja, MaxIgraca,
-        Lokacija, Opis, SlikaUrl, OrganizatorId, LigaID, Kolo,
-        PobjednikID, DrugoplasiraniID, TrecaplasiraniID
-    ) VALUES(?,?,?,?,?,?,?,NULL,?,?,?,NULL,NULL,NULL)
-""", (
-    "Ljetni Kup 2025",
-    StatusTurnira_UToku,
-    datetime(2025,6,29,9,30).isoformat(),
-    datetime(2025,6,29,15,0).isoformat(),
-    16,"Banja Luka","Trece kolo - ljetni kup.",
-    org_id, liga_id, 3
-))
-t3_id = cur.lastrowid
-
-for i, pid in enumerate(t3_players):
-    sesir = 1 if i < 4 else (2 if i < 8 else (3 if i < 12 else 4))
-    add_reg(t3_id, pid, sesir)
-
-# 4 groups of 4 — group stage matches played
-t3_groups = [t3_players[i*4:(i+1)*4] for i in range(4)]
-for g_idx, grp in enumerate(t3_groups):
+for g_idx, grp in enumerate(t11_groups):
     gname = f"Grupa {chr(65+g_idx)}"
-    for p1i,p2i in [(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)]:
-        insert_mec(t3_id, grp[p1i], grp[p2i], 3, 1, 1,
-                   TipMeca_GrupnaFaza, f"T3_G{g_idx}_{p1i}{p2i}",
-                   naziv_grupe=gname,
-                   vrijeme=datetime(2025,6,29,9,0).isoformat())
+    n = len(grp)
+    m_idx = 1
+    for i in range(n):
+        for j in range(i + 1, n):
+            p1_win = random.choice([True, False])
+            p1_score = 3 if p1_win else random.choice([0, 1, 2])
+            p2_score = random.choice([0, 1, 2]) if p1_win else 3
+            
+            insert_mec(
+                t11_id, grp[i], grp[j], p1_score, p2_score, 1,
+                TipMeca_GrupnaFaza, f"T11_G{g_idx}_M{m_idx}",
+                naziv_grupe=gname,
+                vrijeme=datetime(2025,6,15,9,0).isoformat()
+            )
+            m_idx += 1
 
-# NO TurnirParovi for T3
 conn.commit()
-print(f"Tournament 3 created (ID={t3_id}). No pairs formed.")
+print(f"Tournament 2 created (ID={t11_id}). 11 players, 3 groups, all group matches completed.")
 
-# ── SAVE BACKUP ───────────────────────────────────────────────────────────────
+# ── SAVE BACKUP AND COPIES ────────────────────────────────────────────────────
 conn.close()
-import shutil
+
 shutil.copy2(DB_PATH, BACKUP_PATH)
+shutil.copy2(DB_PATH, SEEDED_29_PATH)
 
 print("\n=== DONE ===")
-print(f"League ID:      {liga_id}")
-print(f"Tournament 1:   ID={t1_id} (completed, 32 players)")
-print(f"Tournament 2:   ID={t2_id} (in progress, 16 players, pairs formed)")
-print(f"Tournament 3:   ID={t3_id} (in progress, 16 players, no pairs)")
-print(f"Guest players:  {len(guest_ids)}")
-print(f"\nBackup saved: {BACKUP_PATH}")
-print("To restore: copy epinpong_seed_backup.db -> epinpong.db")
+print(f"League ID:        {liga_id}")
+print(f"Tournament 1:     ID={t29_id} (in progress, 29 players, group stage done)")
+print(f"Tournament 2:     ID={t11_id} (in progress, 11 players, group stage done)")
+print(f"Total Players:    {len(guest_ids)}")
+print(f"Database files:   {DB_PATH}, {SEEDED_29_PATH}, {BACKUP_PATH}")

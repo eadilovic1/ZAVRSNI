@@ -135,10 +135,20 @@ body {
     background-color: transparent !important;
     border: 1px solid #475569 !important;
     color: var(--text-white) !important;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .btn-outline-light-glow:hover {
     background-color: rgba(255, 255, 255, 0.05) !important;
     border-color: #94a3b8;
+}
+/* Vizuelni feedback za odabranu karticu (btn-check radio) */
+.btn-check:checked + .btn-outline-light-glow {
+    background-color: rgba(249, 115, 22, 0.15) !important;
+    border-color: var(--orange) !important;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35) !important;
+}
+.btn-check:checked + .btn-outline-light-glow strong {
+    color: #fb923c !important;
 }
 
 /* Kartice turnira i mečeva - ravan i jasan stil */

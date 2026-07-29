@@ -249,11 +249,15 @@ namespace ePinPong.Controllers
                     }
                 }
 
-                // Provjeri: ako su svi mečevi neke runde završnice gotovi, generiši odgovarajući plasman/razigravanje
-                if (mec.TipMeca == TipMeca.Zavrsnica && mec.MatchCode.StartsWith("Z_"))
+                // Provjeri: ako su svi mečevi neke runde gotovi (glavni ili utješni turnir), generiši odgovarajući plasman/razigravanje
+                if (mec.TipMeca == TipMeca.Zavrsnica || mec.TipMeca == TipMeca.Utjesni || mec.TipMeca == TipMeca.Razigravanje)
                 {
                     await ProvjeriIGenerirajRazigravanja(mec.TurnirID);
                 }
+
+                // Propagiraj BYE (Slobodan) prolaze za sve mečeve koji su dobili protivnika
+                var sviMeceviTurnira = await _context.Mecevi.Where(m => m.TurnirID == mec.TurnirID).ToListAsync();
+                _bracketService.PropagirajBye(sviMeceviTurnira);
             }
 
             await _context.SaveChangesAsync();
@@ -371,6 +375,7 @@ namespace ePinPong.Controllers
                 {
                     loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
                 }
+                loserId ??= BracketService.SLOBODAN;
                 gubitnici.Add(loserId);
             }
 
@@ -380,6 +385,7 @@ namespace ePinPong.Controllers
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
 
+            await DbSeeder.EnsureSlobodanUserExistsAsync(_context);
             var noviMecevi = _bracketService.GenerirajPlasmanFazu(turnir, plL, plR, gubitnici, sviMecevi);
             if (noviMecevi.Any())
             {
@@ -398,56 +404,82 @@ namespace ePinPong.Controllers
         private async Task ProvjeriIGenerirajRazigravanja(int turnirId)
         {
             var turnir = await _context.Turniri.FindAsync(turnirId);
-            if (turnir == null) return;
+            if (turnir == null || turnir.SistemTurnira == SistemTurnira.SingleElimination) return;
 
             var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
-            var zMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith("Z_")).ToList();
             
-            // Grupiši knockout mečeve po rundi
-            var zPoRundama = zMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+            // 1. Provjeri i generiši razigravanja za glavnu završnicu (Z_ i PL_)
+            var zMecevi = sviMecevi.Where(m => (m.TipMeca == TipMeca.Zavrsnica || m.TipMeca == TipMeca.Razigravanje) && (m.MatchCode.StartsWith("Z_") || m.MatchCode.StartsWith("PL_"))).ToList();
+            await GenerisiRazigravanjaZaSkupinu(turnir, sviMecevi, zMecevi, isUtjesni: false);
 
-            foreach (var rundaGroup in zPoRundama)
+            // 2. Provjeri i generiši razigravanja za utješni turnir (UT_R i UT_PL_)
+            if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni)
             {
-                int runda = rundaGroup.Key;
-                var meceviRunde = rundaGroup.ToList();
-                int M = meceviRunde.Count;
-
-                if (M <= 1) continue; // Finale ili nevažeća runda
-
-                int L = M + 1;
-                int R = 2 * M;
-
-                // Provjeri jesu li svi mečevi ove runde odigrani
-                if (!meceviRunde.All(m => m.Odigran)) continue;
-
-                // Provjeri je li razigravanje za ove pozicije već generisano
-                string prefiks = $"PL_{L}_{R}_R1_M";
-                if (sviMecevi.Any(m => m.MatchCode.StartsWith(prefiks))) continue;
-
-                // Izvuci gubitnike
-                var gubitnici = new List<string?>();
-                foreach (var zm in meceviRunde)
-                {
-                    string? loserId = null;
-                    if (zm.Igrac1ID != null && zm.Igrac2ID != null)
-                    {
-                        loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
-                    }
-                    gubitnici.Add(loserId);
-                }
-
-                if (gubitnici.Count != M) continue;
-
-                // Generiši plasman fazu L-R
-                var noviMecevi = _bracketService.GenerirajPlasmanFazu(turnir, L, R, gubitnici, sviMecevi);
-                if (noviMecevi.Any())
-                {
-                    _context.Mecevi.AddRange(noviMecevi);
-                    sviMecevi.AddRange(noviMecevi); // Izbjegavanje ponovnog generisanja u istoj petlji
-                }
+                var utMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_R") || m.MatchCode.StartsWith("UT_PL_"))).ToList();
+                await GenerisiRazigravanjaZaSkupinu(turnir, sviMecevi, utMecevi, isUtjesni: true);
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        private async Task GenerisiRazigravanjaZaSkupinu(Turnir turnir, List<Mec> sviMecevi, List<Mec> meceviSkupine, bool isUtjesni)
+        {
+            var poRangeu = meceviSkupine.GroupBy(m => m.PlacingRange).ToList();
+
+            foreach (var rangeGroup in poRangeu)
+            {
+                int groupL = 1;
+                if (!string.IsNullOrEmpty(rangeGroup.Key))
+                {
+                    var parts = rangeGroup.Key.Split('-');
+                    if (parts.Length == 2 && int.TryParse(parts[0], out int gl))
+                    {
+                        groupL = gl;
+                    }
+                }
+
+                var poRundama = rangeGroup.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+                foreach (var rundaGroup in poRundama)
+                {
+                    var meceviRunde = rundaGroup.ToList();
+                    int M = meceviRunde.Count;
+                    if (M <= 1) continue; // Finale ili meč sa 1 utakmicom
+
+                    int relL = M + 1;
+                    int relR = 2 * M;
+
+                    int L = (groupL - 1) + relL;
+                    int R = (groupL - 1) + relR;
+
+                    if (!meceviRunde.All(m => m.Odigran)) continue;
+
+                    string codePrefix = isUtjesni ? "UT_PL" : "PL";
+                    string searchPrefix = $"{codePrefix}_{L}_{R}_R1_M";
+                    if (sviMecevi.Any(m => m.MatchCode.StartsWith(searchPrefix))) continue;
+
+                    var gubitnici = new List<string?>();
+                    foreach (var zm in meceviRunde)
+                    {
+                        string? loserId = null;
+                        if (zm.Igrac1ID != null && zm.Igrac2ID != null)
+                        {
+                            loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
+                        }
+                        loserId ??= BracketService.SLOBODAN;
+                        gubitnici.Add(loserId);
+                    }
+
+                    if (gubitnici.Count != M) continue;
+
+                    await DbSeeder.EnsureSlobodanUserExistsAsync(_context);
+                    var noviMecevi = _bracketService.GenerirajPlasmanFazu(turnir, L, R, gubitnici, sviMecevi, isUtjesni);
+                    if (noviMecevi.Any())
+                    {
+                        _context.Mecevi.AddRange(noviMecevi);
+                        sviMecevi.AddRange(noviMecevi);
+                    }
+                }
+            }
         }
 
         // POST: /Mec/GenerirajZavrsnicu
@@ -483,11 +515,13 @@ namespace ePinPong.Controllers
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
 
+            await DbSeeder.EnsureSlobodanUserExistsAsync(_context);
             var meceviZavrsnice = _bracketService.GenerirajZavrsnicu(turnir, grupniMecevi);
             if (meceviZavrsnice.Any())
             {
                 _context.Mecevi.AddRange(meceviZavrsnice);
                 await _context.SaveChangesAsync();
+                await ProvjeriIGenerirajRazigravanja(turnirId);
                 TempData["Success"] = "Završnica (parovi) je uspješno generisana!";
             }
             else
@@ -641,6 +675,7 @@ namespace ePinPong.Controllers
             _context.Mecevi.RemoveRange(stariMeceviParova);
 
             // Generiši turnir parova
+            await DbSeeder.EnsureSlobodanUserExistsAsync(_context);
             var meceviParova = _bracketService.GenerirajTurnirParova(turnir, turnir.TurnirParovi.ToList());
 
             _context.Mecevi.AddRange(meceviParova);

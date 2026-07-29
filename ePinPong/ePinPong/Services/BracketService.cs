@@ -8,6 +8,8 @@ namespace ePinPong.Services
 {
     public class BracketService : IBracketService
     {
+        // Sentinel ID koji označava fiktivnog igrača koji automatski gubi
+        public const string SLOBODAN = "SLOBODAN";
         // ─────────────────────────────────────────────────────────────────────
         //  POMOĆNA: Parsiraj PlacingRange
         // ─────────────────────────────────────────────────────────────────────
@@ -289,11 +291,14 @@ namespace ePinPong.Services
                         mec.WinnerNextMatchCode = $"Z_R{r + 1}_M{(m + 1) / 2}";
                         mec.WinnerNextMatchSlot = (m % 2 != 0) ? 1 : 2;
 
-                        // Gubitnik ide u razigravanje za mjesta
-                        int plL = S / (int)Math.Pow(2, r) + 1;
-                        int plR = S / (int)Math.Pow(2, r - 1);
-                        mec.LoserNextMatchCode = $"PL_{plL}_{plR}_R1_M{(m + 1) / 2}";
-                        mec.LoserNextMatchSlot = (m % 2 != 0) ? 1 : 2;
+                        if (turnir.SistemTurnira != SistemTurnira.SingleElimination)
+                        {
+                            // Gubitnik ide u razigravanje za mjesta
+                            int plL = S / (int)Math.Pow(2, r) + 1;
+                            int plR = S / (int)Math.Pow(2, r - 1);
+                            mec.LoserNextMatchCode = $"PL_{plL}_{plR}_R1_M{(m + 1) / 2}";
+                            mec.LoserNextMatchSlot = (m % 2 != 0) ? 1 : 2;
+                        }
                     }
                     // Posljednji krug (finale): gubitnik dobija 2. mjesto, nema LoserNextMatch
 
@@ -308,44 +313,42 @@ namespace ePinPong.Services
                 var mecR1 = sviMecevi.FirstOrDefault(m => m.MatchCode == $"Z_R1_M{i + 1}");
                 if (mecR1 != null)
                 {
-                    mecR1.Igrac1ID = pair.Item1.PlayerID;
-                    mecR1.Igrac2ID = pair.Item2?.PlayerID;
+                    mecR1.Igrac1ID = pair.Item1?.PlayerID ?? SLOBODAN;
+                    mecR1.Igrac2ID = pair.Item2?.PlayerID ?? SLOBODAN;
                 }
             }
 
-            // ── 5.b Generiraj utješni turnir (ako ima igrača) ──────────────────
-            var rngUt = new Random();
-            var utjesniPlayersShuffled = utjesniIgraciRecords
-                .Select(r => (string?)r.PlayerID)
-                .OrderBy(_ => rngUt.Next())
-                .ToList();
-            int utjesniIgraciCount = utjesniPlayersShuffled.Count;
-
-            if (utjesniIgraciCount > 0)
+            // ── 5.b Generiraj utješni turnir (samo za DoubleEliminationUtjesni) ──
+            if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni)
             {
-                int L_utjesni = S + 1;
-                int R_utjesni_actual = L_utjesni + utjesniIgraciCount - 1;
+                var rngUt = new Random();
+                var utjesniPlayersShuffled = utjesniIgraciRecords
+                    .Select(r => (string?)r.PlayerID)
+                    .OrderBy(_ => rngUt.Next())
+                    .ToList();
+                int utjesniIgraciCount = utjesniPlayersShuffled.Count;
 
-                var meceviUtjesnog = new List<Mec>();
-
-                if (utjesniIgraciCount == 3)
+                if (utjesniIgraciCount > 0)
                 {
-                    // Specijalni slučaj: točno 3 igrača → round-robin (svaki sa svakim)
-                    GenerirajRoundRobin3(turnir, meceviUtjesnog, L_utjesni, utjesniPlayersShuffled, pocetakZavrsnice);
+                    var meceviUtjesnog = new List<Mec>();
+
+                    if (utjesniIgraciCount == 3)
+                    {
+                        // Specijalni slučaj: točno 3 igrača → round-robin (svaki sa svakim) s relativnim rasponom 1-3
+                        GenerirajRoundRobin3(turnir, meceviUtjesnog, 1, utjesniPlayersShuffled, pocetakZavrsnice);
+                    }
+                    else
+                    {
+                        // Popuni šemu do 2^n sa "Slobodan" igračima
+                        int S_utjesni = 2;
+                        while (S_utjesni < utjesniIgraciCount) S_utjesni *= 2;
+
+                        var finalList = RasporediSaSlobodanom(utjesniPlayersShuffled, S_utjesni, rngUt);
+                        GenerirajUtjesniBracket(turnir, meceviUtjesnog, S_utjesni, finalList, pocetakZavrsnice);
+                    }
+
+                    sviMecevi.AddRange(meceviUtjesnog);
                 }
-                else
-                {
-                    int S_utjesni = 2;
-                    while (S_utjesni < utjesniIgraciCount) S_utjesni *= 2;
-
-                    // Rasporedi igrače u parove bez BYE vs BYE u R1
-                    var finalList = RasporediBye(utjesniPlayersShuffled, S_utjesni, rngUt);
-
-                    int R_utjesni = L_utjesni + S_utjesni - 1;
-                    GenerirajUtjesniRekurzivno(turnir, meceviUtjesnog, L_utjesni, R_utjesni, finalList, pocetakZavrsnice, 0, R_utjesni_actual);
-                }
-
-                sviMecevi.AddRange(meceviUtjesnog);
             }
 
             // ── 6. Propagiraj BYE-ove kroz Z_ i UT_ mečeve ───────────────────────
@@ -363,8 +366,9 @@ namespace ePinPong.Services
         /// Gubitnici se nasumično raspoređuju u R1 mečeve.
         /// Pobjednici R1 mečeva idu u gornji sub-bracket (L .. L+half-1),
         /// gubitnici R1 mečeva idu u donji sub-bracket (L+half .. R).
+        /// Ako je isUtjesni = true, mečevi se kreiraju sa TipMeca.Utjesni i kodom UT_PL_.
         /// </summary>
-        public List<Mec> GenerirajPlasmanFazu(Turnir turnir, int L, int R, List<string?> gubitnici, List<Mec> postojeciMecevi)
+        public List<Mec> GenerirajPlasmanFazu(Turnir turnir, int L, int R, List<string?> gubitnici, List<Mec> postojeciMecevi, bool isUtjesni = false)
         {
             var noviMecevi = new List<Mec>();
             int n = R - L + 1; // ukupno igrača u ovoj fazi
@@ -379,7 +383,7 @@ namespace ePinPong.Services
                 : DateTime.Now;
 
             // Rekurzivno kreiraj cijeli PL bracket
-            GenerirajPlasmanRekurzivno(turnir, noviMecevi, L, R, shuffled, startTime, 0);
+            GenerirajPlasmanRekurzivno(turnir, noviMecevi, L, R, shuffled, startTime, 0, isUtjesni);
 
             // Propagiraj BYE-ove kroz novostvorene mečeve
             var sviKombinovani = postojeciMecevi.Concat(noviMecevi).ToList();
@@ -389,18 +393,21 @@ namespace ePinPong.Services
         }
 
         /// <summary>
-        /// Rekurzivno kreira PL_ bracket i dodjeljuje igrače u R1.
+        /// Rekurzivno kreira PL_ ili UT_PL_ bracket i dodjeljuje igrače u R1.
         /// </summary>
         private void GenerirajPlasmanRekurzivno(
             Turnir turnir, List<Mec> mecevi,
             int L, int R,
             List<string?>? igraciBaza, // samo za R1, null za dublje runde
-            DateTime startTime, int dubina)
+            DateTime startTime, int dubina,
+            bool isUtjesni = false)
         {
             int n = R - L + 1;
             if (n < 2) return;
 
             int half = n / 2;
+            string codePrefix = isUtjesni ? "UT_PL" : "PL";
+            TipMeca tip = isUtjesni ? TipMeca.Utjesni : TipMeca.Razigravanje;
 
             for (int m = 1; m <= half; m++)
             {
@@ -412,9 +419,9 @@ namespace ePinPong.Services
 
                 if (n > 2)
                 {
-                    winnerNext = $"PL_{L}_{L + half - 1}_R1_M{subMatchIdx}";
+                    winnerNext = $"{codePrefix}_{L}_{L + half - 1}_R1_M{subMatchIdx}";
                     winnerSlot = subSlot;
-                    loserNext = $"PL_{L + half}_{R}_R1_M{subMatchIdx}";
+                    loserNext = $"{codePrefix}_{L + half}_{R}_R1_M{subMatchIdx}";
                     loserSlot = subSlot;
                 }
 
@@ -429,10 +436,10 @@ namespace ePinPong.Services
                 mecevi.Add(new Mec
                 {
                     TurnirID = turnir.ID,
-                    MatchCode = $"PL_{L}_{R}_R1_M{m}",
+                    MatchCode = $"{codePrefix}_{L}_{R}_R1_M{m}",
                     Runda = 1,
                     Odigran = false,
-                    TipMeca = TipMeca.Razigravanje,
+                    TipMeca = tip,
                     PlacingRange = $"{L}-{R}",
                     VrijemeMeca = startTime.AddHours(m + dubina * 2),
                     WinnerNextMatchCode = winnerNext,
@@ -446,207 +453,69 @@ namespace ePinPong.Services
 
             if (n > 2)
             {
-                GenerirajPlasmanRekurzivno(turnir, mecevi, L, L + half - 1, null, startTime.AddDays(1), dubina + 1);
-                GenerirajPlasmanRekurzivno(turnir, mecevi, L + half, R, null, startTime.AddDays(1), dubina + 1);
+                GenerirajPlasmanRekurzivno(turnir, mecevi, L, L + half - 1, null, startTime.AddDays(1), dubina + 1, isUtjesni);
+                GenerirajPlasmanRekurzivno(turnir, mecevi, L + half, R, null, startTime.AddDays(1), dubina + 1, isUtjesni);
             }
         }
 
         /// <summary>
-        /// Rekurzivno kreira UT_ (utješni) bracket i dodjeljuje igrače u R1.
+        /// Generiše utješni bracket popunjen sa 2^n igračima s relativnim plasmanom (1..S_utjesni).
+        /// Gubitnici napreduju u utješno razigravanje (UT_PL_).
         /// </summary>
-        private void GenerirajUtjesniRekurzivno(
+        private void GenerirajUtjesniBracket(
             Turnir turnir, List<Mec> mecevi,
-            int L, int R,
-            List<string?>? igraciBaza,
-            DateTime startTime, int dubina, int actualMaxPos)
+            int S_utjesni,
+            List<string?> igraciBaza,
+            DateTime startTime)
         {
-            if (L > actualMaxPos) return;
+            int roundsCount = (int)Math.Round(Math.Log2(S_utjesni));
 
-            int actualCount = actualMaxPos - L + 1;
-            if (actualCount == 5)
+            for (int r = 1; r <= roundsCount; r++)
             {
-                GenerirajUtjesni5(turnir, mecevi, L, igraciBaza, startTime, dubina);
-                return;
-            }
-
-            int n = R - L + 1;
-            if (n < 2) return;
-
-            int half = n / 2;
-
-            for (int m = 1; m <= half; m++)
-            {
-                int subMatchIdx = (m + 1) / 2;
-                int subSlot = (m % 2 != 0) ? 1 : 2;
-
-                string? winnerNext = null, loserNext = null;
-                int? winnerSlot = null, loserSlot = null;
-
-                if (n > 2)
+                int matchesInRound = S_utjesni / (int)Math.Pow(2, r);
+                for (int m = 1; m <= matchesInRound; m++)
                 {
-                    winnerNext = $"UT_{L}_{L + half - 1}_R1_M{subMatchIdx}";
-                    winnerSlot = subSlot;
+                    string? winnerNext = null;
+                    int? winnerSlot = null;
+                    string? loserNext = null;
+                    int? loserSlot = null;
 
-                    if (L + half <= actualMaxPos)
+                    if (r < roundsCount)
                     {
-                        int targetCount = actualMaxPos - (L + half) + 1;
-                        if (targetCount == 5)
-                        {
-                            if (m <= 4)
-                            {
-                                loserNext = $"UT_{L + half}_{L + half + 4}_R1_M{subMatchIdx}";
-                                loserSlot = subSlot;
-                            }
-                            else if (m == 5)
-                            {
-                                loserNext = $"UT_RR_{L + half}_{L + half + 2}_M2:2;UT_RR_{L + half}_{L + half + 2}_M3:2";
-                                loserSlot = 2;
-                            }
-                        }
-                        else
-                        {
-                            loserNext = $"UT_{L + half}_{R}_R1_M{subMatchIdx}";
-                            loserSlot = subSlot;
-                        }
+                        winnerNext = $"UT_R{r + 1}_M{(m + 1) / 2}";
+                        winnerSlot = (m % 2 != 0) ? 1 : 2;
+
+                        int plL = S_utjesni / (int)Math.Pow(2, r) + 1;
+                        int plR = S_utjesni / (int)Math.Pow(2, r - 1);
+                        loserNext = $"UT_PL_{plL}_{plR}_R1_M{(m + 1) / 2}";
+                        loserSlot = (m % 2 != 0) ? 1 : 2;
                     }
+
+                    string? igrac1 = null, igrac2 = null;
+                    if (r == 1)
+                    {
+                        igrac1 = igraciBaza[(m - 1) * 2];
+                        igrac2 = igraciBaza[(m - 1) * 2 + 1];
+                    }
+
+                    mecevi.Add(new Mec
+                    {
+                        TurnirID = turnir.ID,
+                        MatchCode = $"UT_R{r}_M{m}",
+                        Runda = r,
+                        Odigran = false,
+                        TipMeca = TipMeca.Utjesni,
+                        PlacingRange = $"1-{S_utjesni}",
+                        VrijemeMeca = startTime.AddDays(r - 1).AddHours(m),
+                        WinnerNextMatchCode = winnerNext,
+                        WinnerNextMatchSlot = winnerSlot,
+                        LoserNextMatchCode = loserNext,
+                        LoserNextMatchSlot = loserSlot,
+                        Igrac1ID = igrac1,
+                        Igrac2ID = igrac2
+                    });
                 }
-
-                string? igrac1 = null, igrac2 = null;
-                if (igraciBaza != null && dubina == 0)
-                {
-                    igrac1 = igraciBaza[(m - 1) * 2];
-                    igrac2 = igraciBaza[(m - 1) * 2 + 1];
-                }
-
-                mecevi.Add(new Mec
-                {
-                    TurnirID = turnir.ID,
-                    MatchCode = $"UT_{L}_{R}_R1_M{m}",
-                    Runda = 1,
-                    Odigran = false,
-                    TipMeca = TipMeca.Utjesni,
-                    PlacingRange = $"{L}-{Math.Min(R, actualMaxPos)}",
-                    VrijemeMeca = startTime.AddHours(m + dubina * 2),
-                    WinnerNextMatchCode = winnerNext,
-                    WinnerNextMatchSlot = winnerSlot,
-                    LoserNextMatchCode = loserNext,
-                    LoserNextMatchSlot = loserSlot,
-                    Igrac1ID = igrac1,
-                    Igrac2ID = igrac2
-                });
             }
-
-            if (n > 2)
-            {
-                GenerirajUtjesniRekurzivno(turnir, mecevi, L, L + half - 1, null, startTime.AddDays(1), dubina + 1, actualMaxPos);
-                GenerirajUtjesniRekurzivno(turnir, mecevi, L + half, R, null, startTime.AddDays(1), dubina + 1, actualMaxPos);
-            }
-        }
-
-        private void GenerirajUtjesni5(
-            Turnir turnir, List<Mec> mecevi,
-            int L, List<string?>? igraciBaza,
-            DateTime startTime, int dubina)
-        {
-            string? p1 = null, p2 = null, p3 = null, p4 = null, p5 = null;
-            if (igraciBaza != null && dubina == 0)
-            {
-                p1 = igraciBaza.Count > 0 ? igraciBaza[0] : null;
-                p2 = igraciBaza.Count > 1 ? igraciBaza[1] : null;
-                p3 = igraciBaza.Count > 2 ? igraciBaza[2] : null;
-                p4 = igraciBaza.Count > 3 ? igraciBaza[3] : null;
-                p5 = igraciBaza.Count > 4 ? igraciBaza[4] : null;
-            }
-
-            string winnerNext1 = $"UT_RR_{L}_{L + 2}_M1:1;UT_RR_{L}_{L + 2}_M2:1";
-            string loserNext1 = $"UT_{L + 3}_{L + 4}_M1:1";
-
-            mecevi.Add(new Mec
-            {
-                TurnirID = turnir.ID,
-                MatchCode = $"UT_{L}_{L + 4}_R1_M1",
-                Runda = 1,
-                Odigran = false,
-                TipMeca = TipMeca.Utjesni,
-                PlacingRange = $"{L}-{L + 4}",
-                VrijemeMeca = startTime,
-                WinnerNextMatchCode = winnerNext1,
-                LoserNextMatchCode = loserNext1,
-                Igrac1ID = p1,
-                Igrac2ID = p2
-            });
-
-            string winnerNext2 = $"UT_RR_{L}_{L + 2}_M1:2;UT_RR_{L}_{L + 2}_M3:1";
-            string loserNext2 = $"UT_{L + 3}_{L + 4}_M1:2";
-
-            mecevi.Add(new Mec
-            {
-                TurnirID = turnir.ID,
-                MatchCode = $"UT_{L}_{L + 4}_R1_M2",
-                Runda = 1,
-                Odigran = false,
-                TipMeca = TipMeca.Utjesni,
-                PlacingRange = $"{L}-{L + 4}",
-                VrijemeMeca = startTime.AddHours(1),
-                WinnerNextMatchCode = winnerNext2,
-                LoserNextMatchCode = loserNext2,
-                Igrac1ID = p3,
-                Igrac2ID = p4
-            });
-
-            string rrRange = $"{L}-{L + 2}";
-            
-            mecevi.Add(new Mec
-            {
-                TurnirID = turnir.ID,
-                MatchCode = $"UT_RR_{L}_{L + 2}_M1",
-                Runda = 2,
-                Odigran = false,
-                TipMeca = TipMeca.Utjesni,
-                PlacingRange = rrRange,
-                VrijemeMeca = startTime.AddDays(1),
-                Igrac1ID = null,
-                Igrac2ID = null
-            });
-
-            mecevi.Add(new Mec
-            {
-                TurnirID = turnir.ID,
-                MatchCode = $"UT_RR_{L}_{L + 2}_M2",
-                Runda = 2,
-                Odigran = false,
-                TipMeca = TipMeca.Utjesni,
-                PlacingRange = rrRange,
-                VrijemeMeca = startTime.AddDays(1).AddHours(1),
-                Igrac1ID = null,
-                Igrac2ID = p5
-            });
-
-            mecevi.Add(new Mec
-            {
-                TurnirID = turnir.ID,
-                MatchCode = $"UT_RR_{L}_{L + 2}_M3",
-                Runda = 2,
-                Odigran = false,
-                TipMeca = TipMeca.Utjesni,
-                PlacingRange = rrRange,
-                VrijemeMeca = startTime.AddDays(1).AddHours(2),
-                Igrac1ID = null,
-                Igrac2ID = p5
-            });
-
-            mecevi.Add(new Mec
-            {
-                TurnirID = turnir.ID,
-                MatchCode = $"UT_{L + 3}_{L + 4}_M1",
-                Runda = 2,
-                Odigran = false,
-                TipMeca = TipMeca.Utjesni,
-                PlacingRange = $"{L + 3}-{L + 4}",
-                VrijemeMeca = startTime.AddDays(1).AddHours(3),
-                Igrac1ID = null,
-                Igrac2ID = null
-            });
         }
 
         private void GenerirajRoundRobin3(
@@ -733,6 +602,69 @@ namespace ePinPong.Services
             return result.ToList();
         }
 
+        /// <summary>
+        /// Kao RasporediBye ali umjesto null stavlja SLOBODAN sentinel.
+        /// Osigurava da u jednom paru nema dva SLOBODAN igrača.
+        /// </summary>
+        private List<string?> RasporediSaSlobodanom(List<string?> players, int bracketSize, Random rng)
+        {
+            int pCount = players.Count;
+            int slobodanCount = bracketSize - pCount;
+            int pairCount = bracketSize / 2;
+
+            var result = new string?[bracketSize];
+            for (int i = 0; i < bracketSize; i++) result[i] = SLOBODAN;
+
+            if (pCount == 0) return result.ToList();
+
+            var pairIndices = Enumerable.Range(0, pairCount).OrderBy(_ => rng.Next()).ToList();
+
+            if (slobodanCount <= pairCount)
+            {
+                // slobodanCount parova ima po 1 SLOBODAN i 1 pravog igrača
+                // ostalih (pairCount - slobodanCount) parova ima 2 pravog igrača
+                var slobodanPairs = new HashSet<int>(pairIndices.Take(slobodanCount));
+                int playerIdx = 0;
+
+                for (int i = 0; i < pairCount; i++)
+                {
+                    if (slobodanPairs.Contains(i))
+                    {
+                        result[2 * i] = players[playerIdx++];
+                        result[2 * i + 1] = SLOBODAN;
+                    }
+                    else
+                    {
+                        result[2 * i] = players[playerIdx++];
+                        result[2 * i + 1] = players[playerIdx++];
+                    }
+                }
+            }
+            else
+            {
+                // pCount parova ima 1 pravog igrača i 1 SLOBODAN
+                // ostalih (pairCount - pCount) parova ima oba SLOBODAN
+                var playerPairs = new HashSet<int>(pairIndices.Take(pCount));
+                int playerIdx = 0;
+
+                for (int i = 0; i < pairCount; i++)
+                {
+                    if (playerPairs.Contains(i))
+                    {
+                        result[2 * i] = players[playerIdx++];
+                        result[2 * i + 1] = SLOBODAN;
+                    }
+                    else
+                    {
+                        result[2 * i] = SLOBODAN;
+                        result[2 * i + 1] = SLOBODAN;
+                    }
+                }
+            }
+
+            return result.ToList();
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         //  PROPAGACIJA BYE-OVA
         // ─────────────────────────────────────────────────────────────────────
@@ -768,7 +700,10 @@ namespace ePinPong.Services
             }
         }
 
-        private void PropagirajBye(List<Mec> mecevi)
+        // Provjeri da li je ID fiktivni "Slobodan" igrač
+        public static bool JeSlobodan(string? id) => id == SLOBODAN;
+
+        public void PropagirajBye(List<Mec> mecevi)
         {
             bool promijenjeno = true;
             int limitSigurnosti = 0;
@@ -798,7 +733,11 @@ namespace ePinPong.Services
 
                     if (slot1Odredjen && slot2Odredjen)
                     {
-                        if (mec.Igrac1ID == null || mec.Igrac2ID == null)
+                        // Meč se auto-rješava ako je jedan od igrača null ili SLOBODAN
+                        bool igrac1Slobodan = mec.Igrac1ID == null || JeSlobodan(mec.Igrac1ID);
+                        bool igrac2Slobodan = mec.Igrac2ID == null || JeSlobodan(mec.Igrac2ID);
+
+                        if (igrac1Slobodan || igrac2Slobodan)
                         {
                             mec.Odigran = true;
 
@@ -807,21 +746,34 @@ namespace ePinPong.Services
                             string? winnerPartnerId = null;
                             string? loserPartnerId = null;
 
-                            if (mec.Igrac1ID != null)
+                            if (!igrac1Slobodan)
                             {
+                                // Igrac1 je pravi igrač, Igrac2 je slobodan → igrac1 pobjeđuje
+                                if (mec.Igrac2ID == null) mec.Igrac2ID = SLOBODAN;
                                 mec.PoeniIgrac1 = 3; mec.PoeniIgrac2 = 0;
-                                winnerId = mec.Igrac1ID; loserId = null;
-                                winnerPartnerId = mec.Igrac1PartnerID; loserPartnerId = null;
+                                winnerId = mec.Igrac1ID; 
+                                loserId = mec.Igrac2ID;
+                                winnerPartnerId = mec.Igrac1PartnerID; 
+                                loserPartnerId = mec.Igrac2PartnerID;
                             }
-                            else if (mec.Igrac2ID != null)
+                            else if (!igrac2Slobodan)
                             {
+                                // Igrac2 je pravi igrač, Igrac1 je slobodan → igrac2 pobjeđuje
+                                if (mec.Igrac1ID == null) mec.Igrac1ID = SLOBODAN;
                                 mec.PoeniIgrac1 = 0; mec.PoeniIgrac2 = 3;
-                                winnerId = mec.Igrac2ID; loserId = null;
-                                winnerPartnerId = mec.Igrac2PartnerID; loserPartnerId = null;
+                                winnerId = mec.Igrac2ID; 
+                                loserId = mec.Igrac1ID;
+                                winnerPartnerId = mec.Igrac2PartnerID; 
+                                loserPartnerId = mec.Igrac1PartnerID;
                             }
                             else
                             {
+                                // Oba su slobodna – SLOBODAN napreduje da sljedeći meč dobije protivnika
+                                if (mec.Igrac1ID == null) mec.Igrac1ID = SLOBODAN;
+                                if (mec.Igrac2ID == null) mec.Igrac2ID = SLOBODAN;
                                 mec.PoeniIgrac1 = 0; mec.PoeniIgrac2 = 0;
+                                winnerId = SLOBODAN; 
+                                loserId = SLOBODAN;
                             }
 
                             if (!string.IsNullOrEmpty(mec.WinnerNextMatchCode))
@@ -896,7 +848,9 @@ namespace ePinPong.Services
             var plasmani = new List<TurnirPlasmanViewModel>();
             if (turnir == null) return plasmani;
 
-            var registracije = turnir.Registracije.ToList();
+            var registracije = turnir.Registracije
+                .Where(r => r.KorisnikID != SLOBODAN && r.Korisnik != null && !JeSlobodan(r.Korisnik.Id))
+                .ToList();
             if (!registracije.Any()) return plasmani;
 
             var mecevi           = turnir.Mecevi.ToList();
@@ -907,6 +861,9 @@ namespace ePinPong.Services
 
             var playerRanks = new Dictionary<string, (int Pozicija, int Bodovi, string Detalj)>();
 
+            int offsetBrojGrupa = grupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+            int offsetUtjesni = offsetBrojGrupa > 0 ? (offsetBrojGrupa * 2) : 0;
+
             bool imaZavrsnicu = zavrsniMecevi.Any() || razigravanjeMecevi.Any() || utjesniMecevi.Any();
             if (imaZavrsnicu)
             {
@@ -914,139 +871,235 @@ namespace ePinPong.Services
                 var plMatches = razigravanjeMecevi.ToList();
                 var utMatches = utjesniMecevi.ToList();
 
-                // ── UT_ round-robin mečevi (za 3 igrača) ──
-                var rrMatches = utMatches.Where(m => m.MatchCode.StartsWith("UT_RR_")).ToList();
-                var rrGroups = rrMatches.GroupBy(m => m.PlacingRange).ToList();
-
-                foreach (var group in rrGroups)
+                // Ako nema grupa, koristi broj igrača iz završnice kao fallback
+                if (offsetUtjesni == 0 && zMatches.Any())
                 {
-                    var (plL, plR) = ParsiranajeRange(group.Key);
-                    if (plL <= 0) continue;
+                    offsetUtjesni = zMatches
+                        .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
+                        .Where(id => id != null && !JeSlobodan(id))
+                        .Distinct()
+                        .Count();
+                }
 
-                    var groupList = group.ToList();
-                    bool sviOdigrani = groupList.Count == 3 && groupList.All(m => m.Odigran);
+                // ── UT_ round-robin mečevi (za 3 igrača u utješnom turniru) ──
+                if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni)
+                {
+                    var rrMatches = utMatches.Where(m => m.MatchCode.StartsWith("UT_RR_")).ToList();
+                    var rrGroups = rrMatches.GroupBy(m => m.PlacingRange).ToList();
 
-                    if (sviOdigrani)
+                    foreach (var group in rrGroups)
                     {
-                        var playersInGroup = groupList
-                            .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
-                            .Where(id => id != null)
-                            .Distinct()
-                            .ToList();
+                        var (plL, plR) = ParsiranajeRange(group.Key);
+                        if (plL <= 0) continue;
 
-                        var stats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
-                        foreach (var playerId in playersInGroup)
+                        if (plL > offsetUtjesni && offsetUtjesni > 0)
                         {
-                            if (playerId == null) continue;
-                            int wins = 0, setsWon = 0, setsLost = 0;
-                            foreach (var m in groupList)
-                            {
-                                if (m.Igrac1ID == playerId)
-                                {
-                                    setsWon += m.PoeniIgrac1 ?? 0;
-                                    setsLost += m.PoeniIgrac2 ?? 0;
-                                    if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
-                                }
-                                else if (m.Igrac2ID == playerId)
-                                {
-                                    setsWon += m.PoeniIgrac2 ?? 0;
-                                    setsLost += m.PoeniIgrac1 ?? 0;
-                                    if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
-                                }
-                            }
-                            stats.Add((playerId, wins, setsWon - setsLost, setsWon));
+                            plL -= offsetUtjesni;
+                            plR -= offsetUtjesni;
                         }
 
-                        var sortedStats = stats
-                            .OrderByDescending(s => s.Wins)
-                            .ThenByDescending(s => s.SetDiff)
-                            .ThenByDescending(s => s.SetsWon)
-                            .ToList();
+                        var groupList = group.ToList();
+                        bool sviOdigrani = groupList.Count == 3 && groupList.All(m => m.Odigran);
 
-                        for (int i = 0; i < sortedStats.Count; i++)
+                        if (sviOdigrani)
                         {
-                            int pos = plL + i;
-                            string playerId = sortedStats[i].PlayerId;
-                            playerRanks[playerId] = (pos, DajBodoveZaPoziciju(pos), $"{pos}. mjesto");
+                            var playersInGroup = groupList
+                                .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
+                                .Where(id => id != null && !JeSlobodan(id))
+                                .Distinct()
+                                .ToList();
+
+                            var stats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
+                            foreach (var playerId in playersInGroup)
+                            {
+                                if (playerId == null) continue;
+                                int wins = 0, setsWon = 0, setsLost = 0;
+                                foreach (var m in groupList)
+                                {
+                                    if (m.Igrac1ID == playerId)
+                                    {
+                                        setsWon += m.PoeniIgrac1 ?? 0;
+                                        setsLost += m.PoeniIgrac2 ?? 0;
+                                        if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
+                                    }
+                                    else if (m.Igrac2ID == playerId)
+                                    {
+                                        setsWon += m.PoeniIgrac2 ?? 0;
+                                        setsLost += m.PoeniIgrac1 ?? 0;
+                                        if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
+                                    }
+                                }
+                                stats.Add((playerId, wins, setsWon - setsLost, setsWon));
+                            }
+
+                            var sortedStats = stats
+                                .OrderByDescending(s => s.Wins)
+                                .ThenByDescending(s => s.SetDiff)
+                                .ThenByDescending(s => s.SetsWon)
+                                .ToList();
+
+                            for (int i = 0; i < sortedStats.Count; i++)
+                            {
+                                int relPos = plL + i;
+                                int pos = relPos + offsetUtjesni;
+                                string playerId = sortedStats[i].PlayerId;
+                                if (!JeSlobodan(playerId))
+                                {
+                                    playerRanks[playerId] = (pos, DajBodoveZaPoziciju(pos), $"{pos}. mjesto");
+                                }
+                            }
                         }
                     }
                 }
 
-                // ── Finale (1. i 2. mjesto) ──────────────────────────────────
+                // ── Finale (1. i 2. mjesto glavne završnice) ──────────────────
                 var zFinale = zMatches.FirstOrDefault(m => string.IsNullOrEmpty(m.WinnerNextMatchCode));
                 if (zFinale != null)
                 {
                     if (zFinale.Odigran && zFinale.Igrac1ID != null && zFinale.Igrac2ID != null)
                     {
                         bool i1Pob = (zFinale.PoeniIgrac1 ?? 0) > (zFinale.PoeniIgrac2 ?? 0);
-                        playerRanks[zFinale.Igrac1ID] = i1Pob
-                            ? (1, DajBodoveZaPoziciju(1), "1. mjesto 🏆 Pobjednik")
-                            : (2, DajBodoveZaPoziciju(2), "2. mjesto 🥈");
-                        playerRanks[zFinale.Igrac2ID] = i1Pob
-                            ? (2, DajBodoveZaPoziciju(2), "2. mjesto 🥈")
-                            : (1, DajBodoveZaPoziciju(1), "1. mjesto 🏆 Pobjednik");
+                        string winId = i1Pob ? zFinale.Igrac1ID : zFinale.Igrac2ID;
+                        string loseId = i1Pob ? zFinale.Igrac2ID : zFinale.Igrac1ID;
+
+                        if (!JeSlobodan(winId))
+                            playerRanks[winId] = (1, DajBodoveZaPoziciju(1), "1. mjesto 🏆 Pobjednik");
+                        if (!JeSlobodan(loseId))
+                            playerRanks[loseId] = (2, DajBodoveZaPoziciju(2), "2. mjesto 🥈");
                     }
                     else
                     {
-                        // Finale još nije odigrano
-                        if (zFinale.Igrac1ID != null && !playerRanks.ContainsKey(zFinale.Igrac1ID))
+                        if (zFinale.Igrac1ID != null && !JeSlobodan(zFinale.Igrac1ID) && !playerRanks.ContainsKey(zFinale.Igrac1ID))
                             playerRanks[zFinale.Igrac1ID] = (1, DajBodoveZaPoziciju(2), "Finale (1-2. mjesto)");
-                        if (zFinale.Igrac2ID != null && !playerRanks.ContainsKey(zFinale.Igrac2ID))
+                        if (zFinale.Igrac2ID != null && !JeSlobodan(zFinale.Igrac2ID) && !playerRanks.ContainsKey(zFinale.Igrac2ID))
                             playerRanks[zFinale.Igrac2ID] = (1, DajBodoveZaPoziciju(2), "Finale (1-2. mjesto)");
                     }
                 }
 
-                // ── PL_ finalni mečevi (raspon 2 igrača = meč za konkretno mjesto) ──
-                foreach (var plMec in plMatches.Where(m => m.Odigran))
+                // ── SingleElimination vs DoubleElimination ──────────────────
+                if (turnir.SistemTurnira == SistemTurnira.SingleElimination)
                 {
-                    var (plL, plR) = ParsiranajeRange(plMec.PlacingRange);
-                    if (plL <= 0 || plR - plL != 1) continue;
+                    var zPoRundama = zMatches.GroupBy(m => m.Runda).OrderByDescending(g => g.Key).ToList();
+                    int maxRunda = zPoRundama.Any() ? zPoRundama.First().Key : 0;
 
-                    bool i1Pob = (plMec.PoeniIgrac1 ?? 0) > (plMec.PoeniIgrac2 ?? 0);
-                    int winPos = plL, losePos = plR;
-
-                    if (plMec.Igrac1ID != null && !playerRanks.ContainsKey(plMec.Igrac1ID))
+                    foreach (var rundaGroup in zPoRundama)
                     {
-                        playerRanks[plMec.Igrac1ID] = i1Pob
-                            ? (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto")
-                            : (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto");
-                    }
+                        int r = rundaGroup.Key;
+                        if (r == maxRunda) continue; // Finale već obrađeno
 
-                    if (plMec.Igrac2ID != null && !playerRanks.ContainsKey(plMec.Igrac2ID))
-                    {
-                        playerRanks[plMec.Igrac2ID] = i1Pob
-                            ? (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto")
-                            : (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto");
+                        // Target pos: polufinale (maxRunda-1) -> 3, četvrtfinale (maxRunda-2) -> 5, osmina (maxRunda-3) -> 9, itd.
+                        int targetPos = (int)Math.Pow(2, maxRunda - r) + 1;
+
+                        foreach (var m in rundaGroup.Where(m => m.Odigran))
+                        {
+                            if (m.Igrac1ID != null && m.Igrac2ID != null)
+                            {
+                                bool i1Pob = (m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0);
+                                string loserId = i1Pob ? m.Igrac2ID : m.Igrac1ID;
+                                if (!JeSlobodan(loserId) && !playerRanks.ContainsKey(loserId))
+                                {
+                                    string opisPozicije = targetPos == 3 ? "3. mjesto 🥉 (Polufinale)" : $"{targetPos}. mjesto";
+                                    playerRanks[loserId] = (targetPos, DajBodoveZaPoziciju(targetPos), opisPozicije);
+                                }
+                            }
+                        }
                     }
                 }
-
-                // ── UT_ finalni mečevi (raspon 2 igrača = meč za konkretno mjesto) ──
-                foreach (var utMec in utMatches.Where(m => m.Odigran))
+                else
                 {
-                    var (plL, plR) = ParsiranajeRange(utMec.PlacingRange);
-                    if (plL <= 0 || plR - plL != 1) continue;
-
-                    bool i1Pob = (utMec.PoeniIgrac1 ?? 0) > (utMec.PoeniIgrac2 ?? 0);
-                    int winPos = plL, losePos = plR;
-
-                    if (utMec.Igrac1ID != null && !playerRanks.ContainsKey(utMec.Igrac1ID))
+                    // ── PL_ finalni mečevi razigravanja glavne završnice (Double Elimination) ──
+                    foreach (var plMec in plMatches.Where(m => m.Odigran))
                     {
-                        playerRanks[utMec.Igrac1ID] = i1Pob
-                            ? (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto")
-                            : (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto");
+                        var (plL, plR) = ParsiranajeRange(plMec.PlacingRange);
+                        if (plL <= 0 || plR - plL != 1) continue;
+
+                        bool i1Pob = (plMec.PoeniIgrac1 ?? 0) > (plMec.PoeniIgrac2 ?? 0);
+                        int winPos = plL, losePos = plR;
+
+                        if (plMec.Igrac1ID != null && !JeSlobodan(plMec.Igrac1ID) && !playerRanks.ContainsKey(plMec.Igrac1ID))
+                        {
+                            playerRanks[plMec.Igrac1ID] = i1Pob
+                                ? (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto")
+                                : (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto");
+                        }
+
+                        if (plMec.Igrac2ID != null && !JeSlobodan(plMec.Igrac2ID) && !playerRanks.ContainsKey(plMec.Igrac2ID))
+                        {
+                            playerRanks[plMec.Igrac2ID] = i1Pob
+                                ? (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto")
+                                : (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto");
+                        }
                     }
 
-                    if (utMec.Igrac2ID != null && !playerRanks.ContainsKey(utMec.Igrac2ID))
+                    // ── UT_ mečevi utješnog turnira (SAMO za DoubleEliminationUtjesni) ──
+                    if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni)
                     {
-                        playerRanks[utMec.Igrac2ID] = i1Pob
-                            ? (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto")
-                            : (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto");
+                        var utFinale = utMatches.FirstOrDefault(m => m.MatchCode.StartsWith("UT_R") && string.IsNullOrEmpty(m.WinnerNextMatchCode));
+                        if (utFinale != null)
+                        {
+                            if (utFinale.Odigran && utFinale.Igrac1ID != null && utFinale.Igrac2ID != null)
+                            {
+                                bool i1Pob = (utFinale.PoeniIgrac1 ?? 0) > (utFinale.PoeniIgrac2 ?? 0);
+                                string winId = i1Pob ? utFinale.Igrac1ID : utFinale.Igrac2ID;
+                                string loseId = i1Pob ? utFinale.Igrac2ID : utFinale.Igrac1ID;
+                                int pos1 = 1 + offsetUtjesni;
+                                int pos2 = 2 + offsetUtjesni;
+
+                                if (!JeSlobodan(winId) && !playerRanks.ContainsKey(winId))
+                                {
+                                    playerRanks[winId] = (pos1, DajBodoveZaPoziciju(pos1), $"{pos1}. mjesto (Pobjednik utješnog)");
+                                }
+                                if (!JeSlobodan(loseId) && !playerRanks.ContainsKey(loseId))
+                                {
+                                    playerRanks[loseId] = (pos2, DajBodoveZaPoziciju(pos2), $"{pos2}. mjesto");
+                                }
+                            }
+                            else
+                            {
+                                int posMin = 1 + offsetUtjesni;
+                                int posMax = 2 + offsetUtjesni;
+                                if (utFinale.Igrac1ID != null && !JeSlobodan(utFinale.Igrac1ID) && !playerRanks.ContainsKey(utFinale.Igrac1ID))
+                                    playerRanks[utFinale.Igrac1ID] = (posMin, DajBodoveZaPoziciju(posMax), $"Utješno finale ({posMin}-{posMax}. mjesto)");
+                                if (utFinale.Igrac2ID != null && !JeSlobodan(utFinale.Igrac2ID) && !playerRanks.ContainsKey(utFinale.Igrac2ID))
+                                    playerRanks[utFinale.Igrac2ID] = (posMin, DajBodoveZaPoziciju(posMax), $"Utješno finale ({posMin}-{posMax}. mjesto)");
+                            }
+                        }
+
+                        foreach (var utMec in utMatches.Where(m => m.Odigran && !m.MatchCode.StartsWith("UT_RR_") && m != utFinale))
+                        {
+                            var (plL, plR) = ParsiranajeRange(utMec.PlacingRange);
+                            if (plL <= 0 || plR - plL != 1) continue;
+
+                            bool i1Pob = (utMec.PoeniIgrac1 ?? 0) > (utMec.PoeniIgrac2 ?? 0);
+                            int winPos  = plL;
+                            int losePos = plR;
+
+                            if (offsetUtjesni > 0 && winPos <= offsetUtjesni)
+                            {
+                                winPos += offsetUtjesni;
+                                losePos += offsetUtjesni;
+                            }
+
+                            if (utMec.Igrac1ID != null && !JeSlobodan(utMec.Igrac1ID) && !playerRanks.ContainsKey(utMec.Igrac1ID))
+                            {
+                                playerRanks[utMec.Igrac1ID] = i1Pob
+                                    ? (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto")
+                                    : (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto");
+                            }
+
+                            if (utMec.Igrac2ID != null && !JeSlobodan(utMec.Igrac2ID) && !playerRanks.ContainsKey(utMec.Igrac2ID))
+                            {
+                                playerRanks[utMec.Igrac2ID] = i1Pob
+                                    ? (losePos, DajBodoveZaPoziciju(losePos), $"{losePos}. mjesto")
+                                    : (winPos,  DajBodoveZaPoziciju(winPos),  $"{winPos}. mjesto");
+                            }
+                        }
                     }
                 }
 
                 // ── Igrači u toku razigravanja i utješnog – daj im najuži raspon ────────
                 var neplaciraniIds = registracije.Select(r => r.KorisnikID)
-                    .Where(id => !playerRanks.ContainsKey(id)).ToList();
+                    .Where(id => !playerRanks.ContainsKey(id) && !JeSlobodan(id)).ToList();
 
                 foreach (var playerId in neplaciraniIds)
                 {
@@ -1057,25 +1110,155 @@ namespace ePinPong.Services
                     if (!igracMecevi.Any()) continue;
 
                     int bestL = 0, bestR = int.MaxValue;
+                    bool isUtjesniPlayer = false;
+
                     foreach (var m in igracMecevi)
                     {
                         var (L, R) = ParsiranajeRange(m.PlacingRange);
                         if (L > 0 && (bestR == int.MaxValue || R - L < bestR - bestL))
-                        { bestL = L; bestR = R; }
+                        {
+                            bestL = L;
+                            bestR = R;
+                            isUtjesniPlayer = (m.TipMeca == TipMeca.Utjesni);
+                        }
                     }
 
                     if (bestL > 0)
                     {
-                        string detalj = bestR == bestL ? $"{bestL}. mjesto"
-                                      : $"{bestL}-{bestR}. mjesto";
-                        playerRanks[playerId] = (bestL, DajBodoveZaPoziciju(bestR), detalj);
+                        int actualL = bestL;
+                        int actualR = bestR;
+                        if (isUtjesniPlayer)
+                        {
+                            if (actualL <= offsetUtjesni || offsetUtjesni == 0)
+                            {
+                                actualL += offsetUtjesni;
+                                actualR += offsetUtjesni;
+                            }
+                        }
+
+                        string detalj = actualR == actualL ? $"{actualL}. mjesto"
+                                      : $"{actualL}-{actualR}. mjesto";
+                        playerRanks[playerId] = (actualL, DajBodoveZaPoziciju(actualR), detalj);
                     }
                 }
             }
 
-            // ── Igrači koji su ispali u grupnoj fazi ─────────────────────────
+            // ── Normalizacija/Sažimanje plasmana za stvarne igrače (uklanja rupe nastale zbog BYE/Slobodnog) ──
+            if (turnir.SistemTurnira != SistemTurnira.SingleElimination)
+            {
+                var normalizedRanks = new Dictionary<string, (int Pozicija, int Bodovi, string Detalj)>();
+
+                // Pomoćna funkcija za računanje ukupne statistike igrača u turniru (za razbijanje izjednačenja)
+                Func<string, (int Wins, int SetDiff, int SetsWon)> getPlayerOverallStats = (playerId) =>
+                {
+                    int w = 0, sw = 0, sl = 0;
+                    foreach (var m in mecevi.Where(m => m.Odigran && (m.Igrac1ID == playerId || m.Igrac2ID == playerId)))
+                    {
+                        if (m.Igrac1ID == playerId)
+                        {
+                            sw += m.PoeniIgrac1 ?? 0;
+                            sl += m.PoeniIgrac2 ?? 0;
+                            if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) w++;
+                        }
+                        else
+                        {
+                            sw += m.PoeniIgrac2 ?? 0;
+                            sl += m.PoeniIgrac1 ?? 0;
+                            if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) w++;
+                        }
+                    }
+                    return (w, sw - sl, sw);
+                };
+
+                // 1. Glavna završnica (pozicije <= offsetUtjesni ili svi ako nema utješnog turnira)
+                var zavrsnicaKeys = playerRanks.Keys
+                    .Where(k => !JeSlobodan(k) && (offsetUtjesni == 0 || playerRanks[k].Pozicija <= offsetUtjesni))
+                    .ToList();
+
+                if (zavrsnicaKeys.Any())
+                {
+                    var groupedByRawPos = zavrsnicaKeys
+                        .Select(k => (Key: k, Data: playerRanks[k]))
+                        .GroupBy(x => x.Data.Pozicija)
+                        .OrderBy(g => g.Key)
+                        .ToList();
+
+                    int currentPos = 1;
+                    foreach (var group in groupedByRawPos)
+                    {
+                        var sortedItems = group
+                            .OrderByDescending(x => getPlayerOverallStats(x.Key).Wins)
+                            .ThenByDescending(x => getPlayerOverallStats(x.Key).SetDiff)
+                            .ThenByDescending(x => getPlayerOverallStats(x.Key).SetsWon)
+                            .ThenBy(x => x.Key)
+                            .ToList();
+
+                        foreach (var item in sortedItems)
+                        {
+                            int newPos = currentPos;
+                            string oldDetail = item.Data.Detalj;
+                            string newDetail = $"{newPos}. mjesto";
+
+                            if (oldDetail.Contains("Pobjednik") && !oldDetail.Contains("utješnog"))
+                                newDetail = $"{newPos}. mjesto 🏆 Pobjednik";
+                            else if (oldDetail.Contains("🥈"))
+                                newDetail = $"{newPos}. mjesto 🥈";
+                            else if (oldDetail.Contains("🥉"))
+                                newDetail = $"{newPos}. mjesto 🥉";
+
+                            normalizedRanks[item.Key] = (newPos, DajBodoveZaPoziciju(newPos), newDetail);
+                            currentPos++;
+                        }
+                    }
+                }
+
+                // 2. Utješni turnir (pozicije > offsetUtjesni) - primjenjuje se samo kod DoubleEliminationUtjesni
+                if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni && offsetUtjesni > 0)
+                {
+                    var utjesniKeys = playerRanks.Keys
+                        .Where(k => !JeSlobodan(k) && playerRanks[k].Pozicija > offsetUtjesni)
+                        .ToList();
+
+                    if (utjesniKeys.Any())
+                    {
+                        var groupedByRawPos = utjesniKeys
+                            .Select(k => (Key: k, Data: playerRanks[k]))
+                            .GroupBy(x => x.Data.Pozicija)
+                            .OrderBy(g => g.Key)
+                            .ToList();
+
+                        int currentPos = offsetUtjesni + 1;
+                        foreach (var group in groupedByRawPos)
+                        {
+                            var sortedItems = group
+                                .OrderByDescending(x => getPlayerOverallStats(x.Key).Wins)
+                                .ThenByDescending(x => getPlayerOverallStats(x.Key).SetDiff)
+                                .ThenByDescending(x => getPlayerOverallStats(x.Key).SetsWon)
+                                .ThenBy(x => x.Key)
+                                .ToList();
+
+                            foreach (var item in sortedItems)
+                            {
+                                int newPos = currentPos;
+                                string oldDetail = item.Data.Detalj;
+                                string newDetail = $"{newPos}. mjesto";
+
+                                if (oldDetail.Contains("Pobjednik utješnog"))
+                                    newDetail = $"{newPos}. mjesto (Pobjednik utješnog)";
+
+                                normalizedRanks[item.Key] = (newPos, DajBodoveZaPoziciju(newPos), newDetail);
+                                currentPos++;
+                            }
+                        }
+                    }
+                }
+
+                playerRanks = normalizedRanks;
+            }
+
+            // ── Igrači koji su ispali u grupnoj fazi a nisu dodijeljeni u playerRanks ──
             var grupnaFazaIds = registracije.Select(r => r.KorisnikID)
-                .Where(id => !playerRanks.ContainsKey(id)).ToList();
+                .Where(id => !playerRanks.ContainsKey(id) && !JeSlobodan(id)).ToList();
 
             var groupStats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
             foreach (var playerId in grupnaFazaIds)
@@ -1108,15 +1291,31 @@ namespace ePinPong.Services
                 .ThenByDescending(x => x.SetsWon)
                 .ToList();
 
-            int nextPos = playerRanks.Any() ? playerRanks.Values.Max(v => v.Pozicija) + 1 : 1;
-            for (int i = 0; i < sortedGroup.Count; i++)
-                playerRanks[sortedGroup[i].PlayerId] = (nextPos + i, 5, "Grupna faza");
+            int brojGrupa = grupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+            int grupnaFazaPos = brojGrupa > 0 ? (brojGrupa * 2 + 1) : (playerRanks.Any() ? playerRanks.Values.Max(v => v.Pozicija) + 1 : 1);
+
+            if (turnir.SistemTurnira == SistemTurnira.SingleElimination || turnir.SistemTurnira == SistemTurnira.DoubleElimination)
+            {
+                // Igrači koji su ispali u grupnoj fazi dijele plasman na mjestu ((broj grupa * 2) + 1)
+                for (int i = 0; i < sortedGroup.Count; i++)
+                    playerRanks[sortedGroup[i].PlayerId] = (grupnaFazaPos, DajBodoveZaPoziciju(grupnaFazaPos), $"{grupnaFazaPos}. mjesto (Grupna faza)");
+            }
+            else
+            {
+                // Za DoubleEliminationUtjesni: neplacirani igrači utješnog turnira nastavljaju plasmane od grupnaFazaPos naviše, svaki igrač pojedinačno
+                int startUtjesniPos = Math.Max(grupnaFazaPos, playerRanks.Any() ? playerRanks.Values.Max(v => v.Pozicija) + 1 : 1);
+                for (int i = 0; i < sortedGroup.Count; i++)
+                {
+                    int pos = startUtjesniPos + i;
+                    playerRanks[sortedGroup[i].PlayerId] = (pos, DajBodoveZaPoziciju(pos), $"{pos}. mjesto (Grupna faza)");
+                }
+            }
 
             // ── Gradi listu plasmana ─────────────────────────────────────────
             foreach (var reg in registracije)
             {
                 var user = reg.Korisnik;
-                if (user == null) continue;
+                if (user == null || JeSlobodan(user.Id)) continue;
 
                 if (playerRanks.TryGetValue(user.Id, out var rank))
                 {
@@ -1141,8 +1340,8 @@ namespace ePinPong.Services
                         ImePrezime     = $"{user.Ime} {user.Prezime}",
                         Grad           = user.Grad ?? "",
                         IsGost         = user.IsGost,
-                        Pozicija       = nextPos + sortedGroup.Count,
-                        Bodovi         = 5,
+                        Pozicija       = grupnaFazaPos,
+                        Bodovi         = DajBodoveZaPoziciju(grupnaFazaPos),
                         DetaljPozicije = "Učešće"
                     });
                 }
@@ -1213,6 +1412,24 @@ namespace ePinPong.Services
             int N = parovi.Count;
             if (N < 2) return mecevi;
 
+            DateTime pocetak = DateTime.Now;
+            if (turnir.Mecevi != null && turnir.Mecevi.Any())
+            {
+                pocetak = turnir.Mecevi.Max(m => m.VrijemeMeca).AddHours(2);
+            }
+
+            // Specijalni slučaj: točno 3 para → round-robin (svaki sa svakim)
+            if (N == 3)
+            {
+                var rngRr = new Random();
+                var shuffled3 = parovi.OrderBy(_ => rngRr.Next()).ToList();
+                // Prikazujemo kao grupnu fazu s nazivom grupe kako bi view znao
+                mecevi.Add(new Mec { TurnirID = turnir.ID, MatchCode = "PAR_RR_M1", Runda = 1, Odigran = false, TipMeca = TipMeca.TurnirParova, VrijemeMeca = pocetak, PlacingRange = "1-3", NazivGrupe = "Grupa A (Parovi)", Igrac1ID = shuffled3[0].Igrac1ID, Igrac1PartnerID = shuffled3[0].Igrac2ID, Igrac2ID = shuffled3[1].Igrac1ID, Igrac2PartnerID = shuffled3[1].Igrac2ID });
+                mecevi.Add(new Mec { TurnirID = turnir.ID, MatchCode = "PAR_RR_M2", Runda = 1, Odigran = false, TipMeca = TipMeca.TurnirParova, VrijemeMeca = pocetak.AddHours(1), PlacingRange = "1-3", NazivGrupe = "Grupa A (Parovi)", Igrac1ID = shuffled3[0].Igrac1ID, Igrac1PartnerID = shuffled3[0].Igrac2ID, Igrac2ID = shuffled3[2].Igrac1ID, Igrac2PartnerID = shuffled3[2].Igrac2ID });
+                mecevi.Add(new Mec { TurnirID = turnir.ID, MatchCode = "PAR_RR_M3", Runda = 1, Odigran = false, TipMeca = TipMeca.TurnirParova, VrijemeMeca = pocetak.AddHours(2), PlacingRange = "1-3", NazivGrupe = "Grupa A (Parovi)", Igrac1ID = shuffled3[1].Igrac1ID, Igrac1PartnerID = shuffled3[1].Igrac2ID, Igrac2ID = shuffled3[2].Igrac1ID, Igrac2PartnerID = shuffled3[2].Igrac2ID });
+                return mecevi;
+            }
+
             // Find next power of 2
             int S = 2;
             while (S < N) S *= 2;
@@ -1221,15 +1438,9 @@ namespace ePinPong.Services
             var rng = new Random();
             var shuffledPairs = parovi.OrderBy(_ => rng.Next()).ToList();
 
-            // Prepare list of pair identifiers for RasporediBye
+            // Prepare list of pair identifiers with SLOBODAN padding
             var pairIdentifiers = Enumerable.Range(0, N).Select(i => (string?)i.ToString()).ToList();
-            var distributed = RasporediBye(pairIdentifiers, S, rng);
-
-            DateTime pocetak = DateTime.Now;
-            if (turnir.Mecevi != null && turnir.Mecevi.Any())
-            {
-                pocetak = turnir.Mecevi.Max(m => m.VrijemeMeca).AddHours(2);
-            }
+            var distributed = RasporediSaSlobodanom(pairIdentifiers, S, rng);
 
             int roundsCount = (int)Math.Round(Math.Log2(S));
 
@@ -1239,7 +1450,7 @@ namespace ePinPong.Services
                 int matchesInRound = S / (int)Math.Pow(2, r);
                 for (int m = 1; m <= matchesInRound; m++)
                 {
-                    mecevi.Add(new Mec
+                    var mec = new Mec
                     {
                         TurnirID = turnir.ID,
                         MatchCode = $"PAR_R{r}_M{m}",
@@ -1248,7 +1459,15 @@ namespace ePinPong.Services
                         TipMeca = TipMeca.TurnirParova,
                         VrijemeMeca = pocetak.AddDays(r - 1).AddHours(m * 2),
                         PlacingRange = $"1-{S}"
-                    });
+                    };
+
+                    if (r < roundsCount)
+                    {
+                        mec.WinnerNextMatchCode = $"PAR_R{r + 1}_M{(m + 1) / 2}";
+                        mec.WinnerNextMatchSlot = (m % 2 != 0) ? 1 : 2;
+                    }
+
+                    mecevi.Add(mec);
                 }
             }
 
@@ -1261,22 +1480,31 @@ namespace ePinPong.Services
                     var key1 = distributed[2 * i];
                     var key2 = distributed[2 * i + 1];
 
-                    if (key1 != null)
+                    if (key1 != null && !JeSlobodan(key1))
                     {
                         var pair1 = shuffledPairs[int.Parse(key1)];
                         mecR1.Igrac1ID = pair1.Igrac1ID;
                         mecR1.Igrac1PartnerID = pair1.Igrac2ID;
                     }
-                    if (key2 != null)
+                    else if (JeSlobodan(key1))
+                    {
+                        mecR1.Igrac1ID = SLOBODAN;
+                    }
+
+                    if (key2 != null && !JeSlobodan(key2))
                     {
                         var pair2 = shuffledPairs[int.Parse(key2)];
                         mecR1.Igrac2ID = pair2.Igrac1ID;
                         mecR1.Igrac2PartnerID = pair2.Igrac2ID;
                     }
+                    else if (JeSlobodan(key2))
+                    {
+                        mecR1.Igrac2ID = SLOBODAN;
+                    }
                 }
             }
 
-            // Propagate BYEs
+            // Propagate BYEs and Slobodan auto-losses
             PropagirajBye(mecevi);
 
             return mecevi;

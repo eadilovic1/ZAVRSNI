@@ -28,6 +28,7 @@ namespace ePinPong.Controllers
         // GET: /Korisnik/Index/some-guid-id
         public async Task<IActionResult> Index(string id)
         {
+            if (id == "SLOBODAN") return NotFound();
             var korisnik = await _userManager.FindByIdAsync(id);
             if (korisnik == null) return NotFound();
 
@@ -111,7 +112,7 @@ namespace ePinPong.Controllers
                 .Where(l => l.Turniri.Any(t => t.Registracije.Any(r => r.KorisnikID == id)))
                 .ToList();
 
-            var sviKorisnici = await _context.Users.ToListAsync();
+            var sviKorisnici = await _context.Users.Where(u => u.Id != "SLOBODAN").ToListAsync();
 
             foreach (var liga in relevantneLige)
             {

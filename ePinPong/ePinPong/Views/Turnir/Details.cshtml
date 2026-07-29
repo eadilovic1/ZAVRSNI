@@ -12,6 +12,8 @@
     var sviZavrsniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
     var ranking = ViewBag.Ranking as List<TurnirPlasmanViewModel>;
     var utjesniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith("UT_")).ToList();
+    var utjesniGlavniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_"))).ToList();
+    var utjesniRazigravanjeMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || m.MatchCode.StartsWith("UT_RR_"))).ToList();
 }
 
 <style>
@@ -101,7 +103,16 @@
                 }
                 <div class="banner-overlay p-4 d-flex align-items-end justify-content-between">
                     <div>
-                        <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-2">Grupna faza i završnica</span>
+                        <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-2 me-1">
+                            @if (Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Singl) { <i class="bi bi-person-fill me-1"></i>@("Samo Singl") }
+                            else if (Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Dubl) { <i class="bi bi-people-fill me-1"></i>@("Samo Dubl") }
+                            else { <i class="bi bi-diagram-2-fill me-1"></i>@("Singl + Dubl") }
+                        </span>
+                        <span class="badge bg-dark border border-dark-glow text-white-50 fw-bold mb-2 rounded-pill px-3 py-2">
+                            @if (Model.SistemTurnira == ePinPong.Models.SistemTurnira.SingleElimination) { <i class="bi bi-trophy me-1 text-warning"></i>@("Single Elimination") }
+                            else if (Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleElimination) { <i class="bi bi-diagram-3-fill me-1 text-info"></i>@("Double Elimination") }
+                            else { <i class="bi bi-patch-check-fill me-1 text-orange"></i>@("Double Elimination + Utješni") }
+                        </span>
                         <h2 class="text-white fw-bold mb-0">@Model.Naziv</h2>
                     </div>
                     <span class="badge bg-success px-3 py-2 rounded-pill fw-bold">@Model.Status</span>
@@ -213,7 +224,7 @@
                                 {
                                     var jePobjednik = plasman.Pozicija == 1;
                                     var jeDrugi = plasman.Pozicija == 2;
-                                    var jeTreci = plasman.Pozicija == 3 || plasman.Pozicija == 4;
+                                    var jeTreci = plasman.Pozicija == 3;
 
                                     <tr class="@(jePobjednik ? "border-start border-3 border-warning bg-warning-transparent-row" : (jeDrugi ? "border-start border-3 border-secondary" : ""))">
                                         <td class="fw-bold fs-5">
@@ -408,43 +419,67 @@
                 }
                 else
                 {
-                    <!-- Navigacijski tabovi za Grupnu fazu, Završnicu i Razigravanje -->
-                    <ul class="nav nav-pills nav-fill mb-4 border border-dark-glow rounded-3 p-1 bg-dark-card" id="tournamentTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active text-white fw-bold py-3 rounded-3" id="groups-tab" data-bs-toggle="pill" data-bs-target="#groups-pane" type="button" role="tab" aria-controls="groups-pane" aria-selected="true">
-                                <i class="bi bi-grid-3x3-gap-fill text-orange me-2"></i>Grupna Faza
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link text-white fw-bold py-3 rounded-3" id="knockout-tab" data-bs-toggle="pill" data-bs-target="#knockout-pane" type="button" role="tab" aria-controls="knockout-pane" aria-selected="false">
-                                <i class="bi bi-trophy-fill text-orange me-2"></i>Završnica
-                            </button>
-                        </li>
-                        @if (razigravanjeMecevi.Any())
-                        {
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link text-white fw-bold py-3 rounded-3" id="placement-tab" data-bs-toggle="pill" data-bs-target="#placement-pane" type="button" role="tab" aria-controls="placement-pane" aria-selected="false">
-                                    <i class="bi bi-diagram-3-fill text-orange me-2"></i>Razigravanje
-                                </button>
-                            </li>
-                        }
-                        @if (utjesniMecevi.Any())
-                        {
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link text-white fw-bold py-3 rounded-3" id="consolation-tab" data-bs-toggle="pill" data-bs-target="#consolation-pane" type="button" role="tab" aria-controls="consolation-pane" aria-selected="false">
-                                    <i class="bi bi-patch-check-fill text-orange me-2"></i>Utješni turnir
-                                </button>
-                            </li>
-                        }
-                        @if (Model.Status == StatusTurnira.UToku || Model.Status == StatusTurnira.Zavrsen)
-                        {
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link text-white fw-bold py-3 rounded-3" id="doubles-tab" data-bs-toggle="pill" data-bs-target="#doubles-pane" type="button" role="tab" aria-controls="doubles-pane" aria-selected="false">
-                                    <i class="bi bi-people-fill text-orange me-2"></i>Turnir Parova
-                                </button>
-                            </li>
-                        }
-                    </ul>
+                    <!-- Navigacijski tabovi u jednom redu s dugmadima za skrolanje lijevo / desno -->
+                    <div class="position-relative d-flex align-items-center mb-4 gap-2">
+                        <button type="button" class="btn btn-dark border border-dark-glow text-orange rounded-3 px-3 py-3 shadow-sm d-flex align-items-center justify-content-center" id="scrollTabsLeft" title="Skroluj skroz ulijevo" style="flex-shrink: 0;">
+                            <i class="bi bi-chevron-left fs-5"></i>
+                        </button>
+
+                        <div class="overflow-hidden flex-grow-1 border border-dark-glow rounded-3 p-1 bg-dark-card" id="tournamentTabsScrollContainer" style="scroll-behavior: smooth;">
+                            <ul class="nav nav-pills flex-nowrap mb-0 border-0" id="tournamentTabs" role="tablist">
+                                @if (Model.TipTakmicenja != ePinPong.Models.TipTakmicenja.Dubl)
+                                {
+                                    <li class="nav-item flex-shrink-0" role="presentation">
+                                        <button class="nav-link active text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="groups-tab" data-bs-toggle="pill" data-bs-target="#groups-pane" type="button" role="tab" aria-controls="groups-pane" aria-selected="true">
+                                            <i class="bi bi-grid-3x3-gap-fill text-orange me-2"></i>Grupna Faza
+                                        </button>
+                                    </li>
+                                    <li class="nav-item flex-shrink-0" role="presentation">
+                                        <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="knockout-tab" data-bs-toggle="pill" data-bs-target="#knockout-pane" type="button" role="tab" aria-controls="knockout-pane" aria-selected="false">
+                                            <i class="bi bi-trophy-fill text-orange me-2"></i>Glavni turnir
+                                        </button>
+                                    </li>
+                                    @if (razigravanjeMecevi.Any())
+                                    {
+                                        <li class="nav-item flex-shrink-0" role="presentation">
+                                            <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="placement-tab" data-bs-toggle="pill" data-bs-target="#placement-pane" type="button" role="tab" aria-controls="placement-pane" aria-selected="false">
+                                                <i class="bi bi-diagram-3-fill text-orange me-2"></i>Razigravanje
+                                            </button>
+                                        </li>
+                                    }
+                                    @if (utjesniGlavniMecevi.Any())
+                                    {
+                                        <li class="nav-item flex-shrink-0" role="presentation">
+                                            <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="consolation-tab" data-bs-toggle="pill" data-bs-target="#consolation-pane" type="button" role="tab" aria-controls="consolation-pane" aria-selected="false">
+                                                <i class="bi bi-patch-check-fill text-orange me-2"></i>Utješni turnir
+                                            </button>
+                                        </li>
+                                    }
+                                    @if (utjesniRazigravanjeMecevi.Any())
+                                    {
+                                        <li class="nav-item flex-shrink-0" role="presentation">
+                                            <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="consolation-placement-tab" data-bs-toggle="pill" data-bs-target="#consolation-placement-pane" type="button" role="tab" aria-controls="consolation-placement-pane" aria-selected="false">
+                                                <i class="bi bi-diagram-3-fill text-orange me-2"></i>Razigravanje (Utješni)
+                                            </button>
+                                        </li>
+                                    }
+                                }
+                                @if ((Model.Status == StatusTurnira.UToku || Model.Status == StatusTurnira.Zavrsen) && Model.TipTakmicenja != ePinPong.Models.TipTakmicenja.Singl)
+                                {
+                                    bool isDublOnly = Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Dubl;
+                                    <li class="nav-item flex-shrink-0" role="presentation">
+                                        <button class="nav-link @(isDublOnly ? "active" : "") text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="doubles-tab" data-bs-toggle="pill" data-bs-target="#doubles-pane" type="button" role="tab" aria-controls="doubles-pane" aria-selected="@(isDublOnly ? "true" : "false")">
+                                            <i class="bi bi-people-fill text-orange me-2"></i>Turnir Parova
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+
+                        <button type="button" class="btn btn-dark border border-dark-glow text-orange rounded-3 px-3 py-3 shadow-sm d-flex align-items-center justify-content-center" id="scrollTabsRight" title="Skroluj skroz udesno" style="flex-shrink: 0;">
+                            <i class="bi bi-chevron-right fs-5"></i>
+                        </button>
+                    </div>
 
                     <div class="tab-content" id="tournamentTabsContent">
                         <!-- Pane: Grupna faza -->
@@ -598,13 +633,23 @@
                                                     <div class="match-card p-3 bg-dark-input border border-dark-glow rounded-3 d-flex align-items-center justify-content-between">
                                                         <div class="d-flex align-items-center flex-grow-1">
                                                             <div class="text-end flex-grow-1 pe-3">
-                                                                <a href="/Korisnik/Index/@mec.Igrac1ID" class="text-white hover-orange fw-semibold">
-                                                                    @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
-                                                                    @if (mec.Igrac1 != null && mec.Igrac1.IsGost)
+                                                                @if (mec.Igrac1ID != null)
+                                                                {
+                                                                    @if (mec.Igrac1ID == "SLOBODAN")
                                                                     {
-                                                                        <span class="text-muted small">(Gost)</span>
+                                                                        <span class="text-white-50 small fst-italic">Slobodan</span>
                                                                     }
-                                                                </a>
+                                                                    else
+                                                                    {
+                                                                        <a href="/Korisnik/Index/@mec.Igrac1ID" class="text-white hover-orange fw-semibold">
+                                                                            @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
+                                                                            @if (mec.Igrac1 != null && mec.Igrac1.IsGost)
+                                                                            {
+                                                                                <span class="text-muted small">(Gost)</span>
+                                                                            }
+                                                                        </a>
+                                                                    }
+                                                                }
                                                             </div>
 
                                                             <div class="score-display px-3 py-1 rounded bg-dark border border-dark-glow text-center mx-2" style="min-width: 80px;">
@@ -619,17 +664,27 @@
                                                             </div>
 
                                                             <div class="text-start flex-grow-1 ps-3">
-                                                                <a href="/Korisnik/Index/@mec.Igrac2ID" class="text-white hover-orange fw-semibold">
-                                                                    @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
-                                                                    @if (mec.Igrac2 != null && mec.Igrac2.IsGost)
+                                                                @if (mec.Igrac2ID != null)
+                                                                {
+                                                                    @if (mec.Igrac2ID == "SLOBODAN")
                                                                     {
-                                                                        <span class="text-muted small">(Gost)</span>
+                                                                        <span class="text-white-50 small fst-italic">Slobodan</span>
                                                                     }
-                                                                </a>
+                                                                    else
+                                                                    {
+                                                                        <a href="/Korisnik/Index/@mec.Igrac2ID" class="text-white hover-orange fw-semibold">
+                                                                            @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
+                                                                            @if (mec.Igrac2 != null && mec.Igrac2.IsGost)
+                                                                            {
+                                                                                <span class="text-muted small">(Gost)</span>
+                                                                            }
+                                                                        </a>
+                                                                    }
+                                                                }
                                                             </div>
                                                         </div>
 
-                                                        @if (isOrganizator)
+                                                        @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null && mec.Igrac1ID != "SLOBODAN" && mec.Igrac2ID != "SLOBODAN")
                                                         {
                                                             <div class="ps-3 border-start border-secondary ms-3">
                                                                 <a asp-controller="Mec" asp-action="UnosRezultata" asp-route-id="@mec.ID" class="btn btn-outline-warning btn-sm fw-bold">
@@ -647,7 +702,7 @@
                             }
                         </div>
 
-                        <!-- Pane: Završnica -->
+                        <!-- Pane: Glavni turnir -->
                         <div class="tab-pane fade" id="knockout-pane" role="tabpanel" aria-labelledby="knockout-tab" tabindex="0">
                             @{
                                 var rundeZavrsnice = zavrsniMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
@@ -656,10 +711,10 @@
                             {
                                 <div class="text-center py-5">
                                     <i class="bi bi-trophy text-white-50 fs-2 mb-3"></i>
-                                    <h5 class="text-white">Završnica još nije generisana</h5>
+                                    <h5 class="text-white">Glavni turnir još nije generisan</h5>
                                     @if (isOrganizator && grupniMecevi.All(m => m.Odigran))
                                     {
-                                        <p class="text-white-50 small mb-3">Grupna faza je uspješno završena. Generišite parove završnice kako biste nastavili turnir.</p>
+                                        <p class="text-white-50 small mb-3">Grupna faza je uspješno završena. Generišite parove glavnog turnira kako biste nastavili turnir.</p>
                                         <form asp-controller="Mec" asp-action="GenerirajZavrsnicu" method="post">
                                             <input type="hidden" name="turnirId" value="@Model.ID" />
                                             <button type="submit" class="btn btn-orange text-white fw-bold"><i class="bi bi-lightning-fill me-2"></i>Generiši parove</button>
@@ -667,7 +722,7 @@
                                     }
                                     else
                                     {
-                                        <p class="text-white-50 small mb-0">Parovi završnice će biti dostupni nakon što svi mečevi grupne faze budu odigrani.</p>
+                                        <p class="text-white-50 small mb-0">Parovi glavnog turnira će biti dostupni nakon što svi mečevi grupne faze budu odigrani.</p>
                                     }
                                 </div>
                             }
@@ -675,8 +730,8 @@
                             {
                                 <div class="text-center py-5">
                                     <i class="bi bi-info-circle text-white-50 fs-2 mb-3"></i>
-                                    <h5 class="text-white">Nema mečeva završnice</h5>
-                                    <p class="text-white-50 small mb-0">Mečevi glavne završnice nisu dostupni.</p>
+                                    <h5 class="text-white">Nema mečeva glavnog turnira</h5>
+                                    <p class="text-white-50 small mb-0">Mečevi glavnog turnira nisu dostupni.</p>
                                 </div>
                             }
                             else
@@ -787,7 +842,7 @@
                                                         </div>
                                                     </div>
 
-                                                    @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null)
+                                                    @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null && mec.Igrac1ID != "SLOBODAN" && mec.Igrac2ID != "SLOBODAN")
                                                     {
                                                         <div class="ps-3 border-start border-secondary ms-3">
                                                             <a asp-controller="Mec" asp-action="UnosRezultata" asp-route-id="@mec.ID" class="btn btn-outline-warning btn-sm fw-bold">
@@ -879,13 +934,20 @@
                                                         <div class="text-end flex-grow-1 pe-3">
                                                             @if (plMec.Igrac1ID != null)
                                                             {
-                                                                <a href="/Korisnik/Index/@plMec.Igrac1ID" class="text-white hover-orange fw-semibold">
-                                                                    @plMec.Igrac1?.Ime @plMec.Igrac1?.Prezime
-                                                                    @if (plMec.Igrac1 != null && plMec.Igrac1.IsGost)
-                                                                    {
-                                                                        <span class="text-muted small">(Gost)</span>
-                                                                    }
-                                                                </a>
+                                                                @if (plMec.Igrac1ID == "SLOBODAN")
+                                                                {
+                                                                    <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="/Korisnik/Index/@plMec.Igrac1ID" class="text-white hover-orange fw-semibold">
+                                                                        @plMec.Igrac1?.Ime @plMec.Igrac1?.Prezime
+                                                                        @if (plMec.Igrac1 != null && plMec.Igrac1.IsGost)
+                                                                        {
+                                                                            <span class="text-muted small">(Gost)</span>
+                                                                        }
+                                                                    </a>
+                                                                }
                                                             }
                                                             else
                                                             {
@@ -907,13 +969,20 @@
                                                         <div class="text-start flex-grow-1 ps-3">
                                                             @if (plMec.Igrac2ID != null)
                                                             {
-                                                                <a href="/Korisnik/Index/@plMec.Igrac2ID" class="text-white hover-orange fw-semibold">
-                                                                    @plMec.Igrac2?.Ime @plMec.Igrac2?.Prezime
-                                                                    @if (plMec.Igrac2 != null && plMec.Igrac2.IsGost)
-                                                                    {
-                                                                        <span class="text-muted small">(Gost)</span>
-                                                                    }
-                                                                </a>
+                                                                @if (plMec.Igrac2ID == "SLOBODAN")
+                                                                {
+                                                                    <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="/Korisnik/Index/@plMec.Igrac2ID" class="text-white hover-orange fw-semibold">
+                                                                        @plMec.Igrac2?.Ime @plMec.Igrac2?.Prezime
+                                                                        @if (plMec.Igrac2 != null && plMec.Igrac2.IsGost)
+                                                                        {
+                                                                            <span class="text-muted small">(Gost)</span>
+                                                                        }
+                                                                    </a>
+                                                                }
                                                             }
                                                             else
                                                             {
@@ -922,7 +991,7 @@
                                                         </div>
                                                     </div>
 
-                                                    @if (isOrganizator && plMec.Igrac1ID != null && plMec.Igrac2ID != null)
+                                                    @if (isOrganizator && plMec.Igrac1ID != null && plMec.Igrac2ID != null && plMec.Igrac1ID != "SLOBODAN" && plMec.Igrac2ID != "SLOBODAN")
                                                     {
                                                         <div class="ps-3 border-start border-secondary ms-3">
                                                             <a asp-controller="Mec" asp-action="UnosRezultata" asp-route-id="@plMec.ID" class="btn btn-outline-warning btn-sm fw-bold">
@@ -939,24 +1008,182 @@
                             }
                         </div>
                         }
-                        @if (utjesniMecevi.Any())
+                        @* ─── Pane: Utješni turnir (bracket, isti format kao Glavni turnir) ─── *@
+                        @if (utjesniGlavniMecevi.Any())
                         {
                         <div class="tab-pane fade" id="consolation-pane" role="tabpanel" aria-labelledby="consolation-tab" tabindex="0">
                             @{
-                                // Grupišemo UT_ mečeve po PlacingRange i sortiramo od najlošijeg plasmana prema boljem
-                                var utjesniRanges = utjesniMecevi
-                                    .Where(m => m.Igrac1ID != null || m.Igrac2ID != null)
+                                var rundeUtjesnog = utjesniGlavniMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+                            }
+                            @if (!rundeUtjesnog.Any())
+                            {
+                                <div class="text-center py-5">
+                                    <i class="bi bi-patch-check text-white-50 fs-2 mb-3"></i>
+                                    <h5 class="text-white">Utješni turnir još nije generisan</h5>
+                                    <p class="text-white-50 small mb-0">Utješni turnir će biti dostupan nakon završetka grupne faze.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var runda in rundeUtjesnog)
+                                {
+                                    var rNo = runda.Key;
+                                    var rMatches = runda.ToList();
+                                    var matchesCount = rMatches.Count;
+
+                                    string rundaNaziv = $"KOLO {rNo}";
+                                    if (matchesCount == 1)
+                                    {
+                                        rundaNaziv = "FINALE";
+                                    }
+                                    else if (matchesCount == 2)
+                                    {
+                                        rundaNaziv = "POLUFINALE";
+                                    }
+                                    else if (matchesCount == 4)
+                                    {
+                                        rundaNaziv = "ČETVRTFINALE";
+                                    }
+                                    else if (matchesCount == 8)
+                                    {
+                                        rundaNaziv = "OSMINA FINALA";
+                                    }
+                                    else if (matchesCount == 16)
+                                    {
+                                        rundaNaziv = "ŠESNAESTINA FINALA";
+                                    }
+
+                                    <div class="d-flex justify-content-between align-items-center border-bottom border-dark-glow pb-2 mb-3 mt-4">
+                                        <h5 class="text-orange fw-bold mb-0 text-uppercase">@rundaNaziv</h5>
+                                        <button class="btn btn-outline-light-glow btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;" type="button" data-bs-toggle="collapse" data-bs-target="#utRoundCollapse-@rNo" aria-expanded="true" aria-controls="utRoundCollapse-@rNo">
+                                            <i class="bi bi-chevron-up toggle-chevron" style="font-size: 0.75rem;"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="collapse show" id="utRoundCollapse-@rNo">
+                                        <div class="row g-3">
+                                        @foreach (var mec in rMatches)
+                                        {
+                                            <div class="col-12">
+                                                <div class="match-card p-3 bg-dark-input border border-dark-glow rounded-3 d-flex align-items-center justify-content-between">
+                                                    <div class="d-flex align-items-center flex-grow-1">
+                                                        <div class="text-end flex-grow-1 pe-3">
+                                                            @if (mec.Igrac1ID != null)
+                                                            {
+                                                                <a href="/Korisnik/Index/@mec.Igrac1ID" class="text-white hover-orange fw-semibold">
+                                                                    @if (mec.Igrac1ID == "SLOBODAN")
+                                                                    {
+                                                                        <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
+                                                                        @if (mec.Igrac1 != null && mec.Igrac1.IsGost)
+                                                                        {
+                                                                            <span class="text-muted small">(Gost)</span>
+                                                                        }
+                                                                    }
+                                                                </a>
+                                                            }
+                                                            else
+                                                            {
+                                                                if (rNo > 1)
+                                                                {
+                                                                    var mNoParts = mec.MatchCode.Split('_');
+                                                                    var lastPart = mNoParts.Last();
+                                                                    var mNo = lastPart.StartsWith("M") && int.TryParse(lastPart.Substring(1), out int parsedMa) ? parsedMa : 1;
+                                                                    var srcMatchNo = 2 * mNo - 1;
+                                                                    <span class="text-white-50 small text-uppercase italic">Pobjednik R@(rNo - 1) M@(srcMatchNo)</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted small italic">Slobodan prolaz (BYE)</span>
+                                                                }
+                                                            }
+                                                        </div>
+
+                                                        <div class="score-display px-3 py-1 rounded bg-dark border border-dark-glow text-center mx-2" style="min-width: 80px;">
+                                                            @if (mec.Odigran)
+                                                            {
+                                                                <span class="text-orange fw-bold fs-5">@mec.PoeniIgrac1 : @mec.PoeniIgrac2</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted font-monospace small">VS</span>
+                                                            }
+                                                        </div>
+
+                                                        <div class="text-start flex-grow-1 ps-3">
+                                                            @if (mec.Igrac2ID != null)
+                                                            {
+                                                                <a href="/Korisnik/Index/@mec.Igrac2ID" class="text-white hover-orange fw-semibold">
+                                                                    @if (mec.Igrac2ID == "SLOBODAN")
+                                                                    {
+                                                                        <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
+                                                                        @if (mec.Igrac2 != null && mec.Igrac2.IsGost)
+                                                                        {
+                                                                            <span class="text-muted small">(Gost)</span>
+                                                                        }
+                                                                    }
+                                                                </a>
+                                                            }
+                                                            else
+                                                            {
+                                                                if (rNo > 1)
+                                                                {
+                                                                    var mNoParts = mec.MatchCode.Split('_');
+                                                                    var lastPart = mNoParts.Last();
+                                                                    var mNo = lastPart.StartsWith("M") && int.TryParse(lastPart.Substring(1), out int parsedMb) ? parsedMb : 1;
+                                                                    var srcMatchNo = 2 * mNo;
+                                                                    <span class="text-white-50 small text-uppercase italic">Pobjednik R@(rNo - 1) M@(srcMatchNo)</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted small italic">Slobodan prolaz (BYE)</span>
+                                                                }
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null && mec.Igrac1ID != "SLOBODAN" && mec.Igrac2ID != "SLOBODAN")
+                                                    {
+                                                        <div class="ps-3 border-start border-secondary ms-3">
+                                                            <a asp-controller="Mec" asp-action="UnosRezultata" asp-route-id="@mec.ID" class="btn btn-outline-warning btn-sm fw-bold">
+                                                                <i class="bi bi-trophy-fill"></i> Unos
+                                                            </a>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        }
+
+                        @* ─── Pane: Razigravanje (Utješni) – isti format kao glavni Razigravanje ─── *@
+                        @if (utjesniRazigravanjeMecevi.Any())
+                        {
+                        <div class="tab-pane fade" id="consolation-placement-pane" role="tabpanel" aria-labelledby="consolation-placement-tab" tabindex="0">
+                            @{
+                                var utRazigRanges = utjesniRazigravanjeMecevi
                                     .GroupBy(m => m.PlacingRange)
                                     .Select(g => {
                                         var parts = g.Key.Split('-');
                                         int plL = parts.Length == 2 && int.TryParse(parts[0], out int pl) ? pl : 0;
                                         int plR = parts.Length == 2 && int.TryParse(parts[1], out int pr) ? pr : 0;
-                                        
+
                                         int rootR = 2;
                                         while (rootR < plR) {
                                             rootR *= 2;
                                         }
-                                        
+
                                         int size = plR - plL + 1;
                                         return new { Range = g.Key, PlL = plL, PlR = plR, RootR = rootR, Size = size, Mecevi = g.ToList() };
                                     })
@@ -965,37 +1192,33 @@
                                     .ThenByDescending(x => x.PlL)
                                     .ToList();
 
-                                Func<int, int, bool, string> dajNazivFazeUtjesni = (l, r, isRr) => {
-                                    if (isRr) {
-                                        return $"RAZIGRAVANJE SVA TRI ZA {l}.–{r}. MJESTO (UTJEŠNI)";
-                                    }
+                                Func<int, int, string> dajNazivFazeUt = (l, r) => {
                                     int raspon = r - l + 1;
                                     if (raspon == 2) {
-                                        return $"MEČ ZA {l}. MJESTO (UTJEŠNI)";
+                                        if (l == 3) return "MEČ ZA 3. MJESTO";
+                                        return $"MEČ ZA {l}. MJESTO";
                                     }
-                                    return $"UTJEŠNI TURNIR ZA MJESTA {l}–{r}";
+                                    return $"RAZIGRAVANJE ZA MJESTA {l}–{r}";
                                 };
 
-                                Func<int, int, string> dajTekstZnackeUtjesni = (l, r) => {
+                                Func<int, int, string> dajTekstZnackeUt = (l, r) => {
                                     if (r - l == 1) {
                                         return $"{l}. MJESTO";
                                     }
                                     return $"{l}. – {r}. MJESTA";
                                 };
                             }
-                            @foreach (var rangeGroup in utjesniRanges)
+                            @foreach (var rangeGroup in utRazigRanges)
                             {
-                                var isRoundRobin = rangeGroup.Mecevi.Any(m => m.MatchCode.StartsWith("UT_RR_"));
-                                var pNaziv = dajNazivFazeUtjesni(rangeGroup.PlL, rangeGroup.PlR, isRoundRobin);
-                                var collapseId = $"utCollapse-{rangeGroup.Range.Replace("-", "_")}";
-                                var isFinalni = (rangeGroup.PlR - rangeGroup.PlL == 1) || isRoundRobin; // meč za konkretno mjesto ili round-robin
-                                var borderColor = isFinalni ? "border-orange" : "border-secondary";
+                                var pNaziv = dajNazivFazeUt(rangeGroup.PlL, rangeGroup.PlR);
+                                var collapseId = $"utPlCollapse-{rangeGroup.Range.Replace("-", "_")}";
+                                var isFinalni = (rangeGroup.PlR - rangeGroup.PlL) == 1;
 
                                 <div class="mb-2">
                                     <div class="d-flex justify-content-between align-items-center border-bottom border-dark-glow pb-2 mb-3 mt-4">
                                         <div class="d-flex align-items-center gap-2">
                                             <span class="badge @(isFinalni ? "bg-orange text-dark" : "bg-secondary text-white") fw-bold px-2 py-1" style="font-size:0.7rem;">
-                                                @dajTekstZnackeUtjesni(rangeGroup.PlL, rangeGroup.PlR)
+                                                @dajTekstZnackeUt(rangeGroup.PlL, rangeGroup.PlR)
                                             </span>
                                             <h5 class="@(isFinalni ? "text-orange" : "text-white") fw-bold mb-0 text-uppercase">@pNaziv</h5>
                                         </div>
@@ -1006,21 +1229,28 @@
 
                                     <div class="collapse show" id="@collapseId">
                                         <div class="row g-3">
-                                        @foreach (var utMec in rangeGroup.Mecevi)
+                                        @foreach (var plMec in rangeGroup.Mecevi)
                                         {
                                             <div class="col-12">
                                                 <div class="match-card p-3 @(isFinalni ? "bg-dark border border-orange" : "bg-dark-input border border-dark-glow") rounded-3 d-flex align-items-center justify-content-between">
                                                     <div class="d-flex align-items-center flex-grow-1">
                                                         <div class="text-end flex-grow-1 pe-3">
-                                                            @if (utMec.Igrac1ID != null)
+                                                            @if (plMec.Igrac1ID != null)
                                                             {
-                                                                <a href="/Korisnik/Index/@utMec.Igrac1ID" class="text-white hover-orange fw-semibold">
-                                                                    @utMec.Igrac1?.Ime @utMec.Igrac1?.Prezime
-                                                                    @if (utMec.Igrac1 != null && utMec.Igrac1.IsGost)
-                                                                    {
-                                                                        <span class="text-muted small">(Gost)</span>
-                                                                    }
-                                                                </a>
+                                                                @if (plMec.Igrac1ID == "SLOBODAN")
+                                                                {
+                                                                    <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="/Korisnik/Index/@plMec.Igrac1ID" class="text-white hover-orange fw-semibold">
+                                                                        @plMec.Igrac1?.Ime @plMec.Igrac1?.Prezime
+                                                                        @if (plMec.Igrac1 != null && plMec.Igrac1.IsGost)
+                                                                        {
+                                                                            <span class="text-muted small">(Gost)</span>
+                                                                        }
+                                                                    </a>
+                                                                }
                                                             }
                                                             else
                                                             {
@@ -1029,9 +1259,9 @@
                                                         </div>
 
                                                         <div class="score-display px-3 py-1 rounded bg-dark border @(isFinalni ? "border-orange" : "border-dark-glow") text-center mx-2" style="min-width: 80px;">
-                                                            @if (utMec.Odigran)
+                                                            @if (plMec.Odigran)
                                                             {
-                                                                <span class="@(isFinalni ? "text-orange" : "text-white") fw-bold fs-5">@utMec.PoeniIgrac1 : @utMec.PoeniIgrac2</span>
+                                                                <span class="@(isFinalni ? "text-orange" : "text-white") fw-bold fs-5">@plMec.PoeniIgrac1 : @plMec.PoeniIgrac2</span>
                                                             }
                                                             else
                                                             {
@@ -1040,15 +1270,22 @@
                                                         </div>
 
                                                         <div class="text-start flex-grow-1 ps-3">
-                                                            @if (utMec.Igrac2ID != null)
+                                                            @if (plMec.Igrac2ID != null)
                                                             {
-                                                                <a href="/Korisnik/Index/@utMec.Igrac2ID" class="text-white hover-orange fw-semibold">
-                                                                    @utMec.Igrac2?.Ime @utMec.Igrac2?.Prezime
-                                                                    @if (utMec.Igrac2 != null && utMec.Igrac2.IsGost)
-                                                                    {
-                                                                        <span class="text-muted small">(Gost)</span>
-                                                                    }
-                                                                </a>
+                                                                @if (plMec.Igrac2ID == "SLOBODAN")
+                                                                {
+                                                                    <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="/Korisnik/Index/@plMec.Igrac2ID" class="text-white hover-orange fw-semibold">
+                                                                        @plMec.Igrac2?.Ime @plMec.Igrac2?.Prezime
+                                                                        @if (plMec.Igrac2 != null && plMec.Igrac2.IsGost)
+                                                                        {
+                                                                            <span class="text-muted small">(Gost)</span>
+                                                                        }
+                                                                    </a>
+                                                                }
                                                             }
                                                             else
                                                             {
@@ -1057,10 +1294,10 @@
                                                         </div>
                                                     </div>
 
-                                                    @if (isOrganizator && utMec.Igrac1ID != null && utMec.Igrac2ID != null)
+                                                    @if (isOrganizator && plMec.Igrac1ID != null && plMec.Igrac2ID != null && plMec.Igrac1ID != "SLOBODAN" && plMec.Igrac2ID != "SLOBODAN")
                                                     {
                                                         <div class="ps-3 border-start border-secondary ms-3">
-                                                            <a asp-controller="Mec" asp-action="UnosRezultata" asp-route-id="@utMec.ID" class="btn btn-outline-warning btn-sm fw-bold">
+                                                            <a asp-controller="Mec" asp-action="UnosRezultata" asp-route-id="@plMec.ID" class="btn btn-outline-warning btn-sm fw-bold">
                                                                 <i class="bi bi-trophy-fill"></i> Unos
                                                             </a>
                                                         </div>
@@ -1082,6 +1319,55 @@
                             @{
                                 var paroviMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.TurnirParova).ToList();
                                 var rundeParova = paroviMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+
+                                var maxRundaParova = rundeParova.Any() ? rundeParova.Max(g => g.Key) : 0;
+                                var finalniMecParova = paroviMecevi.FirstOrDefault(m => m.Runda == maxRundaParova);
+                                bool paroviZavrseni = finalniMecParova != null && finalniMecParova.Odigran;
+
+                                (ApplicationUser? Igrac1, ApplicationUser? Igrac2)? prvoMjesto = null;
+                                (ApplicationUser? Igrac1, ApplicationUser? Igrac2)? drugoMjesto = null;
+                                var trecaMjesta = new List<(ApplicationUser? Igrac1, ApplicationUser? Igrac2)>();
+
+                                if (paroviZavrseni && finalniMecParova != null)
+                                {
+                                    bool isIgrac1Pobjednik = (finalniMecParova.PoeniIgrac1 ?? 0) > (finalniMecParova.PoeniIgrac2 ?? 0);
+                                    if (isIgrac1Pobjednik)
+                                    {
+                                        prvoMjesto = (finalniMecParova.Igrac1, finalniMecParova.Igrac1Partner);
+                                        drugoMjesto = (finalniMecParova.Igrac2, finalniMecParova.Igrac2Partner);
+                                    }
+                                    else
+                                    {
+                                        prvoMjesto = (finalniMecParova.Igrac2, finalniMecParova.Igrac2Partner);
+                                        drugoMjesto = (finalniMecParova.Igrac1, finalniMecParova.Igrac1Partner);
+                                    }
+
+                                    if (maxRundaParova > 1)
+                                    {
+                                        var polufinalniMecevi = paroviMecevi.Where(m => m.Runda == maxRundaParova - 1).ToList();
+                                        foreach (var pfMec in polufinalniMecevi)
+                                        {
+                                            if (pfMec.Odigran)
+                                            {
+                                                bool pfIgrac1Pobjednik = (pfMec.PoeniIgrac1 ?? 0) > (pfMec.PoeniIgrac2 ?? 0);
+                                                if (pfIgrac1Pobjednik)
+                                                {
+                                                    if (pfMec.Igrac2ID != null)
+                                                    {
+                                                        trecaMjesta.Add((pfMec.Igrac2, pfMec.Igrac2Partner));
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if (pfMec.Igrac1ID != null)
+                                                    {
+                                                        trecaMjesta.Add((pfMec.Igrac1, pfMec.Igrac1Partner));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             @if (!paroviMecevi.Any())
@@ -1222,26 +1508,76 @@
                                     </div>
                                 }
 
-                                    var finalniMecParova = paroviMecevi.FirstOrDefault(m => m.Runda == rundeParova.Max(g => g.Key) && string.IsNullOrEmpty(m.WinnerNextMatchCode));
-                                    var pobjednikParovi = "";
-                                    if (finalniMecParova != null && finalniMecParova.Odigran)
-                                    {
-                                        var pobjednikId = (finalniMecParova.PoeniIgrac1 ?? 0) > (finalniMecParova.PoeniIgrac2 ?? 0) ? finalniMecParova.Igrac1ID : finalniMecParova.Igrac2ID;
-                                        if (pobjednikId == finalniMecParova.Igrac1ID)
-                                        {
-                                            pobjednikParovi = $"{finalniMecParova.Igrac1?.Ime} {finalniMecParova.Igrac1?.Prezime} / {finalniMecParova.Igrac1Partner?.Ime} {finalniMecParova.Igrac1Partner?.Prezime}";
-                                        }
-                                        else
-                                        {
-                                            pobjednikParovi = $"{finalniMecParova.Igrac2?.Ime} {finalniMecParova.Igrac2?.Prezime} / {finalniMecParova.Igrac2Partner?.Ime} {finalniMecParova.Igrac2Partner?.Prezime}";
-                                        }
-                                    }
-
-                                @if (!string.IsNullOrEmpty(pobjednikParovi))
+                                @if (paroviZavrseni && prvoMjesto.HasValue)
                                 {
-                                    <div class="alert bg-success-transparent border border-success text-success text-center rounded-4 p-4 mb-4 shadow-glow">
-                                        <h4 class="fw-bold mb-1">🎉 Pobjednici Turnira Parova! 🎉</h4>
-                                        <h5 class="fw-bold mb-0">🏆 @pobjednikParovi 🏆</h5>
+                                    <div class="podium-section mb-4 p-4 rounded-4 bg-dark-card border border-dark-glow shadow-lg position-relative overflow-hidden">
+                                        <div class="text-center mb-4">
+                                            <h4 class="fw-bold text-orange text-uppercase mb-1">
+                                                <i class="bi bi-trophy-fill text-warning me-2"></i>Konačni Plasman - Turnir Parova
+                                            </h4>
+                                            <p class="text-white-50 small mb-0">Postolje pobjednika i polufinalista turnira parova</p>
+                                        </div>
+
+                                        <div class="row g-3 align-items-stretch justify-content-center">
+                                            <!-- 2. Mjesto (Srebro) -->
+                                            @if (drugoMjesto.HasValue && drugoMjesto.Value.Igrac1 != null)
+                                            {
+                                                <div class="col-12 col-md-4 order-2 order-md-1">
+                                                    <div class="p-3 rounded-4 bg-dark-input border border-secondary text-center position-relative h-100 d-flex flex-column justify-content-between">
+                                                        <div class="badge bg-secondary text-white position-absolute top-0 start-50 translate-middle px-3 py-1 rounded-pill fw-bold">
+                                                            🥈 2. Mjesto
+                                                        </div>
+                                                        <div class="pt-3 pb-2">
+                                                            <i class="bi bi-award-fill text-secondary fs-1 mb-2 d-block"></i>
+                                                            <h6 class="text-white fw-bold mb-1">@drugoMjesto.Value.Igrac1?.Ime @drugoMjesto.Value.Igrac1?.Prezime</h6>
+                                                            <h6 class="text-white-50 fw-bold mb-0">/ @drugoMjesto.Value.Igrac2?.Ime @drugoMjesto.Value.Igrac2?.Prezime</h6>
+                                                        </div>
+                                                        <div class="mt-2 text-secondary small fw-semibold">FINALISTI</div>
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            <!-- 1. Mjesto (Zlato - Pobjednici) -->
+                                            @if (prvoMjesto.HasValue && prvoMjesto.Value.Igrac1 != null)
+                                            {
+                                                <div class="col-12 col-md-4 order-1 order-md-2 mb-3 mb-md-0">
+                                                    <div class="p-4 rounded-4 bg-dark-input border border-warning text-center position-relative h-100 d-flex flex-column justify-content-between shadow-glow" style="border-width: 2px !important;">
+                                                        <div class="badge bg-warning text-dark position-absolute top-0 start-50 translate-middle px-4 py-2 rounded-pill fw-bold fs-6">
+                                                            🥇 1. Mjesto (POBJEDNICI)
+                                                        </div>
+                                                        <div class="pt-3 pb-2">
+                                                            <i class="bi bi-trophy-fill text-warning display-4 mb-2 d-block"></i>
+                                                            <h5 class="text-white fw-bold mb-1">@prvoMjesto.Value.Igrac1?.Ime @prvoMjesto.Value.Igrac1?.Prezime</h5>
+                                                            <h5 class="text-warning fw-bold mb-0">/ @prvoMjesto.Value.Igrac2?.Ime @prvoMjesto.Value.Igrac2?.Prezime</h5>
+                                                        </div>
+                                                        <div class="mt-2 text-warning small fw-bold">ŠAMPIONI TURNIRA PAROVA</div>
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            <!-- 3. Mjesta (Bronza - Polufinalisti) -->
+                                            @if (trecaMjesta.Any())
+                                            {
+                                                <div class="col-12 col-md-4 order-3">
+                                                    <div class="p-3 rounded-4 bg-dark-input border text-center position-relative h-100 d-flex flex-column justify-content-between" style="border-color: #cd7f32 !important;">
+                                                        <div class="badge text-white position-absolute top-0 start-50 translate-middle px-3 py-1 rounded-pill fw-bold" style="background-color: #cd7f32;">
+                                                            🥉 3. Mjesta
+                                                        </div>
+                                                        <div class="pt-3 pb-2">
+                                                            <i class="bi bi-award-fill fs-1 mb-2 d-block" style="color: #cd7f32;"></i>
+                                                            @foreach (var par in trecaMjesta)
+                                                            {
+                                                                <div class="mb-2 pb-2 @(par != trecaMjesta.Last() ? "border-bottom border-dark-glow" : "")">
+                                                                    <span class="text-white fw-bold d-block">@par.Igrac1?.Ime @par.Igrac1?.Prezime</span>
+                                                                    <span class="text-white-50 small d-block">/ @par.Igrac2?.Ime @par.Igrac2?.Prezime</span>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        <div class="mt-1 small fw-semibold" style="color: #cd7f32;">POLUFINALISTI</div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
                                     </div>
                                 }
 
@@ -1275,13 +1611,20 @@
                                                             <div class="text-end flex-grow-1 pe-3">
                                                                 @if (mec.Igrac1ID != null)
                                                                 {
-                                                                    <span class="text-white fw-semibold">
-                                                                        @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
-                                                                        @if (mec.Igrac1PartnerID != null)
-                                                                        {
-                                                                            <span class="text-muted d-block small">/ @mec.Igrac1Partner?.Ime @mec.Igrac1Partner?.Prezime</span>
-                                                                        }
-                                                                    </span>
+                                                                    @if (mec.Igrac1ID == "SLOBODAN")
+                                                                    {
+                                                                        <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="text-white fw-semibold">
+                                                                            @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
+                                                                            @if (mec.Igrac1PartnerID != null)
+                                                                            {
+                                                                                <span class="text-muted d-block small">/ @mec.Igrac1Partner?.Ime @mec.Igrac1Partner?.Prezime</span>
+                                                                            }
+                                                                        </span>
+                                                                    }
                                                                 }
                                                                 else
                                                                 {
@@ -1314,13 +1657,20 @@
                                                             <div class="text-start flex-grow-1 ps-3">
                                                                 @if (mec.Igrac2ID != null)
                                                                 {
-                                                                    <span class="text-white fw-semibold">
-                                                                        @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
-                                                                        @if (mec.Igrac2PartnerID != null)
-                                                                        {
-                                                                            <span class="text-muted d-block small">/ @mec.Igrac2Partner?.Ime @mec.Igrac2Partner?.Prezime</span>
-                                                                        }
-                                                                    </span>
+                                                                    @if (mec.Igrac2ID == "SLOBODAN")
+                                                                    {
+                                                                        <span class="text-white-50 small fst-italic">Slobodan</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="text-white fw-semibold">
+                                                                            @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
+                                                                            @if (mec.Igrac2PartnerID != null)
+                                                                            {
+                                                                                <span class="text-muted d-block small">/ @mec.Igrac2Partner?.Ime @mec.Igrac2Partner?.Prezime</span>
+                                                                            }
+                                                                        </span>
+                                                                    }
                                                                 }
                                                                 else
                                                                 {
@@ -1339,7 +1689,7 @@
                                                         </div>
 
                                                         <!-- Action -->
-                                                        @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null)
+                                                        @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null && mec.Igrac1ID != "SLOBODAN" && mec.Igrac2ID != "SLOBODAN")
                                                         {
                                                             <div class="ps-3 border-start border-secondary ms-3">
                                                                 <a asp-controller="Mec" asp-action="UnosRezultata" asp-route-id="@mec.ID" class="btn btn-outline-warning btn-sm fw-bold">
@@ -1541,6 +1891,20 @@
                     localStorage.setItem(storageKey, event.target.id);
                 });
             });
+            // Scroll tabova ulijevo / udesno
+            const scrollContainer = document.getElementById("tournamentTabsScrollContainer");
+            const btnLeft = document.getElementById("scrollTabsLeft");
+            const btnRight = document.getElementById("scrollTabsRight");
+
+            if (scrollContainer && btnLeft && btnRight) {
+                btnLeft.addEventListener("click", function () {
+                    scrollContainer.scrollTo({ left: 0, behavior: "smooth" });
+                });
+
+                btnRight.addEventListener("click", function () {
+                    scrollContainer.scrollTo({ left: scrollContainer.scrollWidth, behavior: "smooth" });
+                });
+            }
 
             // --- SEEDING LOGIKA ---
             const seedingContainer = document.querySelector('.seeding-container');

@@ -15,6 +15,9 @@ namespace ePinPong.Models
         public string Opis { get; set; } = string.Empty;
         public string? SlikaUrl { get; set; }
 
+        public TipTakmicenja TipTakmicenja { get; set; } = TipTakmicenja.SinglIDubl;
+        public SistemTurnira SistemTurnira { get; set; } = SistemTurnira.DoubleEliminationUtjesni;
+
         // Strani kljuc i organizator
         public string OrganizatorId { get; set; } = string.Empty;
         public virtual ApplicationUser? Organizator { get; set; }

@@ -80,6 +80,42 @@ namespace ePinPong.Data
             }
             catch
             {
+                // Ignoriši eventualne greške pri kreiranju table TurnirParovi
+            }
+            // Osiguraj da kolone TipTakmicenja i SistemTurnira postoje u tabeli Turniri
+            try
+            {
+                var ttExists = false;
+                var stExists = false;
+                using (var command = context.Database.GetDbConnection().CreateCommand())
+                {
+                    command.CommandText = "PRAGMA table_info(Turniri);";
+                    if (command.Connection.State != System.Data.ConnectionState.Open)
+                    {
+                        await command.Connection.OpenAsync();
+                    }
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var name = reader.GetValue(reader.GetOrdinal("name"))?.ToString();
+                            if ("TipTakmicenja".Equals(name, StringComparison.OrdinalIgnoreCase)) ttExists = true;
+                            if ("SistemTurnira".Equals(name, StringComparison.OrdinalIgnoreCase)) stExists = true;
+                        }
+                    }
+                }
+
+                if (!ttExists)
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Turniri ADD COLUMN TipTakmicenja INTEGER NOT NULL DEFAULT 2;");
+                }
+                if (!stExists)
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Turniri ADD COLUMN SistemTurnira INTEGER NOT NULL DEFAULT 2;");
+                }
+            }
+            catch
+            {
                 // Ignoriši
             }
 
@@ -213,6 +249,30 @@ namespace ePinPong.Data
                 }
             }
 
+            await EnsureSlobodanUserExistsAsync(context);
+        }
+
+        public static async Task EnsureSlobodanUserExistsAsync(ApplicationDbContext context)
+        {
+            if (!await context.Users.AnyAsync(u => u.Id == "SLOBODAN"))
+            {
+                var slobodanUser = new ApplicationUser
+                {
+                    Id = "SLOBODAN",
+                    UserName = "slobodan@epinpong.local",
+                    NormalizedUserName = "SLOBODAN@EPINPONG.LOCAL",
+                    Email = "slobodan@epinpong.local",
+                    NormalizedEmail = "SLOBODAN@EPINPONG.LOCAL",
+                    EmailConfirmed = true,
+                    Ime = "Slobodan",
+                    Prezime = "",
+                    Grad = "N/A",
+                    DatumRodjenja = DateTime.MinValue,
+                    DatumRegistracije = DateTime.Now
+                };
+                context.Users.Add(slobodanUser);
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

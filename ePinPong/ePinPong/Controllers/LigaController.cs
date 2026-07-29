@@ -167,7 +167,7 @@ namespace ePinPong.Controllers
         private List<LigaStandingsViewModel> ObračunajTabeluLige(Liga liga)
         {
             var tabeleMap = new Dictionary<string, LigaStandingsViewModel>();
-            var sviKorisnici = _context.Users.ToList();
+            var sviKorisnici = _context.Users.Where(u => u.Id != "SLOBODAN").ToList();
 
             // Filtriraj turnire koji su završeni u okviru lige
             var zavrseniTurniri = liga.Turniri.Where(t => t.Status == StatusTurnira.Zavrsen).OrderBy(t => t.Kolo).ToList();

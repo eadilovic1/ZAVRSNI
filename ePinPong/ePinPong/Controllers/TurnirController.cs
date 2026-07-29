@@ -63,6 +63,14 @@ namespace ePinPong.Controllers
             var isOrganizator = turnir.OrganizatorId == userId || User.IsInRole("Administrator");
             ViewBag.IsOrganizator = isOrganizator;
 
+            // Auto-riješi eventualne zapete BYE mečeve (npr. Slobodan vs pravi igrač u razigravanju)
+            var meceviList = turnir.Mecevi.ToList();
+            _bracketService.PropagirajBye(meceviList);
+            if (_context.ChangeTracker.HasChanges())
+            {
+                await _context.SaveChangesAsync();
+            }
+
             ViewBag.Ranking = _bracketService.IzracunajPlasman(turnir);
 
             // Učitavanje bodova za seeding
@@ -72,7 +80,7 @@ namespace ePinPong.Controllers
             {
                 var registrovaniKorisnikIds = turnir.Registracije.Select(r => r.KorisnikID).ToList();
                 var slobodniKorisnici = await _userManager.Users
-                    .Where(u => !registrovaniKorisnikIds.Contains(u.Id))
+                    .Where(u => u.Id != "SLOBODAN" && !registrovaniKorisnikIds.Contains(u.Id))
                     .ToListAsync();
 
                 ViewBag.SlobodniKorisnici = slobodniKorisnici.Select(u => new SelectListItem

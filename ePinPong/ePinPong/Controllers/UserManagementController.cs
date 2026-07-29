@@ -30,7 +30,7 @@ namespace ePinPong.Controllers
         // GET: /UserManagement
         public async Task<IActionResult> Index()
         {
-            var korisnici = await _userManager.Users.ToListAsync();
+            var korisnici = await _userManager.Users.Where(u => u.Id != "SLOBODAN").ToListAsync();
             var korisniciUloge = new List<UserRoleViewModel>();
 
             foreach (var user in korisnici)
