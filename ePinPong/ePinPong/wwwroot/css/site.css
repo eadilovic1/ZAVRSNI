@@ -275,3 +275,38 @@ body {
 .extra-small {
     font-size: 0.75rem !important;
 }
+
+/* Liga standings — horizontalni scroll + lijepljene kolone */
+.liga-standings-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.liga-standings-table {
+    min-width: 100%;
+}
+.liga-standings-table .liga-col-kolo {
+    min-width: 5.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+.liga-standings-table .liga-col-sticky {
+    position: sticky;
+    z-index: 2;
+    background-color: var(--bg-card);
+}
+.liga-standings-table tbody tr:hover .liga-col-sticky {
+    background-color: #222a3a;
+}
+.liga-standings-table .liga-col-rank {
+    left: 0;
+    min-width: 4.5rem;
+}
+.liga-standings-table .liga-col-player {
+    left: 4.5rem;
+    min-width: 12rem;
+    box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.45);
+}
+.liga-standings-table thead .liga-col-sticky {
+    z-index: 3;
+    background-color: var(--bg-card);
+}

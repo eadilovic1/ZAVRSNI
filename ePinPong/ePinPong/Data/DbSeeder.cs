@@ -156,6 +156,38 @@ namespace ePinPong.Data
                 // Ignoriši
             }
 
+            // Osiguraj da kolona BrojRegularnihTurnira postoji u tabeli Lige
+            try
+            {
+                var brtExists = false;
+                using (var command = context.Database.GetDbConnection().CreateCommand())
+                {
+                    command.CommandText = "PRAGMA table_info(Lige);";
+                    if (command.Connection.State != System.Data.ConnectionState.Open)
+                    {
+                        await command.Connection.OpenAsync();
+                    }
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var name = reader.GetValue(reader.GetOrdinal("name"))?.ToString();
+                            if ("BrojRegularnihTurnira".Equals(name, StringComparison.OrdinalIgnoreCase))
+                                brtExists = true;
+                        }
+                    }
+                }
+
+                if (!brtExists)
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Lige ADD COLUMN BrojRegularnihTurnira INTEGER NOT NULL DEFAULT 1;");
+                }
+            }
+            catch
+            {
+                // Ignoriši
+            }
+
             // 1. Seed Uloga (Roles)
             string[] uloge = { "Administrator", "Organizator", "Korisnik" };
             foreach (var uloga in uloge)

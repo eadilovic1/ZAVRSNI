@@ -2,13 +2,16 @@
 @{
     ViewData["Title"] = Model.Naziv;
     var standings = ViewBag.Standings as List<ePinPong.Controllers.LigaStandingsViewModel> ?? new List<ePinPong.Controllers.LigaStandingsViewModel>();
+    var zavrseniTurniri = ViewBag.ZavrseniTurniri as List<ePinPong.Models.Turnir> ?? new List<ePinPong.Models.Turnir>();
     var isAdminOrOrganizator = ViewBag.IsAdminOrOrganizator as bool? ?? false;
+    var canCreateRegular = ViewBag.CanCreateRegular as bool? ?? false;
+    var canCreateMasters = ViewBag.CanCreateMasters as bool? ?? false;
 }
 
 <div class="row g-4 py-4">
-    <!-- Lijevi dio: Detalji lige i Tabela lige -->
+    <!-- Lijevi dio: Detalji lige -->
     <div class="col-12 col-lg-8">
-        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg mb-4">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg mb-0 h-100">
             <div class="card-body p-4">
                 <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-1">Sezona @Model.Sezona</span>
                 <h2 class="text-white fw-bold mb-3">@Model.Naziv</h2>
@@ -31,90 +34,31 @@
                             <i class="bi bi-grid-3x3-gap text-orange fs-4 me-3"></i>
                             <div>
                                 <small class="text-muted d-block">Ukupno Kola</small>
-                                <strong class="text-white">9 Kola + Završni Masters</strong>
+                                <strong class="text-white">@Model.BrojRegularnihTurnira Kola + Završni Masters</strong>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                @if (User.IsInRole("Administrator"))
+                @if (User.IsInRole("Administrator") || isAdminOrOrganizator)
                 {
-                    <div class="mt-4 p-3 bg-dark-input border border-danger rounded-3 d-flex align-items-center justify-content-between">
+                    <div class="mt-4 p-3 bg-dark-input border border-danger rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div>
                             <span class="text-danger fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Admin Panel Lige</span>
                             <small class="d-block text-white-50">Brisanje lige će obrisati sve povezane turnire i mečeve!</small>
                         </div>
-                        <form asp-action="Delete" asp-route-id="@Model.ID" method="post" onsubmit="return confirm('Obrisat ćete i turnire ako nastavite. Jeste li sigurni da želite obrisati ligu?');">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-danger btn-sm fw-bold px-3 py-2"><i class="bi bi-trash3-fill me-2"></i>Obriši Ligu</button>
-                        </form>
-                    </div>
-                }
-            </div>
-        </div>
-
-        <!-- Tabela standings (Leaderboard) -->
-        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
-            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
-                <h4 class="text-white fw-bold mb-0"><i class="bi bi-list-ol text-orange me-2"></i>Tabela Lige (Bodovi Sezone)</h4>
-            </div>
-            <div class="card-body p-4">
-                @if (!standings.Any())
-                {
-                    <div class="text-center py-5 text-white-50">
-                        <i class="bi bi-info-circle fs-2 mb-3"></i>
-                        <h5>Nema rezultata za prikaz</h5>
-                        <p class="small mb-0">Nakon što se završi barem jedan turnir u ovoj ligi, ovdje će se pojaviti bodovna tabela igrača.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-dark table-hover border-dark-glow align-middle mb-0">
-                            <thead>
-                                <tr class="text-orange border-bottom border-dark-glow font-monospace">
-                                    <th style="width: 80px;" class="text-center">RANK</th>
-                                    <th>IGRAČ</th>
-                                    <th class="text-center">KLUB/GRAD</th>
-                                    <th class="text-center">ODIGRANO</th>
-                                    <th class="text-center">UKUPNO BODOVA</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < standings.Count; i++)
-                                {
-                                    var row = standings[i];
-                                    var isPodium = i < 3;
-                                    var medalClass = i == 0 ? "text-warning" : (i == 1 ? "text-secondary" : "text-danger");
-                                    var rankDisplay = isPodium ? $"🥇" : $"{i + 1}.";
-                                    if (i == 1) rankDisplay = "🥈";
-                                    if (i == 2) rankDisplay = "🥉";
-
-                                    <tr class="border-bottom border-dark-glow">
-                                        <td class="text-center fw-bold fs-5">
-                                            <span class="@(isPodium ? medalClass : "")">@rankDisplay</span>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="user-avatar-mini me-2">
-                                                    <span>@row.Korisnik.Ime[0]</span>
-                                                </div>
-                                                <a href="/Korisnik/Index/@row.Korisnik.Id" class="text-white hover-orange fw-bold">
-                                                    @row.Korisnik.Ime @row.Korisnik.Prezime
-                                                    @if (row.Korisnik.IsGost)
-                                                    {
-                                                        <span class="badge bg-secondary text-muted ms-1" style="font-size: 0.7rem; vertical-align: middle;">Gost</span>
-                                                    }
-                                                </a>
-                                            </div>
-                                        </td>
-                                        <td class="text-center text-white-50 small">@row.Korisnik.Grad</td>
-                                        <td class="text-center fw-semibold">@row.BrojOdigranihTurnira / 10</td>
-                                        <td class="text-center fw-bold fs-5 text-orange">@row.UkupnoBodova</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-outline-light-glow btn-sm fw-bold px-3 py-2">
+                                <i class="bi bi-pencil-fill me-2"></i>Uredi Ligu
+                            </a>
+                            @if (User.IsInRole("Administrator"))
+                            {
+                                <form asp-action="Delete" asp-route-id="@Model.ID" method="post" onsubmit="return confirm('Obrisat ćete i turnire ako nastavite. Jeste li sigurni da želite obrisati ligu?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-3 py-2"><i class="bi bi-trash3-fill me-2"></i>Obriši Ligu</button>
+                                </form>
+                            }
+                        </div>
                     </div>
                 }
             </div>
@@ -123,16 +67,27 @@
 
     <!-- Desni dio: Raspored kola (Turniri) -->
     <div class="col-12 col-lg-4">
-        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg h-100">
             <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 d-flex justify-content-between align-items-center">
                 <h5 class="text-white fw-bold mb-0"><i class="bi bi-calendar3 text-orange me-2"></i>Kola i Turniri</h5>
                 @if (isAdminOrOrganizator)
                 {
-                    <a asp-controller="Turnir" asp-action="Create" asp-route-ligaId="@Model.ID"
-                       class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
-                       title="Kreiraj novi turnir u ovoj ligi">
-                        <i class="bi bi-plus-circle-fill me-1"></i>Novi turnir
-                    </a>
+                    if (canCreateMasters)
+                    {
+                        <a asp-controller="Turnir" asp-action="Create" asp-route-ligaId="@Model.ID"
+                           class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
+                           title="Kreiraj završni Masters u ovoj ligi">
+                            <i class="bi bi-trophy-fill me-1"></i>Kreiraj Masters
+                        </a>
+                    }
+                    else if (canCreateRegular)
+                    {
+                        <a asp-controller="Turnir" asp-action="Create" asp-route-ligaId="@Model.ID"
+                           class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
+                           title="Kreiraj novi turnir u ovoj ligi">
+                            <i class="bi bi-plus-circle-fill me-1"></i>Novi turnir
+                        </a>
+                    }
                 }
             </div>
             <div class="card-body p-4">
@@ -160,6 +115,99 @@
                         </div>
                     }
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela standings (Leaderboard) — puna širina, horizontalni scroll -->
+    <div class="col-12">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h4 class="text-white fw-bold mb-0"><i class="bi bi-list-ol text-orange me-2"></i>Tabela Lige (Bodovi Sezone)</h4>
+                @if (zavrseniTurniri.Any())
+                {
+                    <small class="text-white-50"><i class="bi bi-arrow-left-right me-1"></i>Pomaknite tabelu lijevo–desno za bodove po turniru</small>
+                }
+            </div>
+            <div class="card-body p-4">
+                @if (!standings.Any())
+                {
+                    <div class="text-center py-5 text-white-50">
+                        <i class="bi bi-info-circle fs-2 mb-3"></i>
+                        <h5>Nema rezultata za prikaz</h5>
+                        <p class="small mb-0">Nakon što se završi barem jedan turnir u ovoj ligi, ovdje će se pojaviti bodovna tabela igrača.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive liga-standings-scroll">
+                        <table class="table table-dark table-hover border-dark-glow align-middle mb-0 liga-standings-table text-nowrap">
+                            <thead>
+                                <tr class="text-orange border-bottom border-dark-glow font-monospace">
+                                    <th class="text-center liga-col-sticky liga-col-rank">RANK</th>
+                                    <th class="liga-col-sticky liga-col-player">IGRAČ</th>
+                                    <th class="text-center">KLUB/GRAD</th>
+                                    <th class="text-center">ODIGRANO</th>
+                                    @for (int t = 0; t < zavrseniTurniri.Count; t++)
+                                    {
+                                        var turnir = zavrseniTurniri[t];
+                                        var koloNaziv = turnir.Kolo == 10 ? "Masters" : $"Kolo {turnir.Kolo}";
+                                        <th class="text-center liga-col-kolo" title="@turnir.Naziv">@koloNaziv</th>
+                                    }
+                                    <th class="text-center">UKUPNO BODOVA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < standings.Count; i++)
+                                {
+                                    var row = standings[i];
+                                    var isPodium = i < 3;
+                                    var medalClass = i == 0 ? "text-warning" : (i == 1 ? "text-secondary" : "text-danger");
+                                    var rankDisplay = isPodium ? $"🥇" : $"{i + 1}.";
+                                    if (i == 1) rankDisplay = "🥈";
+                                    if (i == 2) rankDisplay = "🥉";
+
+                                    <tr class="border-bottom border-dark-glow">
+                                        <td class="text-center fw-bold fs-5 liga-col-sticky liga-col-rank">
+                                            <span class="@(isPodium ? medalClass : "")">@rankDisplay</span>
+                                        </td>
+                                        <td class="liga-col-sticky liga-col-player">
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar-mini me-2">
+                                                    <span>@row.Korisnik.Ime[0]</span>
+                                                </div>
+                                                <a href="/Korisnik/Index/@row.Korisnik.Id" class="text-white hover-orange fw-bold">
+                                                    @row.Korisnik.Ime @row.Korisnik.Prezime
+                                                    @if (row.Korisnik.IsGost)
+                                                    {
+                                                        <span class="badge bg-secondary text-muted ms-1" style="font-size: 0.7rem; vertical-align: middle;">Gost</span>
+                                                    }
+                                                </a>
+                                            </div>
+                                        </td>
+                                        <td class="text-center text-white-50 small">@row.Korisnik.Grad</td>
+                                        <td class="text-center fw-semibold">@row.BrojOdigranihTurnira / 10</td>
+                                        @for (int t = 0; t < zavrseniTurniri.Count; t++)
+                                        {
+                                            var bodovi = t < row.BodoviPoKolima.Count ? row.BodoviPoKolima[t] : 0;
+                                            <td class="text-center liga-col-kolo">
+                                                @if (bodovi > 0)
+                                                {
+                                                    <span class="fw-semibold text-white">@bodovi</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">–</span>
+                                                }
+                                            </td>
+                                        }
+                                        <td class="text-center fw-bold fs-5 text-orange">@row.UkupnoBodova</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         </div>
     </div>

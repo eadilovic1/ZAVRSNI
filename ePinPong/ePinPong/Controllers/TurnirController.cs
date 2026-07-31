@@ -138,6 +138,39 @@ namespace ePinPong.Controllers
                 ViewBag.LockedLigaId = ligaId.Value;
                 var liga = _context.Lige.Find(ligaId.Value);
                 ViewBag.LockedLigaNaziv = liga?.Naziv ?? "Odabrana liga";
+
+                if (liga != null)
+                {
+                    ViewBag.CanCreateRegular = LigaTurnirHelper.CanCreateRegular(liga);
+                    ViewBag.CanCreateMasters = LigaTurnirHelper.CanCreateMasters(liga);
+                    ViewBag.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
+
+                    var nextRegularKolo = LigaTurnirHelper.GetSljedeceKolo(liga);
+                    if (nextRegularKolo.HasValue && LigaTurnirHelper.CanCreateRegular(liga))
+                    {
+                        var plannedDate = LigaTurnirHelper.GetRegularTurnirDatum(liga, nextRegularKolo.Value);
+                        model.DatumPocetka = plannedDate.AddHours(9).AddMinutes(30);
+                        model.DatumKraja = plannedDate.AddHours(15);
+                        model.Kolo = nextRegularKolo.Value;
+                    }
+
+                    if (!LigaTurnirHelper.CanCreateAnyTurnir(liga))
+                    {
+                        ViewBag.CreateMode = "Blocked";
+                        ViewBag.CreateModeMessage = "U ovoj ligi više nije moguće kreirati nove turnire.";
+                    }
+                    else if (LigaTurnirHelper.CanCreateMasters(liga))
+                    {
+                        ViewBag.CreateMode = "Masters";
+                        ViewBag.CreateModeMessage = "Ovo će biti završni Masters turnir za ligu.";
+                        ViewBag.MastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+                    }
+                    else
+                    {
+                        ViewBag.CreateMode = "Regular";
+                        ViewBag.CreateModeMessage = "Ovo će biti regularni turnir u ligi.";
+                    }
+                }
             }
 
             return View(model);
@@ -160,8 +193,78 @@ namespace ePinPong.Controllers
             ModelState.Remove("OrganizatorId");
             ModelState.Remove("Liga");
 
+            if (turnir.DatumPocetka.Date < DateTime.Today)
+            {
+                ModelState.AddModelError(nameof(turnir.DatumPocetka), "Datum početka turnira ne može biti u prošlosti.");
+            }
+
+            if (turnir.DatumKraja.Date < turnir.DatumPocetka.Date)
+            {
+                ModelState.AddModelError(nameof(turnir.DatumKraja), "Datum završetka turnira ne može biti prije datuma početka.");
+            }
+
             if (ModelState.IsValid)
             {
+                var liga = turnir.LigaID.HasValue
+                    ? await _context.Lige.FirstOrDefaultAsync(l => l.ID == turnir.LigaID.Value)
+                    : null;
+
+                if (liga != null)
+                {
+                    var isMastersRequest = turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(liga);
+                    var canCreateRegular = LigaTurnirHelper.CanCreateRegular(liga);
+                    var canCreateMasters = LigaTurnirHelper.CanCreateMasters(liga);
+
+                    if (!canCreateRegular && !canCreateMasters)
+                    {
+                        TempData["Error"] = "U ovoj ligi više nije moguće kreirati turnire.";
+                        return RedirectToAction("Details", "Liga", new { id = liga.ID });
+                    }
+
+                    if (!isMastersRequest && !canCreateRegular)
+                    {
+                        TempData["Error"] = "U ovoj ligi više nisu dostupni regularni turniri. Može se kreirati samo Masters.";
+                        return RedirectToAction("Details", "Liga", new { id = liga.ID });
+                    }
+
+                    if (isMastersRequest && !canCreateMasters)
+                    {
+                        TempData["Error"] = "Masters za ovu ligu je već kreiran ili još nisu odigrana sva regularna kola.";
+                        return RedirectToAction("Details", "Liga", new { id = liga.ID });
+                    }
+
+                    if (isMastersRequest)
+                    {
+                        turnir.Kolo = LigaTurnirHelper.GetMastersKolo(liga);
+                        if (string.IsNullOrWhiteSpace(turnir.Naziv))
+                        {
+                            turnir.Naziv = $"{liga.Naziv} - Masters";
+                        }
+                        if (string.IsNullOrWhiteSpace(turnir.Opis))
+                        {
+                            turnir.Opis = $"Završni Masters turnir za {liga.Naziv}.";
+                        }
+                    }
+                    else
+                    {
+                        var nextRegularKolo = LigaTurnirHelper.GetSljedeceKolo(liga);
+                        if (nextRegularKolo.HasValue)
+                        {
+                            turnir.Kolo = nextRegularKolo;
+                        }
+                        else
+                        {
+                            TempData["Error"] = "Nema više dostupnih regularnih kola za ovu ligu.";
+                            return RedirectToAction("Details", "Liga", new { id = liga.ID });
+                        }
+
+                        if (string.IsNullOrWhiteSpace(turnir.Naziv))
+                        {
+                            turnir.Naziv = $"{liga.Naziv} - Kolo {turnir.Kolo}";
+                        }
+                    }
+                }
+
                 if (string.IsNullOrEmpty(turnir.SlikaUrl))
                 {
                     turnir.SlikaUrl = "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=1200&auto=format&fit=crop";

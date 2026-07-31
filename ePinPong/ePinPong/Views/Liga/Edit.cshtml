@@ -1,0 +1,86 @@
+@model ePinPong.Models.Liga
+@{
+    ViewData["Title"] = "Uredi Ligu";
+    var minBrojRegularnihTurnira = ViewBag.MinBrojRegularnihTurnira as int? ?? 1;
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-lg overflow-hidden">
+                <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
+                    <h3 class="text-white fw-bold mb-0"><i class="bi bi-pencil-fill text-orange me-2"></i>Uredi Ligu</h3>
+                    <p class="text-white-50 small mb-0 mt-1">Promijenite osnovne postavke lige i broj regularnih turnira.</p>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Edit" method="post">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="ID" type="hidden" />
+
+                        <div class="mb-3">
+                            <label asp-for="Naziv" class="form-label text-white fw-bold">Naziv Lige</label>
+                            <input asp-for="Naziv" class="form-control bg-dark-input placeholder-muted border-dark-glow text-white" required />
+                            <span asp-validation-for="Naziv" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Sezona" class="form-label text-white fw-bold">Sezona</label>
+                            <input asp-for="Sezona" class="form-control bg-dark-input placeholder-muted border-dark-glow text-white" required />
+                            <span asp-validation-for="Sezona" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="DatumPocetka" class="form-label text-white fw-bold">Datum Početka</label>
+                            <input asp-for="DatumPocetka" type="date" class="form-control bg-dark-input border-dark-glow text-white" required />
+                            <span asp-validation-for="DatumPocetka" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Opis" class="form-label text-white fw-bold">Opis Lige</label>
+                            <textarea asp-for="Opis" rows="4" class="form-control bg-dark-input placeholder-muted border-dark-glow text-white" required></textarea>
+                            <span asp-validation-for="Opis" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="BrojRegularnihTurnira" class="form-label text-white fw-bold">Broj regularnih turnira u ligi</label>
+                            <input asp-for="BrojRegularnihTurnira" type="number" min="@minBrojRegularnihTurnira" class="form-control bg-dark-input border-dark-glow text-white" required />
+                            <small class="text-muted d-block mt-1">Minimalna vrijednost je @minBrojRegularnihTurnira jer je već odigrano toliko regularnih kola.</small>
+                            <span asp-validation-for="BrojRegularnihTurnira" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-orange text-white fw-bold px-4 py-2 flex-grow-1">Spremi Promjene</button>
+                            <a asp-action="Details" asp-route-id="@Model.ID" class="btn btn-outline-light-glow px-4 py-2">Odustani</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        const editDateInput = document.querySelector('input[type="date"]');
+        if (editDateInput && (!editDateInput.value || editDateInput.value === '0001-01-01' || editDateInput.value.startsWith('0001-'))) {
+            const today = new Date();
+            const currentMonthLastSunday = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            const dayOfWeek = currentMonthLastSunday.getDay();
+            const lastSunday = new Date(currentMonthLastSunday);
+            lastSunday.setDate(currentMonthLastSunday.getDate() - ((dayOfWeek + 7 - 0) % 7));
+
+            const defaultDate = lastSunday < today
+                ? new Date(today.getFullYear(), today.getMonth() + 1, 1)
+                : today;
+
+            const yyyy = defaultDate.getFullYear();
+            let mm = defaultDate.getMonth() + 1;
+            let dd = defaultDate.getDate();
+            if (mm < 10) mm = '0' + mm;
+            if (dd < 10) dd = '0' + dd;
+            editDateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+    </script>
+}

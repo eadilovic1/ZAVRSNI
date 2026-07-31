@@ -40,13 +40,20 @@
                             <span asp-validation-for="Opis" class="text-danger small"></span>
                         </div>
 
+                        <div class="mb-3">
+                            <label asp-for="BrojRegularnihTurnira" class="form-label text-white fw-bold">Broj regularnih turnira u ligi</label>
+                            <input asp-for="BrojRegularnihTurnira" type="number" min="1" class="form-control bg-dark-input border-dark-glow text-white" required />
+                            <small class="text-muted d-block mt-1">Unesite koliko regularnih kola će liga imati. Ovaj broj može biti povećan kasnije, ali ne smije biti manji od već odigranih kola.</small>
+                            <span asp-validation-for="BrojRegularnihTurnira" class="text-danger small"></span>
+                        </div>
+
                         <div class="mb-4 p-3 bg-dark-input border border-dark-glow rounded-3">
                             <div class="form-check form-switch">
-                                <input class="form-check-input custom-checkbox" type="checkbox" name="autoGenerisiTurnire" id="autoGenerisiTurnire" value="true" checked>
-                                <label class="form-check-label text-white fw-bold ms-2" for="autoGenerisiTurnire">Automatski generiši turnire za cijelu sezonu</label>
+                                <input class="form-check-input custom-checkbox" type="checkbox" name="autoGenerisiTurnire" id="autoGenerisiTurnire" value="true">
+                                <label class="form-check-label text-white fw-bold ms-2" for="autoGenerisiTurnire">Automatski generiši turnire za odabrani broj kola</label>
                             </div>
                             <small class="text-muted d-block mt-2">
-                                Sistem će automatski generisati 9 mjesečnih turnira (zadnja nedjelja u mjesecu) i 10. završni Masters turnir.
+                                Ako je opcija uključena, sistem će odmah kreirati sve regularne turnire po odabranom broju kola i dodati završni Masters nakon njih.
                             </small>
                         </div>
 
@@ -63,13 +70,21 @@
 
 @section Scripts {
     <script>
-        // Postavi današnji datum kao defaultni ako je prazan
         const dateInput = document.querySelector('input[type="date"]');
-        if (dateInput && !dateInput.value) {
+        if (dateInput && (!dateInput.value || dateInput.value === '0001-01-01' || dateInput.value.startsWith('0001-'))) {
             const today = new Date();
-            const yyyy = today.getFullYear();
-            let mm = today.getMonth() + 1;
-            let dd = today.getDate();
+            const currentMonthLastSunday = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            const dayOfWeek = currentMonthLastSunday.getDay();
+            const lastSunday = new Date(currentMonthLastSunday);
+            lastSunday.setDate(currentMonthLastSunday.getDate() - ((dayOfWeek + 7 - 0) % 7));
+
+            const defaultDate = lastSunday < today
+                ? new Date(today.getFullYear(), today.getMonth() + 1, 1)
+                : today;
+
+            const yyyy = defaultDate.getFullYear();
+            let mm = defaultDate.getMonth() + 1;
+            let dd = defaultDate.getDate();
             if (mm < 10) mm = '0' + mm;
             if (dd < 10) dd = '0' + dd;
             dateInput.value = `${yyyy}-${mm}-${dd}`;

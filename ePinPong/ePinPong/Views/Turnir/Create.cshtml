@@ -14,6 +14,19 @@
                 <form asp-action="Create" method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-4"></div>
 
+                    @if (ViewBag.LockedLigaId != null)
+                    {
+                        <div class="alert @(ViewBag.CreateMode == "Masters" ? "alert-warning" : "alert-info") border-0 rounded-3 mb-4">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi @(ViewBag.CreateMode == "Masters" ? "bi-trophy-fill" : "bi-info-circle-fill") fs-5 mt-1"></i>
+                                <div>
+                                    <strong>@(ViewBag.CreateMode == "Masters" ? "Kreirate završni Masters" : "Kreirate regularni turnir")</strong>
+                                    <div class="small">@ViewBag.CreateModeMessage</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
                     <div class="row g-3">
                         <div class="col-12">
                             <label asp-for="Naziv" class="form-label text-white fw-semibold">Naziv turnira</label>
@@ -37,6 +50,10 @@
                                 </div>
                                 <input type="hidden" asp-for="LigaID" />
                                 <small class="text-white-50">Liga je automatski odabrana jer ste turnir kreirali iz pregleda te lige.</small>
+                                @if (ViewBag.CreateMode == "Masters")
+                                {
+                                    <input type="hidden" name="Kolo" value="@ViewBag.MastersKolo" />
+                                }
                             }
                             else
                             {
@@ -160,7 +177,7 @@
 
                     <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-dark-glow">
                         <a asp-controller="Home" asp-action="Index" class="btn btn-outline-light-glow text-white fw-bold"><i class="bi bi-arrow-left me-2"></i>Nazad</a>
-                        <button type="submit" class="btn btn-orange px-4 py-2 text-white fw-bold shadow-glow">Objavi Turnir <i class="bi bi-check2-circle ms-2"></i></button>
+                        <button type="submit" class="btn btn-orange px-4 py-2 text-white fw-bold shadow-glow">@(ViewBag.CreateMode == "Masters" ? "Objavi Masters" : "Objavi Turnir") <i class="bi bi-check2-circle ms-2"></i></button>
                     </div>
                 </form>
             </div>

@@ -52,9 +52,18 @@ namespace ePinPong.Controllers
             // Izračunaj tabelu Lige (Leaderboard)
             var standings = ObračunajTabeluLige(liga);
             ViewBag.Standings = standings;
+            ViewBag.ZavrseniTurniri = liga.Turniri
+                .Where(t => t.Status == StatusTurnira.Zavrsen)
+                .OrderBy(t => t.Kolo)
+                .ToList();
 
             var userId = _userManager.GetUserId(User);
             ViewBag.IsAdminOrOrganizator = User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || User.IsInRole("Organizator"));
+            ViewBag.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
+            ViewBag.MastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+            ViewBag.CanCreateRegular = LigaTurnirHelper.CanCreateRegular(liga);
+            ViewBag.CanCreateMasters = LigaTurnirHelper.CanCreateMasters(liga);
+            ViewBag.OdigranoRegularnih = LigaTurnirHelper.GetZavrseniRegularniTurniri(liga).Count();
 
             return View(liga);
         }
@@ -63,7 +72,81 @@ namespace ePinPong.Controllers
         [Authorize(Roles = "Administrator,Organizator")]
         public IActionResult Create()
         {
-            return View();
+            return View(new Liga
+            {
+                DatumPocetka = GetDefaultLigaStartDate()
+            });
+        }
+
+        // GET: /Liga/Edit/5
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var liga = await _context.Lige
+                .FirstOrDefaultAsync(l => l.ID == id);
+
+            if (liga == null)
+            {
+                return NotFound();
+            }
+
+            var mastersKoloForLiga = liga.BrojRegularnihTurnira + 1;
+            var completedRegularCount = await _context.Turniri
+                .CountAsync(t => t.LigaID == liga.ID && t.Status == StatusTurnira.Zavrsen && t.Kolo.HasValue && t.Kolo.Value != mastersKoloForLiga);
+
+            ViewBag.MinBrojRegularnihTurnira = Math.Max(1, completedRegularCount);
+            return View(liga);
+        }
+
+        // POST: /Liga/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> Edit(Liga liga)
+        {
+            var existingLiga = await _context.Lige
+                .FirstOrDefaultAsync(l => l.ID == liga.ID);
+
+            if (existingLiga == null)
+            {
+                return NotFound();
+            }
+
+            var mastersKoloForExisting = existingLiga.BrojRegularnihTurnira + 1;
+            var completedRegularCount = await _context.Turniri
+                .CountAsync(t => t.LigaID == existingLiga.ID && t.Status == StatusTurnira.Zavrsen && t.Kolo.HasValue && t.Kolo.Value != mastersKoloForExisting);
+            var minAllowed = Math.Max(1, completedRegularCount);
+
+            if (liga.BrojRegularnihTurnira < minAllowed)
+            {
+                ModelState.AddModelError(nameof(liga.BrojRegularnihTurnira), $"Broj regularnih turnira ne može biti manji od {minAllowed} jer je već odigrano {completedRegularCount} kola.");
+            }
+
+            if (liga.DatumPocetka.Date < DateTime.Today)
+            {
+                ModelState.AddModelError(nameof(liga.DatumPocetka), "Datum početka lige ne može biti u prošlosti.");
+            }
+
+            if (liga.BrojRegularnihTurnira < 1)
+            {
+                liga.BrojRegularnihTurnira = 1;
+            }
+
+            if (ModelState.IsValid)
+            {
+                existingLiga.Naziv = liga.Naziv;
+                existingLiga.Opis = liga.Opis;
+                existingLiga.Sezona = liga.Sezona;
+                existingLiga.DatumPocetka = liga.DatumPocetka;
+                existingLiga.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
+
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Uspješno ste ažurirali ligu!";
+                return RedirectToAction(nameof(Details), new { id = existingLiga.ID });
+            }
+
+            ViewBag.MinBrojRegularnihTurnira = minAllowed;
+            return View(existingLiga);
         }
 
         // POST: /Liga/Create
@@ -72,6 +155,21 @@ namespace ePinPong.Controllers
         [Authorize(Roles = "Administrator,Organizator")]
         public async Task<IActionResult> Create(Liga liga, bool autoGenerisiTurnire)
         {
+            if (liga.DatumPocetka == default)
+            {
+                liga.DatumPocetka = GetDefaultLigaStartDate();
+            }
+
+            if (liga.DatumPocetka.Date < DateTime.Today)
+            {
+                ModelState.AddModelError(nameof(liga.DatumPocetka), "Datum početka lige ne može biti u prošlosti.");
+            }
+
+            if (liga.BrojRegularnihTurnira < 1)
+            {
+                liga.BrojRegularnihTurnira = 1;
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(liga);
@@ -80,50 +178,29 @@ namespace ePinPong.Controllers
                 if (autoGenerisiTurnire)
                 {
                     var userId = _userManager.GetUserId(User);
-                    DateTime tempDate = liga.DatumPocetka;
+                    int brojKola = liga.BrojRegularnihTurnira;
 
-                    for (int kolo = 1; kolo <= 9; kolo++)
+                    for (int kolo = 1; kolo <= brojKola; kolo++)
                     {
-                        DateTime lastSunday = GetLastSundayOfMonth(tempDate.Year, tempDate.Month);
-                        
+                        var lastSunday = LigaTurnirHelper.GetRegularTurnirDatum(liga, kolo);
+
                         var turnir = new Turnir
                         {
                             Naziv = $"{liga.Naziv} - Kolo {kolo}",
                             Status = StatusTurnira.Planiran,
-                            DatumPocetka = lastSunday.AddHours(10), // Početak u 10:00h
+                            DatumPocetka = lastSunday.AddHours(10),
                             DatumKraja = lastSunday.AddHours(18),
                             MaxIgraca = 64,
                             Lokacija = "Klupska Dvorana ePinPong",
-                            Opis = $"Mjesečni ligaški turnir za {liga.Naziv}. Kolo {kolo} od 9. Nakon odigravanja svih kola, najbolji igrači će se plasirati na završni Masters.",
+                            Opis = $"Mjesečni ligaški turnir za {liga.Naziv}. Kolo {kolo} od {brojKola}. Nakon odigravanja svih kola, najbolji igrači će se plasirati na završni Masters.",
                             LigaID = liga.ID,
                             Kolo = kolo,
                             OrganizatorId = userId ?? string.Empty,
                             SlikaUrl = "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=600&auto=format&fit=crop"
                         };
                         _context.Turniri.Add(turnir);
-                        
-                        // Pomjeri na sljedeći mjesec
-                        tempDate = tempDate.AddMonths(1);
                     }
 
-                    // Završni Masters
-                    DateTime mastersSunday = GetLastSundayOfMonth(tempDate.Year, tempDate.Month);
-                    var masters = new Turnir
-                    {
-                        Naziv = $"{liga.Naziv} - Završni Masters",
-                        Status = StatusTurnira.Planiran,
-                        DatumPocetka = mastersSunday.AddHours(10),
-                        DatumKraja = mastersSunday.AddHours(18),
-                        MaxIgraca = 64,
-                        Lokacija = "Centralna Dvorana ePinPong",
-                        Opis = $"Završni Masters turnir sezone za {liga.Naziv}. Najbolji igrači se bore za titulu šampiona!",
-                        LigaID = liga.ID,
-                        Kolo = 10, // Kolo 10 je završnica
-                        OrganizatorId = userId ?? string.Empty,
-                        SlikaUrl = "https://images.unsplash.com/photo-1609710223516-9cf611da2629?q=80&w=600&auto=format&fit=crop"
-                    };
-                    _context.Turniri.Add(masters);
-                    
                     await _context.SaveChangesAsync();
                 }
 
@@ -157,11 +234,27 @@ namespace ePinPong.Controllers
 
         #region Pomoćne Metode
 
-        private DateTime GetLastSundayOfMonth(int year, int month)
+        private DateTime GetDefaultLigaStartDate()
         {
-            DateTime lastDay = new DateTime(year, month, DateTime.DaysInMonth(year, month));
+            var today = DateTime.Today;
+            var currentMonthLastSunday = GetLastSundayOfMonth(today.Year, today.Month);
+
+            if (currentMonthLastSunday < today)
+            {
+                var nextMonth = new DateTime(today.Year, today.Month, 1).AddMonths(1);
+                return GetLastSundayOfMonth(nextMonth.Year, nextMonth.Month);
+            }
+
+            return currentMonthLastSunday;
+        }
+
+        private static DateTime GetLastSundayOfMonth(int year, int month)
+        {
+            var normalizedMonth = month <= 0 ? 1 : month > 12 ? 12 : month;
+            var normalizedYear = month <= 0 ? year - 1 : month > 12 ? year + 1 : year;
+            var lastDay = new DateTime(normalizedYear, normalizedMonth, DateTime.DaysInMonth(normalizedYear, normalizedMonth));
             int diff = (7 + (int)lastDay.DayOfWeek - (int)DayOfWeek.Sunday) % 7;
-            return lastDay.AddDays(-diff);
+            return lastDay.AddDays(-diff).Date;
         }
 
         private List<LigaStandingsViewModel> ObračunajTabeluLige(Liga liga)
