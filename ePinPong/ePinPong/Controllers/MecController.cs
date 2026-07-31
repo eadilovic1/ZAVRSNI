@@ -179,7 +179,9 @@ namespace ePinPong.Controllers
             if (!((poeniIgrac1 == 3 && poeniIgrac2 >= 0 && poeniIgrac2 <= 2) || (poeniIgrac2 == 3 && poeniIgrac1 >= 0 && poeniIgrac1 <= 2)))
             {
                 TempData["Error"] = "Rezultat meča mora biti do 3 dobijena seta (npr. 3:0, 3:1, 3:2).";
-                return RedirectToAction("UnosRezultata", new { id = id });
+                // Preusmjeri na detalje turnira umjesto na posebnu stranicu, 
+                // kako bi modal tok na stranici turnira ostao neprekinut
+                return RedirectToAction("Details", "Turnir", new { id = mec.TurnirID });
             }
 
             mec.PoeniIgrac1 = poeniIgrac1;
