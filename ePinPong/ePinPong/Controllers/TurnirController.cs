@@ -330,28 +330,51 @@ namespace ePinPong.Controllers
         private async Task AutoRegistrirajIgraceLigeAsync(Liga liga, int turnirId)
         {
             var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
-            var regularniTurniriLiga = await _context.Turniri
-                .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo)
+
+            var zavrseniRegularniTurniriIds = await _context.Turniri
+                .Where(t => t.LigaID == liga.ID
+                            && t.Kolo.HasValue
+                            && t.Kolo.Value != mastersKolo
+                            && t.Status == StatusTurnira.Zavrsen)
                 .Select(t => t.ID)
                 .ToListAsync();
 
-            if (!regularniTurniriLiga.Any())
+            if (!zavrseniRegularniTurniriIds.Any())
             {
                 return;
             }
 
-            var korisniciIzLige = await _context.Registracije
-                .Where(r => regularniTurniriLiga.Contains(r.TurnirID))
-                .Select(r => r.KorisnikID)
-                .Distinct()
-                .ToListAsync();
+            // Umjesto Registracija, uzimamo igrače koji se stvarno nalaze na rankingu lige
+            // (isti princip kao DohvatiRankinge) - odnosno igrače koji imaju plasman
+            // na barem jednom završenom regularnom turniru lige.
+            var korisniciNaRankingu = new HashSet<string>();
+
+            foreach (var regularniTurnirId in zavrseniRegularniTurniriIds)
+            {
+                var turnirSaPodacima = await _context.Turniri
+                    .Include(t => t.Registracije)
+                        .ThenInclude(r => r.Korisnik)
+                    .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.Igrac1)
+                    .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.Igrac2)
+                    .FirstOrDefaultAsync(t => t.ID == regularniTurnirId);
+
+                if (turnirSaPodacima == null) continue;
+
+                var plasmani = _bracketService.IzracunajPlasman(turnirSaPodacima);
+                foreach (var pl in plasmani)
+                {
+                    korisniciNaRankingu.Add(pl.KorisnikId);
+                }
+            }
 
             var postojeciIds = await _context.Registracije
                 .Where(r => r.TurnirID == turnirId)
                 .Select(r => r.KorisnikID)
                 .ToHashSetAsync();
 
-            var noveRegistracije = korisniciIzLige
+            var noveRegistracije = korisniciNaRankingu
                 .Where(korisnikId => !postojeciIds.Contains(korisnikId))
                 .Select(korisnikId => new Registracija
                 {
