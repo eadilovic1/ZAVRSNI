@@ -27,13 +27,13 @@ namespace ePinPong.Services
         //  GRUPNA FAZA
         // ─────────────────────────────────────────────────────────────────────
 
-        public List<Mec> GenerirajGrupe(Turnir turnir, List<string> igracIds)
+        public List<Mec> GenerirajGrupe(Turnir turnir, List<string> igracIds, bool useQualityGrouping = false)
         {
             var mecevi = new List<Mec>();
             int N = igracIds.Count;
             if (N < 3) return mecevi;
 
-            var groupSizes = GetGroupSizes(N);
+            var groupSizes = useQualityGrouping ? GetMastersGroupSizes(N) : GetGroupSizes(N);
             if (groupSizes.Count == 0) return mecevi;
 
             int ukGrupa = groupSizes.Count;
@@ -63,8 +63,11 @@ namespace ePinPong.Services
             var grupeIgraca = new List<List<string>>();
             for (int i = 0; i < ukGrupa; i++) grupeIgraca.Add(new List<string>());
 
-            // Check if pot sizes are valid. If not, use fallback random distribution
-            if (pot1.Count == ukGrupa && pot2.Count == ukGrupa && pot3.Count == ukGrupa && pot4.Count == groupsOf4)
+            if (useQualityGrouping)
+            {
+                grupeIgraca = DistributeOrderedPlayersIntoGroups(igracIds, groupSizes);
+            }
+            else if (pot1.Count == ukGrupa && pot2.Count == ukGrupa && pot3.Count == ukGrupa && pot4.Count == groupsOf4)
             {
                 var shuffledPot1 = pot1.OrderBy(a => rng.Next()).ToList();
                 var shuffledPot2 = pot2.OrderBy(a => rng.Next()).ToList();
@@ -1270,6 +1273,46 @@ namespace ePinPong.Services
             return Enumerable.Repeat(4, groupCount - 1)
                 .Concat(new[] { 3 })
                 .ToList();
+        }
+
+        private static List<int> GetMastersGroupSizes(int playerCount)
+        {
+            if (playerCount < 3)
+                return new List<int>();
+
+            int groupCount = (playerCount + 6) / 7;
+            int baseSize = playerCount / groupCount;
+            int remainder = playerCount % groupCount;
+
+            var sizes = new List<int>();
+            for (int i = 0; i < groupCount; i++)
+            {
+                sizes.Add(baseSize + (i < remainder ? 1 : 0));
+            }
+
+            return sizes;
+        }
+
+        private static List<List<string>> DistributeOrderedPlayersIntoGroups(List<string> players, List<int> groupSizes)
+        {
+            var groups = new List<List<string>>();
+            for (int i = 0; i < groupSizes.Count; i++)
+            {
+                groups.Add(new List<string>());
+            }
+
+            int index = 0;
+            foreach (var player in players)
+            {
+                if (index >= groupSizes.Count) index = 0;
+                groups[index].Add(player);
+                if (groups[index].Count >= groupSizes[index])
+                {
+                    index++;
+                }
+            }
+
+            return groups;
         }
 
         private class PlayerRecord

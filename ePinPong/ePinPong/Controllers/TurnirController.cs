@@ -62,6 +62,8 @@ namespace ePinPong.Controllers
             ViewBag.CurrentUserId = userId;
             var isOrganizator = turnir.OrganizatorId == userId || User.IsInRole("Administrator");
             ViewBag.IsOrganizator = isOrganizator;
+            var isMasters = turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(turnir.Liga);
+            ViewBag.IsMasters = isMasters;
 
             // Auto-riješi eventualne zapete BYE mečeve (npr. Slobodan vs pravi igrač u razigravanju)
             var meceviList = turnir.Mecevi.ToList();

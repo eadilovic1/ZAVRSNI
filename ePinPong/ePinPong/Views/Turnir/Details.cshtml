@@ -11,6 +11,8 @@
     var razigravanjeMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje && m.MatchCode.StartsWith("PL_")).ToList();
     var sviZavrsniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
     var ranking = ViewBag.Ranking as List<TurnirPlasmanViewModel>;
+    var playerPoints = ViewBag.PlayerPoints as Dictionary<string, int> ?? new Dictionary<string, int>();
+    var isMasters = ViewBag.IsMasters as bool? ?? false;
     var utjesniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith("UT_")).ToList();
     var utjesniGlavniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_"))).ToList();
     var utjesniRazigravanjeMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || m.MatchCode.StartsWith("UT_RR_"))).ToList();
@@ -303,110 +305,167 @@
                 {
                     @if (Model.Status == StatusTurnira.Planiran && Model.Registracije.Count >= 3)
                     {
-                        <!-- PANEL ZA ŠEŠIRE I ŽRIJEB -->
-                        <div class="seeding-container p-4 bg-dark-input border border-dark-glow rounded-4">
-                            <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-                                <div>
-                                    <h4 class="text-white fw-bold mb-1"><i class="bi bi-trophy-fill text-orange me-2"></i>Raspodjela po šeširima (Seeding Pots)</h4>
-                                    <p class="text-white-50 small mb-0">Igrači su raspoređeni u 4 jakosne skupine. Svaka grupa se sastoji od po jednog igrača iz svakog šešira.</p>
+                        @if (isMasters)
+                        {
+                            <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4">
+                                <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+                                    <div>
+                                        <h4 class="text-white fw-bold mb-1"><i class="bi bi-bar-chart-line-fill text-orange me-2"></i>Prijavljeni igrači po kvalitetu</h4>
+                                        <p class="text-white-50 small mb-0">Igrači su prikazani po kvalitetu iz lige. Najbolji rangirani igrači idu u prve grupe, dok ostali idu u zadnje grupe.</p>
+                                    </div>
                                 </div>
+
+                                <div class="row g-3">
+                                    @{
+                                        var sortedRegistrations = Model.Registracije
+                                            .OrderByDescending(r => playerPoints.ContainsKey(r.KorisnikID) ? playerPoints[r.KorisnikID] : 0)
+                                            .ThenBy(r => playerPoints.ContainsKey(r.KorisnikID) ? 0 : 1)
+                                            .ThenBy(r => r.DatumRegistracije)
+                                            .ToList();
+                                    }
+
+                                    @foreach (var reg in sortedRegistrations)
+                                    {
+                                        var bodovi = playerPoints.ContainsKey(reg.KorisnikID) ? playerPoints[reg.KorisnikID] : 0;
+                                        <div class="col-12 col-md-6">
+                                            <div class="card bg-dark-card border border-dark-glow rounded-3 p-3">
+                                                <div class="d-flex align-items-center justify-content-between gap-3">
+                                                    <div>
+                                                        <strong class="text-white">@reg.Korisnik?.Ime @reg.Korisnik?.Prezime</strong>
+                                                        <div class="text-white-50 small mt-1">@reg.Korisnik?.Grad</div>
+                                                    </div>
+                                                    <span class="badge bg-warning text-dark">Bodovi: @bodovi</span>
+                                                </div>
+                                                <div class="d-flex align-items-center justify-content-between mt-3">
+                                                    <span class="badge bg-secondary text-muted">Prijavljeno: @reg.DatumRegistracije.ToString("dd.MM.yyyy")</span>
+                                                    @if (reg.Korisnik != null && reg.Korisnik.IsGost)
+                                                    {
+                                                        <span class="badge bg-secondary text-muted">Gost</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
                                 @if (isOrganizator)
                                 {
-                                    <div class="d-flex gap-2 align-items-center flex-wrap">
-                                        <div class="dropdown">
-                                            <select id="seedingSourceType" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" style="min-width: 170px;">
-                                                <option value="TrenutnaLiga">Pravilo: Trenutna liga</option>
-                                                <option value="DrugaLiga">Izvor: Druga liga...</option>
-                                                <option value="DrugiTurnir">Izvor: Drugi turnir...</option>
-                                                <option value="Random">Pravilo: Random (Nasumično)</option>
-                                            </select>
-                                        </div>
-                                        <div id="seedingSourceLigaContainer" class="d-none">
-                                            <select id="seedingSourceLiga" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="ViewBag.LigeZaSeeding">
-                                                <option value="">-- Odaberi ligu --</option>
-                                            </select>
-                                        </div>
-                                        <div id="seedingSourceTurnirContainer" class="d-none">
-                                            <select id="seedingSourceTurnir" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="ViewBag.TurniriZaSeeding">
-                                                <option value="">-- Odaberi turnir --</option>
-                                            </select>
-                                        </div>
-                                        <button type="button" id="btnAutoSeeding" class="btn btn-outline-warning btn-sm fw-bold"><i class="bi bi-magic me-1"></i> Auto-raspodjela</button>
+                                    <div class="mt-4 border-top border-dark-glow pt-3 d-flex justify-content-end">
+                                        <form asp-controller="Mec" asp-action="GenerirajBracket" method="post" id="formGenerisiGrupe">
+                                            <input type="hidden" name="turnirId" value="@Model.ID" />
+                                            <button type="submit" class="btn btn-orange text-white fw-bold px-4 py-2"><i class="bi bi-lightning-fill me-2"></i>Generiši grupe i započni Masters</button>
+                                        </form>
                                     </div>
                                 }
                             </div>
-
-                            <!-- Statusna traka i validacija -->
-                            <div id="validationAlert" class="alert alert-info border border-info bg-info-transparent d-flex align-items-center justify-content-between py-2 px-3 mb-4 rounded-3 small">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="fs-5">ℹ️</span>
-                                    <span id="validationText">Validacija šešira...</span>
-                                </div>
-                                <span id="validationStatusBadge" class="badge bg-secondary">Provjera</span>
-                            </div>
-
-                            <!-- 4 Šešira kolone -->
-                            <div class="row g-3">
-                                @for (int s = 1; s <= 4; s++)
-                                {
-                                    var sesirPlayers = Model.Registracije.Where(r => r.Sesir == s).ToList();
-                                    string colorText = s == 1 ? "text-danger" : s == 2 ? "text-warning" : s == 3 ? "text-primary" : "text-success";
-                                    
-                                    <div class="col-12 col-md-3">
-                                        <div class="card bg-dark-card border border-dark-glow rounded-3 overflow-hidden h-100 shadow-sm">
-                                            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-3 d-flex justify-content-between align-items-center">
-                                                <span class="fw-bold @colorText">Šešir @s</span>
-                                                <span class="badge bg-dark border border-dark-glow text-muted pot-counter" id="pot-counter-@s">0/0</span>
+                        }
+                        else
+                        {
+                            <!-- PANEL ZA ŠEŠIRE I ŽRIJEB -->
+                            <div class="seeding-container p-4 bg-dark-input border border-dark-glow rounded-4">
+                                <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+                                    <div>
+                                        <h4 class="text-white fw-bold mb-1"><i class="bi bi-trophy-fill text-orange me-2"></i>Raspodjela po šeširima (Seeding Pots)</h4>
+                                        <p class="text-white-50 small mb-0">Igrači su raspoređeni u 4 jakosne skupine. Svaka grupa se sastoji od po jednog igrača iz svakog šešira.</p>
+                                    </div>
+                                    @if (isOrganizator)
+                                    {
+                                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                                            <div class="dropdown">
+                                                <select id="seedingSourceType" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" style="min-width: 170px;">
+                                                    <option value="TrenutnaLiga">Pravilo: Trenutna liga</option>
+                                                    <option value="DrugaLiga">Izvor: Druga liga...</option>
+                                                    <option value="DrugiTurnir">Izvor: Drugi turnir...</option>
+                                                    <option value="Random">Pravilo: Random (Nasumično)</option>
+                                                </select>
                                             </div>
-                                            <div class="card-body p-2 pot-drop-zone d-flex flex-column gap-2" id="pot-zone-@s" data-pot="@s" style="min-height: 250px; background-color: rgba(255,255,255,0.01); transition: background-color 0.2s;">
-                                                @foreach (var reg in sesirPlayers)
-                                                {
-                                                    var bodovi = ViewBag.PlayerPoints != null && ViewBag.PlayerPoints.ContainsKey(reg.KorisnikID) ? ViewBag.PlayerPoints[reg.KorisnikID] : 0;
-                                                    <div class="player-draggable-card p-2 bg-dark border border-dark-glow rounded d-flex align-items-center justify-content-between" 
-                                                         draggable="@(isOrganizator ? "true" : "false")" 
-                                                         data-player-id="@reg.KorisnikID" 
-                                                         data-reg-date="@reg.DatumRegistracije.ToString("o")"
-                                                         data-points="@bodovi"
-                                                         style="cursor: @(isOrganizator ? "grab" : "default");">
-                                                        <div class="d-flex align-items-center min-w-0">
-                                                            <div class="user-avatar-mini-x me-2 bg-dark-glow">
-                                                                @if (reg.Korisnik != null && reg.Korisnik.Ime.Length > 0)
-                                                                {
-                                                                    <span>@reg.Korisnik.Ime[0]</span>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span>I</span>
-                                                                }
+                                            <div id="seedingSourceLigaContainer" class="d-none">
+                                                <select id="seedingSourceLiga" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="ViewBag.LigeZaSeeding">
+                                                    <option value="">-- Odaberi ligu --</option>
+                                                </select>
+                                            </div>
+                                            <div id="seedingSourceTurnirContainer" class="d-none">
+                                                <select id="seedingSourceTurnir" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="ViewBag.TurniriZaSeeding">
+                                                    <option value="">-- Odaberi turnir --</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" id="btnAutoSeeding" class="btn btn-outline-warning btn-sm fw-bold"><i class="bi bi-magic me-1"></i> Auto-raspodjela</button>
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Statusna traka i validacija -->
+                                <div id="validationAlert" class="alert alert-info border border-info bg-info-transparent d-flex align-items-center justify-content-between py-2 px-3 mb-4 rounded-3 small">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fs-5">ℹ️</span>
+                                        <span id="validationText">Validacija šešira...</span>
+                                    </div>
+                                    <span id="validationStatusBadge" class="badge bg-secondary">Provjera</span>
+                                </div>
+
+                                <!-- 4 Šešira kolone -->
+                                <div class="row g-3">
+                                    @for (int s = 1; s <= 4; s++)
+                                    {
+                                        var sesirPlayers = Model.Registracije.Where(r => r.Sesir == s).ToList();
+                                        string colorText = s == 1 ? "text-danger" : s == 2 ? "text-warning" : s == 3 ? "text-primary" : "text-success";
+                                        
+                                        <div class="col-12 col-md-3">
+                                            <div class="card bg-dark-card border border-dark-glow rounded-3 overflow-hidden h-100 shadow-sm">
+                                                <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-3 d-flex justify-content-between align-items-center">
+                                                    <span class="fw-bold @colorText">Šešir @s</span>
+                                                    <span class="badge bg-dark border border-dark-glow text-muted pot-counter" id="pot-counter-@s">0/0</span>
+                                                </div>
+                                                <div class="card-body p-2 pot-drop-zone d-flex flex-column gap-2" id="pot-zone-@s" data-pot="@s" style="min-height: 250px; background-color: rgba(255,255,255,0.01); transition: background-color 0.2s;">
+                                                    @foreach (var reg in sesirPlayers)
+                                                    {
+                                                        var bodovi = ViewBag.PlayerPoints != null && ViewBag.PlayerPoints.ContainsKey(reg.KorisnikID) ? ViewBag.PlayerPoints[reg.KorisnikID] : 0;
+                                                        <div class="player-draggable-card p-2 bg-dark border border-dark-glow rounded d-flex align-items-center justify-content-between" 
+                                                             draggable="@(isOrganizator ? "true" : "false")" 
+                                                             data-player-id="@reg.KorisnikID" 
+                                                             data-reg-date="@reg.DatumRegistracije.ToString("o")"
+                                                             data-points="@bodovi"
+                                                             style="cursor: @(isOrganizator ? "grab" : "default");">
+                                                            <div class="d-flex align-items-center min-w-0">
+                                                                <div class="user-avatar-mini-x me-2 bg-dark-glow">
+                                                                    @if (reg.Korisnik != null && reg.Korisnik.Ime.Length > 0)
+                                                                    {
+                                                                        <span>@reg.Korisnik.Ime[0]</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span>I</span>
+                                                                    }
+                                                                </div>
+                                                                <div class="text-truncate">
+                                                                    <small class="text-white fw-bold d-block text-truncate lh-1">@reg.Korisnik?.Ime @reg.Korisnik?.Prezime</small>
+                                                                    <span class="text-muted" style="font-size: 0.65rem;">Bodovi: <strong class="player-points-text">@bodovi</strong></span>
+                                                                </div>
                                                             </div>
-                                                            <div class="text-truncate">
-                                                                <small class="text-white fw-bold d-block text-truncate lh-1">@reg.Korisnik?.Ime @reg.Korisnik?.Prezime</small>
-                                                                <span class="text-muted" style="font-size: 0.65rem;">Bodovi: <strong class="player-points-text">@bodovi</strong></span>
-                                                            </div>
+                                                            @if (isOrganizator)
+                                                            {
+                                                                <i class="bi bi-grip-vertical text-muted fs-6 ms-1"></i>
+                                                            }
                                                         </div>
-                                                        @if (isOrganizator)
-                                                        {
-                                                            <i class="bi bi-grip-vertical text-muted fs-6 ms-1"></i>
-                                                        }
-                                                    </div>
-                                                }
+                                                    }
+                                                </div>
                                             </div>
                                         </div>
+                                    }
+                                </div>
+
+                                @if (isOrganizator)
+                                {
+                                    <div class="mt-4 border-top border-dark-glow pt-3 d-flex justify-content-end">
+                                        <form asp-controller="Mec" asp-action="GenerirajBracket" method="post" id="formGenerisiGrupe">
+                                            <input type="hidden" name="turnirId" value="@Model.ID" />
+                                            <input type="hidden" name="playerPotsJson" id="playerPotsJson" value="" />
+                                            <button type="submit" id="btnGenerisiGrupeSubmit" class="btn btn-orange text-white fw-bold px-4 py-2"><i class="bi bi-lightning-fill me-2"></i>Generiši grupe i započni turnir</button>
+                                        </form>
                                     </div>
                                 }
                             </div>
-
-                            @if (isOrganizator)
-                            {
-                                <div class="mt-4 border-top border-dark-glow pt-3 d-flex justify-content-end">
-                                    <form asp-controller="Mec" asp-action="GenerirajBracket" method="post" id="formGenerisiGrupe">
-                                        <input type="hidden" name="turnirId" value="@Model.ID" />
-                                        <input type="hidden" name="playerPotsJson" id="playerPotsJson" value="" />
-                                        <button type="submit" id="btnGenerisiGrupeSubmit" class="btn btn-orange text-white fw-bold px-4 py-2"><i class="bi bi-lightning-fill me-2"></i>Generiši grupe i započni turnir</button>
-                                    </form>
-                                </div>
-                            }
-                        </div>
+                        }
                     }
                     else
                     {

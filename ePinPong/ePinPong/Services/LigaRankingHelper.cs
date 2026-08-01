@@ -81,5 +81,78 @@ namespace ePinPong.Services
                 .Where(id => !string.IsNullOrEmpty(id) && id != BracketService.SLOBODAN)
                 .ToHashSet();
         }
+
+        public static async Task<List<string>> GetMastersOrderedParticipantIdsAsync(ApplicationDbContext context, IBracketService bracketService, Turnir mastersTurnir)
+        {
+            if (context == null) throw new System.ArgumentNullException(nameof(context));
+            if (bracketService == null) throw new System.ArgumentNullException(nameof(bracketService));
+            if (mastersTurnir == null) throw new System.ArgumentNullException(nameof(mastersTurnir));
+
+            if (!mastersTurnir.LigaID.HasValue)
+            {
+                return mastersTurnir.Registracije
+                    .Where(r => !string.IsNullOrEmpty(r.KorisnikID) && r.KorisnikID != BracketService.SLOBODAN)
+                    .Select(r => r.KorisnikID!)                    
+                    .ToList();
+            }
+
+            var liga = await context.Lige.FirstOrDefaultAsync(l => l.ID == mastersTurnir.LigaID.Value);
+            if (liga == null)
+            {
+                return mastersTurnir.Registracije
+                    .Where(r => !string.IsNullOrEmpty(r.KorisnikID) && r.KorisnikID != BracketService.SLOBODAN)
+                    .Select(r => r.KorisnikID!)                    
+                    .ToList();
+            }
+
+            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+            var finishedRegularTurniri = await context.Turniri
+                .Include(t => t.Registracije)
+                .ThenInclude(r => r.Korisnik)
+                .Include(t => t.Mecevi)
+                .ThenInclude(m => m.Igrac1)
+                .Include(t => t.Mecevi)
+                .ThenInclude(m => m.Igrac2)
+                .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo && t.Status == StatusTurnira.Zavrsen)
+                .ToListAsync();
+
+            var points = new Dictionary<string, int>();
+            foreach (var finishedTurnir in finishedRegularTurniri)
+            {
+                var plasmani = bracketService.IzracunajPlasman(finishedTurnir);
+                foreach (var plasman in plasmani)
+                {
+                    if (string.IsNullOrEmpty(plasman.KorisnikId) || plasman.KorisnikId == BracketService.SLOBODAN)
+                    {
+                        continue;
+                    }
+
+                    if (points.ContainsKey(plasman.KorisnikId))
+                    {
+                        points[plasman.KorisnikId] += plasman.Bodovi;
+                    }
+                    else
+                    {
+                        points[plasman.KorisnikId] = plasman.Bodovi;
+                    }
+                }
+            }
+
+            var registrations = mastersTurnir.Registracije
+                .Where(r => !string.IsNullOrEmpty(r.KorisnikID) && r.KorisnikID != BracketService.SLOBODAN)
+                .Select(r => new
+                {
+                    r.KorisnikID,
+                    r.DatumRegistracije
+                })
+                .ToList();
+
+            return registrations
+                .OrderByDescending(r => points.TryGetValue(r.KorisnikID, out var pts) ? pts : 0)
+                .ThenBy(r => points.ContainsKey(r.KorisnikID) ? 0 : 1)
+                .ThenBy(r => r.DatumRegistracije)
+                .Select(r => r.KorisnikID!)                
+                .ToList();
+        }
     }
 }

@@ -36,6 +36,7 @@ namespace ePinPong.Controllers
         {
             var turnir = await _context.Turniri
                 .Include(t => t.Registracije)
+                .Include(t => t.Liga)
                 .FirstOrDefaultAsync(t => t.ID == turnirId);
 
             if (turnir == null) return NotFound();
@@ -46,8 +47,9 @@ namespace ePinPong.Controllers
                 return Forbid();
             }
 
+            var isMasters = turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(turnir.Liga);
             int count = turnir.Registracije.Count;
-            if (count < 3 || count == 5)
+            if (count < 3 || (!isMasters && count == 5))
             {
                 TempData["Error"] = "Broj igrača mora biti najmanje 3, a ne može biti tačno 5 (jer se ne mogu formirati grupe od 3 i 4 igrača).";
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
@@ -74,10 +76,13 @@ namespace ePinPong.Controllers
                 }
                 catch (Exception)
                 {
-                    await AutoRasporediSesire(turnir);
+                    if (!isMasters)
+                    {
+                        await AutoRasporediSesire(turnir);
+                    }
                 }
             }
-            else
+            else if (!isMasters)
             {
                 // Ako nema poslanih šešira (npr. direktan klik bez drag/drop-a),
                 // provjeri jesu li već raspoređeni. Ako su svi na 1 (default), pokreni automatsku raspodjelu.
@@ -93,9 +98,13 @@ namespace ePinPong.Controllers
             _context.Mecevi.RemoveRange(stariMecevi);
 
             var igracIds = turnir.Registracije.Select(r => r.KorisnikID).ToList();
+            if (isMasters)
+            {
+                igracIds = await LigaRankingHelper.GetMastersOrderedParticipantIdsAsync(_context, _bracketService, turnir);
+            }
 
             // Generiši samo grupnu fazu
-            var meceviGrupneFaze = _bracketService.GenerirajGrupe(turnir, igracIds);
+            var meceviGrupneFaze = _bracketService.GenerirajGrupe(turnir, igracIds, isMasters);
 
             _context.Mecevi.AddRange(meceviGrupneFaze);
             turnir.Status = StatusTurnira.UToku; // Turnir počinje
