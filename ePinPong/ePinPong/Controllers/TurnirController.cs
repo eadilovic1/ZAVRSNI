@@ -329,44 +329,10 @@ namespace ePinPong.Controllers
 
         private async Task AutoRegistrirajIgraceLigeAsync(Liga liga, int turnirId)
         {
-            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
-
-            var zavrseniRegularniTurniriIds = await _context.Turniri
-                .Where(t => t.LigaID == liga.ID
-                            && t.Kolo.HasValue
-                            && t.Kolo.Value != mastersKolo
-                            && t.Status == StatusTurnira.Zavrsen)
-                .Select(t => t.ID)
-                .ToListAsync();
-
-            if (!zavrseniRegularniTurniriIds.Any())
+            var korisniciNaRankingu = await LigaRankingHelper.GetLeagueMastersParticipantIdsAsync(_context, _bracketService, liga);
+            if (!korisniciNaRankingu.Any())
             {
                 return;
-            }
-
-            // Umjesto Registracija, uzimamo igrače koji se stvarno nalaze na rankingu lige
-            // (isti princip kao DohvatiRankinge) - odnosno igrače koji imaju plasman
-            // na barem jednom završenom regularnom turniru lige.
-            var korisniciNaRankingu = new HashSet<string>();
-
-            foreach (var regularniTurnirId in zavrseniRegularniTurniriIds)
-            {
-                var turnirSaPodacima = await _context.Turniri
-                    .Include(t => t.Registracije)
-                        .ThenInclude(r => r.Korisnik)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac1)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac2)
-                    .FirstOrDefaultAsync(t => t.ID == regularniTurnirId);
-
-                if (turnirSaPodacima == null) continue;
-
-                var plasmani = _bracketService.IzracunajPlasman(turnirSaPodacima);
-                foreach (var pl in plasmani)
-                {
-                    korisniciNaRankingu.Add(pl.KorisnikId);
-                }
             }
 
             var postojeciIds = await _context.Registracije

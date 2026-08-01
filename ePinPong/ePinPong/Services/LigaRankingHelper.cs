@@ -57,5 +57,29 @@ namespace ePinPong.Services
                 .OrderByDescending(id => standings[id])
                 .ToList();
         }
+
+        public static async Task<HashSet<string>> GetLeagueMastersParticipantIdsAsync(ApplicationDbContext context, IBracketService bracketService, Liga liga)
+        {
+            if (context == null) throw new System.ArgumentNullException(nameof(context));
+            if (bracketService == null) throw new System.ArgumentNullException(nameof(bracketService));
+            if (liga == null) throw new System.ArgumentNullException(nameof(liga));
+
+            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+
+            var registriraniKorisnici = await context.Registracije
+                .Where(r => r.Turnir.LigaID == liga.ID
+                            && (r.Turnir.Kolo == null || r.Turnir.Kolo.Value != mastersKolo))
+                .Select(r => r.KorisnikID)
+                .Where(id => !string.IsNullOrEmpty(id) && id != BracketService.SLOBODAN)
+                .Distinct()
+                .ToListAsync();
+
+            var standingsParticipantIds = await GetLeagueStandingsParticipantIdsAsync(context, bracketService, liga);
+
+            return registriraniKorisnici
+                .Concat(standingsParticipantIds)
+                .Where(id => !string.IsNullOrEmpty(id) && id != BracketService.SLOBODAN)
+                .ToHashSet();
+        }
     }
 }
