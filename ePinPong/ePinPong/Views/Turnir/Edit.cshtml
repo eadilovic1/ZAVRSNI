@@ -1,6 +1,9 @@
 @model ePinPong.Models.Turnir
 @{
     ViewData["Title"] = "Uredi turnir";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var canDelete = User.IsInRole("Administrator") || Model.OrganizatorId == currentUserId;
+    var returnUrl = ViewBag.ReturnUrl as string;
 }
 
 <div class="row justify-content-center py-5">
@@ -11,7 +14,7 @@
                 <p class="text-white-50 mb-0">Uredite informacije o turniru u nastavku.</p>
             </div>
             <div class="card-body p-4">
-                <form asp-action="Edit" method="post">
+                <form id="edit-form" asp-action="Edit" method="post">
                     <input type="hidden" asp-for="ID" />
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-4"></div>
 
@@ -155,11 +158,25 @@
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-dark-glow">
-                        <a asp-action="Details" asp-route-id="@Model.ID" class="btn btn-outline-light-glow text-white fw-bold"><i class="bi bi-arrow-left me-2"></i>Nazad</a>
-                        <button type="submit" class="btn btn-orange px-4 py-2 text-white fw-bold shadow-glow">Spremi izmjene <i class="bi bi-save ms-2"></i></button>
-                    </div>
                 </form>
+
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-dark-glow">
+                    <a asp-action="Details" asp-route-id="@Model.ID" class="btn btn-outline-light-glow text-white fw-bold"><i class="bi bi-arrow-left me-2"></i>Nazad</a>
+                    <div class="d-flex gap-2">
+                        @if (canDelete)
+                        {
+                            <form asp-action="Delete" asp-route-id="@Model.ID" method="post" onsubmit="return confirm('Obrisat ćete turnir i sve povezane prijave, mečeve i parove. Jeste li sigurni?');" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                @if (!string.IsNullOrWhiteSpace(returnUrl))
+                                {
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                }
+                                <button type="submit" class="btn btn-danger px-4 py-2 fw-bold"><i class="bi bi-trash3-fill me-2"></i>Obriši turnir</button>
+                            </form>
+                        }
+                        <button type="submit" form="edit-form" class="btn btn-orange px-4 py-2 text-white fw-bold shadow-glow">Spremi izmjene <i class="bi bi-save ms-2"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

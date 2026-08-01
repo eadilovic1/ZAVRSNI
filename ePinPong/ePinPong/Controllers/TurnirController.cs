@@ -208,10 +208,11 @@ namespace ePinPong.Controllers
                 var liga = turnir.LigaID.HasValue
                     ? await _context.Lige.FirstOrDefaultAsync(l => l.ID == turnir.LigaID.Value)
                     : null;
+                var isMastersRequest = false;
 
                 if (liga != null)
                 {
-                    var isMastersRequest = turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(liga);
+                    isMastersRequest = turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(liga);
                     var canCreateRegular = LigaTurnirHelper.CanCreateRegular(liga);
                     var canCreateMasters = LigaTurnirHelper.CanCreateMasters(liga);
 
@@ -273,6 +274,11 @@ namespace ePinPong.Controllers
                 _context.Add(turnir);
                 await _context.SaveChangesAsync();
 
+                if (liga != null && isMastersRequest)
+                {
+                    await AutoRegistrirajIgraceLigeAsync(liga, turnir.ID);
+                }
+
                 // NAKON KREIRANJA - Posalji notifikacije pratiocima organizatora (analogno ePazaru!)
                 var pratioci = await _context.Pracenja
                     .Where(p => p.PraceniID == turnir.OrganizatorId)
@@ -306,6 +312,10 @@ namespace ePinPong.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+                if (liga != null && isMastersRequest)
+                {
+                    return RedirectToAction("Details", "Turnir", new { id = turnir.ID });
+                }
                 return RedirectToAction("Index", "Home");
             }
 
@@ -315,6 +325,49 @@ namespace ePinPong.Controllers
             ViewBag.Lige = sveLigeSelectList;
 
             return View(turnir);
+        }
+
+        private async Task AutoRegistrirajIgraceLigeAsync(Liga liga, int turnirId)
+        {
+            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+            var regularniTurniriLiga = await _context.Turniri
+                .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo)
+                .Select(t => t.ID)
+                .ToListAsync();
+
+            if (!regularniTurniriLiga.Any())
+            {
+                return;
+            }
+
+            var korisniciIzLige = await _context.Registracije
+                .Where(r => regularniTurniriLiga.Contains(r.TurnirID))
+                .Select(r => r.KorisnikID)
+                .Distinct()
+                .ToListAsync();
+
+            var postojeciIds = await _context.Registracije
+                .Where(r => r.TurnirID == turnirId)
+                .Select(r => r.KorisnikID)
+                .ToHashSetAsync();
+
+            var noveRegistracije = korisniciIzLige
+                .Where(korisnikId => !postojeciIds.Contains(korisnikId))
+                .Select(korisnikId => new Registracija
+                {
+                    TurnirID = turnirId,
+                    KorisnikID = korisnikId,
+                    Odobren = true,
+                    DatumRegistracije = DateTime.Now,
+                    Sesir = 1
+                })
+                .ToList();
+
+            if (noveRegistracije.Any())
+            {
+                _context.Registracije.AddRange(noveRegistracije);
+                await _context.SaveChangesAsync();
+            }
         }
 
         // GET: /Turnir/Edit/5
@@ -332,6 +385,19 @@ namespace ePinPong.Controllers
             {
                 return Forbid();
             }
+
+            var returnUrl = Request.Query["returnUrl"].ToString();
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                returnUrl = Request.Headers["Referer"].ToString();
+            }
+
+            if (string.IsNullOrWhiteSpace(returnUrl) && turnir.LigaID.HasValue)
+            {
+                returnUrl = Url.Action("Details", "Liga", new { id = turnir.LigaID.Value });
+            }
+
+            ViewBag.ReturnUrl = returnUrl;
 
             ViewBag.StatusList = Enum.GetValues(typeof(StatusTurnira))
                 .Cast<StatusTurnira>()
@@ -406,15 +472,61 @@ namespace ePinPong.Controllers
         // POST: /Turnir/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> DeleteConfirmed(int id, string? returnUrl = null)
         {
-            var turnir = await _context.Turniri.FindAsync(id);
-            if (turnir != null)
+            var turnir = await _context.Turniri
+                .Include(t => t.Registracije)
+                .Include(t => t.Mecevi)
+                .Include(t => t.TurnirParovi)
+                .FirstOrDefaultAsync(t => t.ID == id);
+
+            if (turnir == null)
             {
-                _context.Turniri.Remove(turnir);
-                await _context.SaveChangesAsync();
+                return NotFound();
             }
+
+            var userId = _userManager.GetUserId(User);
+            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            if (turnir.Registracije.Any())
+            {
+                _context.Registracije.RemoveRange(turnir.Registracije);
+            }
+
+            if (turnir.Mecevi.Any())
+            {
+                _context.Mecevi.RemoveRange(turnir.Mecevi);
+            }
+
+            if (turnir.TurnirParovi.Any())
+            {
+                _context.TurnirParovi.RemoveRange(turnir.TurnirParovi);
+            }
+
+            _context.Turniri.Remove(turnir);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Turnir je uspješno obrisan!";
+
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                returnUrl = Request.Headers["Referer"].ToString();
+            }
+
+            if (string.IsNullOrWhiteSpace(returnUrl) && turnir.LigaID.HasValue)
+            {
+                returnUrl = Url.Action("Details", "Liga", new { id = turnir.LigaID.Value });
+            }
+
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
             return RedirectToAction("Index", "Home");
         }
 

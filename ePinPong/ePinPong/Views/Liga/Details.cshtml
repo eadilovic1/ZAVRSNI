@@ -74,11 +74,14 @@
                 {
                     if (canCreateMasters)
                     {
-                        <a asp-controller="Turnir" asp-action="Create" asp-route-ligaId="@Model.ID"
-                           class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
-                           title="Kreiraj završni Masters u ovoj ligi">
-                            <i class="bi bi-trophy-fill me-1"></i>Kreiraj Masters
-                        </a>
+                        <form asp-controller="Liga" asp-action="CreateMasters" asp-route-id="@Model.ID" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit"
+                                    class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
+                                    title="Kreiraj završni Masters u ovoj ligi">
+                                <i class="bi bi-trophy-fill me-1"></i>Kreiraj Masters
+                            </button>
+                        </form>
                     }
                     else if (canCreateRegular)
                     {

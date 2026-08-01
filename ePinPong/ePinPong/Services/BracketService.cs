@@ -31,28 +31,13 @@ namespace ePinPong.Services
         {
             var mecevi = new List<Mec>();
             int N = igracIds.Count;
-            if (N < 3 || N == 5) return mecevi;
+            if (N < 3) return mecevi;
 
-            // Calculate x (groups of 4) and y (groups of 3)
-            int x = 0;
-            int y = 0;
-            bool pronadjeno = false;
+            var groupSizes = GetGroupSizes(N);
+            if (groupSizes.Count == 0) return mecevi;
 
-            for (int candX = N / 4; candX >= 0; candX--)
-            {
-                int ostalo = N - (candX * 4);
-                if (ostalo % 3 == 0)
-                {
-                    x = candX;
-                    y = ostalo / 3;
-                    pronadjeno = true;
-                    break;
-                }
-            }
-
-            if (!pronadjeno) return mecevi;
-
-            int ukGrupa = x + y;
+            int ukGrupa = groupSizes.Count;
+            int groupsOf4 = groupSizes.Count(size => size == 4);
 
             // Read the pots from registrations
             var pot1 = new List<string>();
@@ -79,38 +64,36 @@ namespace ePinPong.Services
             for (int i = 0; i < ukGrupa; i++) grupeIgraca.Add(new List<string>());
 
             // Check if pot sizes are valid. If not, use fallback random distribution
-            if (pot1.Count == ukGrupa && pot2.Count == ukGrupa && pot3.Count == ukGrupa && pot4.Count == x)
+            if (pot1.Count == ukGrupa && pot2.Count == ukGrupa && pot3.Count == ukGrupa && pot4.Count == groupsOf4)
             {
-                // Shuffle each pot to make the draw random
                 var shuffledPot1 = pot1.OrderBy(a => rng.Next()).ToList();
                 var shuffledPot2 = pot2.OrderBy(a => rng.Next()).ToList();
                 var shuffledPot3 = pot3.OrderBy(a => rng.Next()).ToList();
                 var shuffledPot4 = pot4.OrderBy(a => rng.Next()).ToList();
 
-                // Draw for each group
                 for (int g = 0; g < ukGrupa; g++)
                 {
                     grupeIgraca[g].Add(shuffledPot1[g]);
                     grupeIgraca[g].Add(shuffledPot2[g]);
                     grupeIgraca[g].Add(shuffledPot3[g]);
-                    if (g < x)
+                    if (groupSizes[g] == 4)
                     {
-                        grupeIgraca[g].Add(shuffledPot4[g]);
+                        grupeIgraca[g].Add(shuffledPot4[0]);
+                        shuffledPot4.RemoveAt(0);
                     }
                 }
             }
             else
             {
-                // Fallback: completely random unseeded distribution
                 var shuffledIgracIds = igracIds.OrderBy(a => rng.Next()).ToList();
                 int igracIdx = 0;
-                for (int g = 0; g < x; g++)
-                    for (int i = 0; i < 4 && igracIdx < N; i++)
+                for (int g = 0; g < ukGrupa; g++)
+                {
+                    for (int i = 0; i < groupSizes[g] && igracIdx < N; i++)
+                    {
                         grupeIgraca[g].Add(shuffledIgracIds[igracIdx++]);
-
-                for (int g = x; g < ukGrupa; g++)
-                    for (int i = 0; i < 3 && igracIdx < N; i++)
-                        grupeIgraca[g].Add(shuffledIgracIds[igracIdx++]);
+                    }
+                }
             }
 
             DateTime pocetak = turnir.DatumPocetka;
@@ -1253,6 +1236,41 @@ namespace ePinPong.Services
             _ when pozicija <= 32 => 10,
             _ => 5
         };
+
+        private static List<int> GetGroupSizes(int playerCount)
+        {
+            if (playerCount < 3 || playerCount == 5)
+                return new List<int>();
+
+            int groupCount = (playerCount + 3) / 4;
+            int remainder = playerCount % 4;
+
+            if (remainder == 0)
+            {
+                return Enumerable.Repeat(4, groupCount).ToList();
+            }
+
+            if (remainder == 1)
+            {
+                // Convert the last three groups to size 3 to avoid a group of size 1.
+                return Enumerable.Repeat(4, groupCount - 3)
+                    .Concat(Enumerable.Repeat(3, 3))
+                    .ToList();
+            }
+
+            if (remainder == 2)
+            {
+                // Convert the last two groups to size 3.
+                return Enumerable.Repeat(4, groupCount - 2)
+                    .Concat(Enumerable.Repeat(3, 2))
+                    .ToList();
+            }
+
+            // remainder == 3
+            return Enumerable.Repeat(4, groupCount - 1)
+                .Concat(new[] { 3 })
+                .ToList();
+        }
 
         private class PlayerRecord
         {

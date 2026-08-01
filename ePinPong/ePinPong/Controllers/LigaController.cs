@@ -210,6 +210,60 @@ namespace ePinPong.Controllers
             return View(liga);
         }
 
+        // POST: /Liga/CreateMasters/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> CreateMasters(int id)
+        {
+            var liga = await _context.Lige
+                .Include(l => l.Turniri)
+                .FirstOrDefaultAsync(l => l.ID == id);
+
+            if (liga == null)
+            {
+                return NotFound();
+            }
+
+            if (!LigaTurnirHelper.CanCreateMasters(liga))
+            {
+                TempData["Error"] = "Masters za ovu ligu je već kreiran ili još nisu odigrana sva regularna kola.";
+                return RedirectToAction(nameof(Details), new { id = liga.ID });
+            }
+
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var mastersStart = DateTime.Today.AddDays(7).AddHours(10);
+            var mastersEnd = mastersStart.AddHours(8);
+
+            var turnir = new Turnir
+            {
+                Naziv = "ZAVRŠNI MASTERS",
+                Status = StatusTurnira.Planiran,
+                DatumPocetka = mastersStart,
+                DatumKraja = mastersEnd,
+                MaxIgraca = 64,
+                Lokacija = "Klupska Dvorana ePinPong",
+                Opis = $"Završni Masters turnir za {liga.Naziv}.",
+                LigaID = liga.ID,
+                Kolo = LigaTurnirHelper.GetMastersKolo(liga),
+                OrganizatorId = userId,
+                SlikaUrl = "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=1200&auto=format&fit=crop"
+            };
+
+            _context.Turniri.Add(turnir);
+            await _context.SaveChangesAsync();
+
+            await AutoRegistrirajIgraceLigeAsync(liga, turnir.ID);
+
+            TempData["Success"] = "Uspješno ste kreirali završni Masters turnir.";
+            return RedirectToAction("Details", "Turnir", new { id = turnir.ID });
+        }
+
         // POST: /Liga/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
@@ -230,6 +284,49 @@ namespace ePinPong.Controllers
                 TempData["Success"] = "Liga i svi njeni turniri su uspješno obrisani!";
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        private async Task AutoRegistrirajIgraceLigeAsync(Liga liga, int turnirId)
+        {
+            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+            var regularniTurniriLiga = await _context.Turniri
+                .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo)
+                .Select(t => t.ID)
+                .ToListAsync();
+
+            if (!regularniTurniriLiga.Any())
+            {
+                return;
+            }
+
+            var korisniciIzLige = await _context.Registracije
+                .Where(r => regularniTurniriLiga.Contains(r.TurnirID))
+                .Select(r => r.KorisnikID)
+                .Distinct()
+                .ToListAsync();
+
+            var postojeciIds = await _context.Registracije
+                .Where(r => r.TurnirID == turnirId)
+                .Select(r => r.KorisnikID)
+                .ToHashSetAsync();
+
+            var noveRegistracije = korisniciIzLige
+                .Where(korisnikId => !postojeciIds.Contains(korisnikId))
+                .Select(korisnikId => new Registracija
+                {
+                    TurnirID = turnirId,
+                    KorisnikID = korisnikId,
+                    Odobren = true,
+                    DatumRegistracije = DateTime.Now,
+                    Sesir = 1
+                })
+                .ToList();
+
+            if (noveRegistracije.Any())
+            {
+                _context.Registracije.AddRange(noveRegistracije);
+                await _context.SaveChangesAsync();
+            }
         }
 
         #region Pomoćne Metode
