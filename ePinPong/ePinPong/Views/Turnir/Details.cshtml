@@ -1898,26 +1898,25 @@
             
             <!-- Panel za dodavanje igrača (Organizator / Admin) -->
             <div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
-                <div class="card-header bg-dark-card-footer border-bottom border-warning p-4 d-flex align-items-center justify-content-between">
-                    <h5 class="text-warning fw-bold mb-0"><i class="bi bi-person-plus-fill me-2"></i>Dodaj igrača (Organizator)</h5>
+                <div class="card-header bg-dark-card-footer border-bottom border-warning p-4">
+                    <h5 class="text-warning fw-bold mb-0"><i class="bi bi-person-plus-fill me-2"></i>Dodaj igrača</h5>
+                </div>
+                <div class="card-body p-4">
                     @if (slobodniKorisniciList != null && slobodniKorisniciList.Any())
                     {
-                        <div class="d-flex align-items-center gap-3">
+                        <!-- Kontrole za grupnu prijavu -->
+                        <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="form-check mb-0 d-flex align-items-center">
                                 <input type="checkbox" class="form-check-input me-1" id="selectAllFreePlayers" style="cursor: pointer;" />
                                 <label class="form-check-label text-white-50 small" for="selectAllFreePlayers" style="cursor: pointer; user-select: none;">Označi sve</label>
                             </div>
                             <button type="submit" form="bulkRegisterForm" id="btnBulkRegister"
-                                    class="btn btn-warning btn-sm px-3 fw-bold d-none"
-                                    onclick="return confirm('Da li ste sigurni da želite prijaviti označene igrače na turnir?');">
+                                    class="btn btn-warning btn-sm px-3 fw-bold d-none">
                                 <i class="bi bi-person-check-fill me-1"></i> Prijavi označene (<span id="selectedFreePlayersCount">0</span>)
                             </button>
+                            <span id="bulkRegisterFullMsg" class="d-none text-danger small fw-semibold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Turnir je popunjen!</span>
                         </div>
-                    }
-                </div>
-                <div class="card-body p-4">
-                    @if (slobodniKorisniciList != null && slobodniKorisniciList.Any())
-                    {
+
                         <form asp-action="DodajViseIgraca" method="post" id="bulkRegisterForm" class="mb-4 pb-4 border-bottom border-dark-glow">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="turnirId" value="@Model.ID" />
@@ -1945,6 +1944,9 @@
                                         </label>
                                     </div>
                                 }
+                                <div id="noMatchingFreePlayersMsg" class="d-none text-center text-muted p-3 small">
+                                    <i class="bi bi-search me-1"></i> Nema igrača koji odgovaraju pretrazi.
+                                </div>
                             </div>
                         </form>
                     }
@@ -1953,7 +1955,7 @@
                     <form asp-action="DodajNovogGosta" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="turnirId" value="@Model.ID" />
-                        <label class="form-label text-white fw-semibold small d-block mb-3">Ili kreiraj novog gosta (nema profil):</label>
+                        <label class="form-label text-white fw-semibold small d-block mb-3">Kreiraj novog gosta:</label>
                         <div class="mb-3">
                             <input type="text" name="ime" placeholder="Ime igrača..." class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" required />
                         </div>
@@ -1971,20 +1973,8 @@
 
         <!-- Spisak registrovanih igrača -->
         <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
-            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
                 <h5 class="text-white fw-bold mb-0"><i class="bi bi-people-fill text-orange me-2"></i>Prijavljeni igrači (@Model.Registracije.Count)</h5>
-                @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any() && Model.Registracije.Any())
-                {
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="form-check mb-0 d-flex align-items-center">
-                            <input type="checkbox" class="form-check-input me-1" id="selectAllPlayers" style="cursor: pointer;" />
-                            <label class="form-check-label text-white-50 small" for="selectAllPlayers" style="cursor: pointer; user-select: none;">Označi sve</label>
-                        </div>
-                        <button type="submit" form="bulkUnregisterForm" id="btnBulkUnregister" class="btn btn-danger btn-sm px-3 fw-bold d-none" onclick="return confirm('Da li ste sigurni da želite odjaviti označene igrače sa turnira?');">
-                            <i class="bi bi-trash-fill me-1"></i> Odjavi označene (<span id="selectedPlayersCount">0</span>)
-                        </button>
-                    </div>
-                }
             </div>
             <div class="card-body p-4">
                 @if (!Model.Registracije.Any())
@@ -1995,6 +1985,19 @@
                 }
                 else
                 {
+                    @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any() && Model.Registracije.Any())
+                    {
+                        <!-- Kontrole za grupnu odjavu - ispod naslova -->
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="form-check mb-0 d-flex align-items-center">
+                                <input type="checkbox" class="form-check-input me-1" id="selectAllPlayers" style="cursor: pointer;" />
+                                <label class="form-check-label text-white-50 small" for="selectAllPlayers" style="cursor: pointer; user-select: none;">Označi sve</label>
+                            </div>
+                            <button type="submit" form="bulkUnregisterForm" id="btnBulkUnregister" class="btn btn-danger btn-sm px-3 fw-bold d-none" onclick="return confirm('Da li ste sigurni da želite odjaviti označene igrače sa turnira?');">
+                                <i class="bi bi-trash-fill me-1"></i> Odjavi označene (<span id="selectedPlayersCount">0</span>)
+                            </button>
+                        </div>
+                    }
                     <form asp-controller="Turnir" asp-action="UkloniViseIgraca" method="post" id="bulkUnregisterForm">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="turnirId" value="@Model.ID" />
@@ -2111,17 +2114,48 @@
             function getVisibleFreeCbs() {
                 return Array.from(document.querySelectorAll(".free-player-checkbox")).filter(cb => {
                     const row = cb.closest(".free-player-row");
-                    return row && row.style.display !== "none";
+                    return row && !row.classList.contains("d-none") && row.style.display !== "none";
                 });
+            }
+
+            const maxIgraca = @Model.MaxIgraca;
+            const brRegistrovanih = @Model.Registracije.Count;
+            const slobodnaMjesta = maxIgraca - brRegistrovanih;
+            const turnirPopunjen = slobodnaMjesta <= 0;
+            const bulkFullMsg = document.getElementById("bulkRegisterFullMsg");
+
+            // Toast funkcija - prikazuje poruku kao alert na vrhu stranice
+            function showJsToast(message, type) {
+                const alertClass = type === "warning" ? "alert-warning" : "alert-danger";
+                const iconClass  = type === "warning" ? "bi-exclamation-circle-fill" : "bi-exclamation-triangle-fill";
+                const toast = document.createElement("div");
+                toast.className = `alert ${alertClass} alert-dismissible fade show custom-alert shadow-lg`;
+                toast.setAttribute("role", "alert");
+                toast.innerHTML = `<i class="bi ${iconClass} me-2"></i>${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+                // Ubaci na isto mjesto gdje TempData poruke idu (vrh main sadržaja)
+                const main = document.querySelector("main");
+                if (main) main.insertBefore(toast, main.firstChild);
+                // Auto-sakrij nakon 6 sekundi
+                setTimeout(() => {
+                    const bsAlert = bootstrap.Alert.getOrCreateInstance(toast);
+                    if (bsAlert) bsAlert.close();
+                }, 6000);
             }
 
             function updateBulkRegisterState() {
                 const checkedCount = Array.from(document.querySelectorAll(".free-player-checkbox:checked")).length;
                 if (countSpanReg) countSpanReg.textContent = checkedCount;
 
-                if (btnBulkReg) {
-                    if (checkedCount > 0) btnBulkReg.classList.remove("d-none");
-                    else btnBulkReg.classList.add("d-none");
+                // Sakrij "popunjen" poruku i dugme po defaultu
+                if (bulkFullMsg) bulkFullMsg.classList.add("d-none");
+                if (btnBulkReg) btnBulkReg.classList.add("d-none");
+
+                if (checkedCount > 0) {
+                    if (turnirPopunjen) {
+                        if (bulkFullMsg) bulkFullMsg.classList.remove("d-none");
+                    } else {
+                        if (btnBulkReg) btnBulkReg.classList.remove("d-none");
+                    }
                 }
 
                 if (selectAllFreeCb) {
@@ -2130,6 +2164,21 @@
                     selectAllFreeCb.checked = visibleChecked === visibleCbs.length && visibleCbs.length > 0;
                     selectAllFreeCb.indeterminate = visibleChecked > 0 && visibleChecked < visibleCbs.length;
                 }
+            }
+
+            // Intercept submit – traži potvrdu u skočnom prozoru ako je označeno više igrača nego što ima slobodnih mjesta
+            const bulkRegForm = document.getElementById("bulkRegisterForm");
+            if (bulkRegForm) {
+                bulkRegForm.addEventListener("submit", function (e) {
+                    const checkedCount = Array.from(document.querySelectorAll(".free-player-checkbox:checked")).length;
+                    if (checkedCount > slobodnaMjesta) {
+                        const poruka = `Pokušavate prijaviti ${checkedCount} igrača, ali na turniru ima samo ${slobodnaMjesta} slobodnih mjesta (maksimalan kapacitet: ${maxIgraca}). Prijavit će se samo prvih ${slobodnaMjesta} označenih igrača.`;
+                        if (!confirm(poruka)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+                });
             }
 
             if (selectAllFreeCb) {
@@ -2147,20 +2196,40 @@
             // Filter / pretraga slobodnih igrača
             const filterInput = document.getElementById("filterFreePlayersInput");
             if (filterInput) {
+                filterInput.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+
                 filterInput.addEventListener("input", function () {
                     const query = this.value.toLowerCase().trim();
+                    let matchCount = 0;
                     document.querySelectorAll(".free-player-row").forEach(row => {
                         const label = row.querySelector("label[data-search]");
-                        const searchVal = label ? label.getAttribute("data-search") : "";
-                        row.style.display = searchVal.includes(query) ? "" : "none";
-                    });
-                    // Deselect hidden checkboxes after filter change
-                    document.querySelectorAll(".free-player-row").forEach(row => {
-                        if (row.style.display === "none") {
+                        const searchVal = label ? (label.getAttribute("data-search") || label.textContent).toLowerCase() : row.textContent.toLowerCase();
+                        const isMatch = !query || searchVal.includes(query);
+                        
+                        if (isMatch) {
+                            row.classList.remove("d-none");
+                            matchCount++;
+                        } else {
+                            row.classList.add("d-none");
                             const cb = row.querySelector(".free-player-checkbox");
                             if (cb) cb.checked = false;
                         }
                     });
+
+                    const noMatchMsg = document.getElementById("noMatchingFreePlayersMsg");
+                    if (noMatchMsg) {
+                        if (matchCount === 0) {
+                            noMatchMsg.classList.remove("d-none");
+                        } else {
+                            noMatchMsg.classList.add("d-none");
+                        }
+                    }
+
                     updateBulkRegisterState();
                 });
             }

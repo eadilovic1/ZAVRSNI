@@ -717,27 +717,30 @@ namespace ePinPong.Controllers
                 return RedirectToAction(nameof(Details), new { id = turnirId });
             }
 
-            var slobodnaMjesta = turnir.MaxIgraca - turnir.Registracije.Count;
+            var maxIgraca = turnir.MaxIgraca;
+            var trenutnoPrijavljenih = turnir.Registracije.Count;
+            var slobodnaMjesta = maxIgraca - trenutnoPrijavljenih;
+
             if (slobodnaMjesta <= 0)
             {
-                TempData["Error"] = "Turnir je već popunjen.";
+                TempData["Error"] = $"Turnir je već popunjen! Maksimalan kapacitet turnira je {maxIgraca} igrača.";
                 return RedirectToAction(nameof(Details), new { id = turnirId });
             }
 
             // Filtriraj samo one koji već nisu prijavljeni
             var vecPrijavljeniIds = turnir.Registracije.Select(r => r.KorisnikID).ToHashSet();
-            var korisniciZaPrijavu = korisnikIds
-                .Where(id => !vecPrijavljeniIds.Contains(id))
-                .Take(slobodnaMjesta)
-                .ToList();
+            var noviZaPrijavu = korisnikIds.Where(id => !vecPrijavljeniIds.Contains(id)).ToList();
 
-            if (!korisniciZaPrijavu.Any())
+            if (!noviZaPrijavu.Any())
             {
                 TempData["Error"] = "Svi označeni igrači su već prijavljeni na ovaj turnir.";
                 return RedirectToAction(nameof(Details), new { id = turnirId });
             }
 
-            var novaRegistracije = korisniciZaPrijavu.Select(kId => new Registracija
+            int zatrazenoNovi = noviZaPrijavu.Count;
+            var korisniciZaDodavanje = noviZaPrijavu.Take(slobodnaMjesta).ToList();
+
+            var novaRegistracije = korisniciZaDodavanje.Select(kId => new Registracija
             {
                 TurnirID = turnirId,
                 KorisnikID = kId,
@@ -749,12 +752,16 @@ namespace ePinPong.Controllers
             await _context.SaveChangesAsync();
 
             int brojPrijavljenih = novaRegistracije.Count;
-            int preskoceni = korisnikIds.Count - korisniciZaPrijavu.Count;
+            int preskoceni = zatrazenoNovi - brojPrijavljenih;
 
-            if (preskoceni > 0)
-                TempData["Success"] = $"Uspješno prijavljeno {brojPrijavljenih} igrača. {preskoceni} igrač(a) je preskočeno (već prijavljeni ili popunjen turnir).";
+            if (zatrazenoNovi > slobodnaMjesta || preskoceni > 0)
+            {
+                TempData["Warning"] = $"Pokušali ste dodati {zatrazenoNovi} novih igrača na turnir sa {slobodnaMjesta} slobodnih mjesta (maksimalan kapacitet: {maxIgraca}). Uspješno je dodano prvih {brojPrijavljenih} igrača, dok je {preskoceni} igrač(a) preskočeno!";
+            }
             else
+            {
                 TempData["Success"] = $"Uspješno je prijavljeno {brojPrijavljenih} igrača na turnir!";
+            }
 
             return RedirectToAction(nameof(Details), new { id = turnirId });
         }
