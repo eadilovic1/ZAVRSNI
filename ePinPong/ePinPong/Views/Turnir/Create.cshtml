@@ -198,4 +198,23 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const ligaSelect = document.getElementById("LigaID");
+            const datumPocetkaInput = document.getElementById("DatumPocetka");
+            const datumKrajaInput = document.getElementById("DatumKraja");
+            const ligaDatesJson = @Html.Raw(ViewBag.LigaDatesJson ?? "{}");
+
+            if (ligaSelect && datumPocetkaInput && datumKrajaInput && ligaDatesJson) {
+                ligaSelect.addEventListener("change", function () {
+                    const selectedLigaId = this.value || "";
+                    const dates = ligaDatesJson[selectedLigaId];
+                    if (dates && dates.start && dates.end) {
+                        datumPocetkaInput.value = dates.start;
+                        datumKrajaInput.value = dates.end;
+                    }
+                });
+            }
+        });
+    </script>
 }

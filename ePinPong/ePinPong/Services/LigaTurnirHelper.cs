@@ -34,10 +34,57 @@ namespace ePinPong.Services
         public static bool CanCreateAnyTurnir(Liga liga)
             => CanCreateRegular(liga) || CanCreateMasters(liga);
 
+        public static DateTime GetDefaultStandaloneTurnirDatum()
+        {
+            var today = DateTime.Today;
+            var candidate = GetLastSundayOfMonth(today.Year, today.Month);
+            if (candidate < today)
+            {
+                var nextMonth = today.AddMonths(1);
+                candidate = GetLastSundayOfMonth(nextMonth.Year, nextMonth.Month);
+            }
+            return candidate;
+        }
+
+        public static DateTime GetNextTurnirDatumForLiga(Liga liga)
+        {
+            if (liga == null) throw new ArgumentNullException(nameof(liga));
+
+            if (liga.Turniri != null && liga.Turniri.Any())
+            {
+                var lastTurnirDate = liga.Turniri.Max(t => t.DatumPocetka);
+                var targetMonth = new DateTime(lastTurnirDate.Year, lastTurnirDate.Month, 1).AddMonths(1);
+                return GetLastSundayOfMonth(targetMonth.Year, targetMonth.Month);
+            }
+            else
+            {
+                var targetMonth = new DateTime(liga.DatumPocetka.Year, liga.DatumPocetka.Month, 1);
+                var candidate = GetLastSundayOfMonth(targetMonth.Year, targetMonth.Month);
+                if (candidate < DateTime.Today)
+                {
+                    var today = DateTime.Today;
+                    var nextMonth = new DateTime(today.Year, today.Month, 1);
+                    candidate = GetLastSundayOfMonth(nextMonth.Year, nextMonth.Month);
+                    if (candidate < today)
+                    {
+                        nextMonth = nextMonth.AddMonths(1);
+                        candidate = GetLastSundayOfMonth(nextMonth.Year, nextMonth.Month);
+                    }
+                }
+                return candidate;
+            }
+        }
+
         public static DateTime GetRegularTurnirDatum(Liga liga, int kolo)
         {
             if (liga == null) throw new ArgumentNullException(nameof(liga));
             if (kolo < 1) throw new ArgumentOutOfRangeException(nameof(kolo));
+
+            // Ako je već dodijeljeno kolo i postoje turniri u ligi, koristimo datum 1 mjesec nakon zadnjeg turnira
+            if (liga.Turniri != null && liga.Turniri.Any())
+            {
+                return GetNextTurnirDatumForLiga(liga);
+            }
 
             var monthBase = new DateTime(liga.DatumPocetka.Year, liga.DatumPocetka.Month, 1);
             var targetMonth = monthBase.AddMonths(kolo - 1);
@@ -54,21 +101,7 @@ namespace ePinPong.Services
 
         public static DateTime GetMastersTurnirDatum(Liga liga)
         {
-            if (liga == null) throw new ArgumentNullException(nameof(liga));
-
-            DateTime lastRegularDate;
-            var regularniTurniri = GetRegularniTurniri(liga).ToList();
-            if (regularniTurniri.Any())
-            {
-                lastRegularDate = regularniTurniri.Max(t => t.DatumPocetka);
-            }
-            else
-            {
-                lastRegularDate = GetRegularTurnirDatum(liga, liga.BrojRegularnihTurnira);
-            }
-
-            var targetMonth = lastRegularDate.Date.AddMonths(1);
-            return GetLastSundayOfMonth(targetMonth.Year, targetMonth.Month);
+            return GetNextTurnirDatumForLiga(liga);
         }
 
         public static int? GetSljedeceKolo(Liga liga)
@@ -87,7 +120,7 @@ namespace ePinPong.Services
             return null;
         }
 
-        private static DateTime GetLastSundayOfMonth(int year, int month)
+        public static DateTime GetLastSundayOfMonth(int year, int month)
         {
             var lastDay = new DateTime(year, month, DateTime.DaysInMonth(year, month));
             int diff = (7 + (int)lastDay.DayOfWeek - (int)DayOfWeek.Sunday) % 7;

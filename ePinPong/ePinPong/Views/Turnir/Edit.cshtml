@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Uredi turnir";
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    var canDelete = User.IsInRole("Administrator") || Model.OrganizatorId == currentUserId;
+    var canDelete = User.IsInRole("Administrator");
     var returnUrl = ViewBag.ReturnUrl as string;
 }
 

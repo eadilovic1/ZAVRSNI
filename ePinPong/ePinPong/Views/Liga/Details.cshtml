@@ -42,22 +42,15 @@
 
                 @if (User.IsInRole("Administrator") || isAdminOrOrganizator)
                 {
-                    <div class="mt-4 p-3 bg-dark-input border border-danger rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="mt-4 p-3 bg-dark-card border border-warning rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
-                            <span class="text-danger fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Admin Panel Lige</span>
-                            <small class="d-block text-white-50">Brisanje lige će obrisati sve povezane turnire i mečeve!</small>
+                            <span class="text-warning fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Organizatorski panel</span>
+                            <small class="d-block text-white-50">Kao organizator možete mijenjati podatke lige i upravljati turnirima.</small>
                         </div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-outline-light-glow btn-sm fw-bold px-3 py-2">
-                                <i class="bi bi-pencil-fill me-2"></i>Uredi Ligu
+                        <div>
+                            <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-warning fw-bold px-4 py-2">
+                                <i class="bi bi-pencil-square me-2"></i>Uredi Ligu
                             </a>
-                            @if (User.IsInRole("Administrator"))
-                            {
-                                <form asp-action="Delete" asp-route-id="@Model.ID" method="post" onsubmit="return confirm('Obrisat ćete i turnire ako nastavite. Jeste li sigurni da želite obrisati ligu?');">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-3 py-2"><i class="bi bi-trash3-fill me-2"></i>Obriši Ligu</button>
-                                </form>
-                            }
                         </div>
                     </div>
                 }

@@ -184,13 +184,15 @@
 
                 @if (isOrganizator)
                 {
-                    <div class="mt-4 p-3 bg-dark-card border border-warning rounded-3 d-flex align-items-center justify-content-between">
+                    <div class="mt-4 p-3 bg-dark-card border border-warning rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
                             <span class="text-warning fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Organizatorski panel</span>
                             <small class="d-block text-white-50">Kao organizator možete mijenjati podatke i upravljati mečevima.</small>
                         </div>
                         <div>
-                            <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-warning fw-bold px-4 py-2"><i class="bi bi-pencil-square me-2"></i>Uredi turnir</a>
+                            <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-warning fw-bold px-4 py-2">
+                                <i class="bi bi-pencil-square me-2"></i>Uredi turnir
+                            </a>
                         </div>
                     </div>
                 }

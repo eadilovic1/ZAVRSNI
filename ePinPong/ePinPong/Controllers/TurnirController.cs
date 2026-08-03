@@ -117,28 +117,41 @@ namespace ePinPong.Controllers
         [Authorize(Roles = "Administrator,Organizator")]
         public IActionResult Create(int? ligaId = null)
         {
-            var lige = _context.Lige.ToList();
+            var lige = _context.Lige.Include(l => l.Turniri).ToList();
             var ligeSelectList = lige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv }).ToList();
             ligeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
             ViewBag.Lige = ligeSelectList;
 
-            // Defaultni datumi: posljednja nedjelja u tekućem mjesecu
-            var now = DateTime.Now;
-            var lastDay = new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month));
-            int dayOfWeek = (int)lastDay.DayOfWeek; // Sunday = 0
-            var lastSunday = lastDay.AddDays(-dayOfWeek);
+            var standaloneSunday = LigaTurnirHelper.GetDefaultStandaloneTurnirDatum();
+            var standaloneStartStr = standaloneSunday.AddHours(9).AddMinutes(30).ToString("yyyy-MM-ddTHH:mm");
+            var standaloneEndStr = standaloneSunday.AddHours(15).ToString("yyyy-MM-ddTHH:mm");
+
+            var ligaDates = new Dictionary<string, object>
+            {
+                { "", new { start = standaloneStartStr, end = standaloneEndStr } }
+            };
+
+            foreach (var l in lige)
+            {
+                var lSunday = LigaTurnirHelper.GetNextTurnirDatumForLiga(l);
+                var lStart = lSunday.AddHours(9).AddMinutes(30).ToString("yyyy-MM-ddTHH:mm");
+                var lEnd = lSunday.AddHours(15).ToString("yyyy-MM-ddTHH:mm");
+                ligaDates[l.ID.ToString()] = new { start = lStart, end = lEnd };
+            }
+
+            ViewBag.LigaDatesJson = System.Text.Json.JsonSerializer.Serialize(ligaDates);
 
             var model = new Turnir
             {
-                DatumPocetka = lastSunday.Date.AddHours(9).AddMinutes(30),
-                DatumKraja   = lastSunday.Date.AddHours(15)
+                DatumPocetka = standaloneSunday.Date.AddHours(9).AddMinutes(30),
+                DatumKraja   = standaloneSunday.Date.AddHours(15)
             };
 
             if (ligaId.HasValue)
             {
                 model.LigaID = ligaId;
                 ViewBag.LockedLigaId = ligaId.Value;
-                var liga = _context.Lige.Find(ligaId.Value);
+                var liga = lige.FirstOrDefault(l => l.ID == ligaId.Value);
                 ViewBag.LockedLigaNaziv = liga?.Naziv ?? "Odabrana liga";
 
                 if (liga != null)
@@ -147,12 +160,13 @@ namespace ePinPong.Controllers
                     ViewBag.CanCreateMasters = LigaTurnirHelper.CanCreateMasters(liga);
                     ViewBag.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
 
+                    var plannedDate = LigaTurnirHelper.GetNextTurnirDatumForLiga(liga);
+                    model.DatumPocetka = plannedDate.AddHours(9).AddMinutes(30);
+                    model.DatumKraja = plannedDate.AddHours(15);
+
                     var nextRegularKolo = LigaTurnirHelper.GetSljedeceKolo(liga);
                     if (nextRegularKolo.HasValue && LigaTurnirHelper.CanCreateRegular(liga))
                     {
-                        var plannedDate = LigaTurnirHelper.GetRegularTurnirDatum(liga, nextRegularKolo.Value);
-                        model.DatumPocetka = plannedDate.AddHours(9).AddMinutes(30);
-                        model.DatumKraja = plannedDate.AddHours(15);
                         model.Kolo = nextRegularKolo.Value;
                     }
 
@@ -469,7 +483,7 @@ namespace ePinPong.Controllers
         // POST: /Turnir/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> DeleteConfirmed(int id, string? returnUrl = null)
         {
             var turnir = await _context.Turniri
@@ -483,8 +497,7 @@ namespace ePinPong.Controllers
                 return NotFound();
             }
 
-            var userId = _userManager.GetUserId(User);
-            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            if (!User.IsInRole("Administrator"))
             {
                 return Forbid();
             }

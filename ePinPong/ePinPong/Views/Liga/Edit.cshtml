@@ -13,7 +13,7 @@
                     <p class="text-white-50 small mb-0 mt-1">Promijenite osnovne postavke lige i broj regularnih turnira.</p>
                 </div>
                 <div class="card-body p-4">
-                    <form asp-action="Edit" method="post">
+                    <form asp-action="Edit" method="post" id="edit-liga-form">
                         @Html.AntiForgeryToken()
                         <input asp-for="ID" type="hidden" />
 
@@ -47,12 +47,21 @@
                             <small class="text-muted d-block mt-1">Minimalna vrijednost je @minBrojRegularnihTurnira jer je već odigrano toliko regularnih kola.</small>
                             <span asp-validation-for="BrojRegularnihTurnira" class="text-danger small"></span>
                         </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-orange text-white fw-bold px-4 py-2 flex-grow-1">Spremi Promjene</button>
-                            <a asp-action="Details" asp-route-id="@Model.ID" class="btn btn-outline-light-glow px-4 py-2">Odustani</a>
-                        </div>
                     </form>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-dark-glow">
+                        <a asp-action="Details" asp-route-id="@Model.ID" class="btn btn-outline-light-glow text-white fw-bold"><i class="bi bi-arrow-left me-2"></i>Nazad</a>
+                        <div class="d-flex gap-2">
+                            @if (User.IsInRole("Administrator"))
+                            {
+                                <form asp-action="Delete" asp-route-id="@Model.ID" method="post" onsubmit="return confirm('Obrisat ćete ligu i sve njene turnire. Jeste li sigurni da želite obrisati ligu?');" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-danger px-4 py-2 fw-bold"><i class="bi bi-trash3-fill me-2"></i>Obriši Ligu</button>
+                                </form>
+                            }
+                            <button type="submit" form="edit-liga-form" class="btn btn-orange px-4 py-2 text-white fw-bold shadow-glow">Spremi promjene <i class="bi bi-save ms-2"></i></button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
