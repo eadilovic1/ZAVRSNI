@@ -76,13 +76,13 @@
 
                         <div class="col-12">
                             <label asp-for="Lokacija" class="form-label text-white fw-semibold">Lokacija / Dvorana</label>
-                            <input asp-for="Lokacija" class="form-control bg-dark-input border-dark-glow text-white" placeholder="Npr. Dvorana KSC, Sarajevo..." />
+                            <input asp-for="Lokacija" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="Npr. Dvorana KSC, Sarajevo..." />
                             <span asp-validation-for="Lokacija" class="text-danger small"></span>
                         </div>
 
                         <div class="col-12">
                             <label asp-for="SlikaUrl" class="form-label text-white fw-semibold">URL Slike turnira (Opcionalno)</label>
-                            <input asp-for="SlikaUrl" class="form-control bg-dark-input border-dark-glow text-white" placeholder="https://example.com/slika.jpg..." />
+                            <input asp-for="SlikaUrl" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="https://example.com/slika.jpg..." />
                             <span asp-validation-for="SlikaUrl" class="text-danger small"></span>
                         </div>
 
@@ -181,7 +181,7 @@
 
                         <div class="col-12">
                             <label asp-for="Opis" class="form-label text-white fw-semibold">Opis i pravila turnira</label>
-                            <textarea asp-for="Opis" rows="4" class="form-control bg-dark-input border-dark-glow text-white" placeholder="Unesite detaljan opis turnira, pravila, učešće, nagrade..."></textarea>
+                            <textarea asp-for="Opis" rows="4" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="Unesite detaljan opis turnira, pravila, učešće, nagrade..."></textarea>
                             <span asp-validation-for="Opis" class="text-danger small"></span>
                         </div>
                     </div>

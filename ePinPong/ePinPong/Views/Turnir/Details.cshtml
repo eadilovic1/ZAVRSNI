@@ -105,12 +105,12 @@
                 }
                 <div class="banner-overlay p-4 d-flex align-items-end justify-content-between">
                     <div>
-                        <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-2 me-1">
+                        <span class="badge bg-orange text-white fw-bold mb-2 rounded-pill px-3 py-2 me-1 shadow-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,.5);">
                             @if (Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Singl) { <i class="bi bi-person-fill me-1"></i>@("Samo Singl") }
                             else if (Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Dubl) { <i class="bi bi-people-fill me-1"></i>@("Samo Dubl") }
                             else { <i class="bi bi-diagram-2-fill me-1"></i>@("Singl + Dubl") }
                         </span>
-                        <span class="badge bg-dark border border-dark-glow text-white-50 fw-bold mb-2 rounded-pill px-3 py-2">
+                        <span class="badge bg-dark border border-dark-glow text-white fw-bold mb-2 rounded-pill px-3 py-2">
                             @if (Model.SistemTurnira == ePinPong.Models.SistemTurnira.SingleElimination) { <i class="bi bi-trophy me-1 text-warning"></i>@("Single Elimination") }
                             else if (Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleElimination) { <i class="bi bi-diagram-3-fill me-1 text-info"></i>@("Double Elimination") }
                             else { <i class="bi bi-patch-check-fill me-1 text-orange"></i>@("Double Elimination + Utješni") }
@@ -1922,7 +1922,7 @@
 
                             <!-- Filter pretraga -->
                             <div class="mb-2">
-                                <input type="text" id="filterFreePlayersInput" class="form-control form-control-sm bg-dark-input border-dark-glow text-white"
+                                <input type="text" id="filterFreePlayersInput" class="form-control form-control-sm bg-dark-input border-dark-glow text-white placeholder-muted"
                                        placeholder="🔍 Pretraži igrače..." autocomplete="off" />
                             </div>
 
@@ -1953,13 +1953,13 @@
                         <input type="hidden" name="turnirId" value="@Model.ID" />
                         <label class="form-label text-white fw-semibold small d-block mb-3">Ili kreiraj novog gosta (nema profil):</label>
                         <div class="mb-3">
-                            <input type="text" name="ime" placeholder="Ime igrača..." class="form-control bg-dark-input border-dark-glow text-white" required />
+                            <input type="text" name="ime" placeholder="Ime igrača..." class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" required />
                         </div>
                         <div class="mb-3">
-                            <input type="text" name="prezime" placeholder="Prezime igrača..." class="form-control bg-dark-input border-dark-glow text-white" required />
+                            <input type="text" name="prezime" placeholder="Prezime igrača..." class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" required />
                         </div>
                         <div class="mb-3">
-                            <input type="text" name="grad" placeholder="Grad..." class="form-control bg-dark-input border-dark-glow text-white" />
+                            <input type="text" name="grad" placeholder="Grad..." class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" />
                         </div>
                         <button type="submit" class="btn btn-outline-warning w-100 fw-bold"><i class="bi bi-person-plus"></i> Kreiraj i dodaj gosta</button>
                     </form>
