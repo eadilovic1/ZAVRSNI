@@ -73,81 +73,95 @@
                         <div class="col-12 my-3">
                             <div class="p-4 bg-dark-input border border-dark-glow rounded-4">
                                 <h5 class="text-white fw-bold mb-3"><i class="bi bi-sliders text-orange me-2"></i>Format i Sistem Turnira</h5>
-                                
-                                <!-- 1. Tip Takmičenja -->
-                                <div class="mb-4">
-                                    <label class="form-label text-white fw-semibold mb-2 d-block">Tip Takmičenja</label>
-                                    <div class="row g-2">
-                                        <div class="col-12 col-md-6">
-                                            <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSingl" value="Singl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Singl ? "checked" : "") autocomplete="off">
-                                            <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="tipSingl">
-                                                <div class="d-flex align-items-center">
-                                                    <i class="bi bi-person-fill text-orange fs-3 me-3"></i>
-                                                    <div>
-                                                        <strong class="d-block text-white">Samo Singl</strong>
-                                                        <small class="text-white-50">Turnir se igra pojedinačno</small>
-                                                    </div>
-                                                </div>
-                                            </label>
-                                        </div>
 
-                                        <div class="col-12 col-md-6">
-                                            <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSinglIDubl" value="SinglIDubl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.SinglIDubl ? "checked" : "") autocomplete="off">
-                                            <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="tipSinglIDubl">
-                                                <div class="d-flex align-items-center">
-                                                    <i class="bi bi-diagram-2-fill text-orange fs-3 me-3"></i>
-                                                    <div>
-                                                        <strong class="d-block text-white">Singl + Dubl</strong>
-                                                        <small class="text-white-50">Pojedinačno i u parovima</small>
+                                @{
+                                    var isMastersTurnir = (ViewBag.IsMasters as bool? == true) || (Model.Liga != null && Model.Kolo.HasValue && Model.Kolo.Value == ePinPong.Services.LigaTurnirHelper.GetMastersKolo(Model.Liga));
+                                }
+                                @if (isMastersTurnir)
+                                {
+                                    <div class="p-4 bg-dark-card border border-warning rounded-4 text-center">
+                                        <i class="bi bi-trophy-fill text-warning display-4 mb-2 d-block"></i>
+                                        <h4 class="text-white fw-bold mb-1">Završni masters turnir</h4>
+                                        <p class="text-white-50 small mb-0">Format i sistem takmičenja za Masters su unaprijed definisani rang listom lige i pravilima završnice.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- 1. Tip Takmičenja -->
+                                    <div class="mb-4">
+                                        <label class="form-label text-white fw-semibold mb-2 d-block">Tip Takmičenja</label>
+                                        <div class="row g-2">
+                                            <div class="col-12 col-md-6">
+                                                <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSingl" value="Singl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Singl ? "checked" : "") autocomplete="off">
+                                                <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="tipSingl">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="bi bi-person-fill text-orange fs-3 me-3"></i>
+                                                        <div>
+                                                            <strong class="d-block text-white">Samo Singl</strong>
+                                                            <small class="text-white-50">Turnir se igra pojedinačno</small>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </label>
+                                                </label>
+                                            </div>
+
+                                            <div class="col-12 col-md-6">
+                                                <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSinglIDubl" value="SinglIDubl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.SinglIDubl ? "checked" : "") autocomplete="off">
+                                                <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="tipSinglIDubl">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="bi bi-diagram-2-fill text-orange fs-3 me-3"></i>
+                                                        <div>
+                                                            <strong class="d-block text-white">Singl + Dubl</strong>
+                                                            <small class="text-white-50">Pojedinačno i u parovima</small>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- 2. Sistem Turnira / Format Završnice -->
-                                <div>
-                                    <label class="form-label text-white fw-semibold mb-2 d-block">Sistem Turnira (Format Završnice)</label>
-                                    <div class="row g-2">
-                                        <div class="col-12 col-lg-4">
-                                            <input type="radio" class="btn-check" name="SistemTurnira" id="sysSingle" value="SingleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.SingleElimination ? "checked" : "") autocomplete="off">
-                                            <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysSingle">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="bi bi-trophy text-warning fs-3 me-3 mt-1"></i>
-                                                    <div>
-                                                        <strong class="d-block text-white">Single Elimination</strong>
-                                                        <small class="text-white-50 d-block mt-1">Grupna faza + Završnica. Bez razigravanja i utješnog.</small>
+                                    <!-- 2. Sistem Turnira / Format Završnice -->
+                                    <div>
+                                        <label class="form-label text-white fw-semibold mb-2 d-block">Sistem Turnira (Format Završnice)</label>
+                                        <div class="row g-2">
+                                            <div class="col-12 col-lg-4">
+                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysSingle" value="SingleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.SingleElimination ? "checked" : "") autocomplete="off">
+                                                <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysSingle">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="bi bi-trophy text-warning fs-3 me-3 mt-1"></i>
+                                                        <div>
+                                                            <strong class="d-block text-white">Single Elimination</strong>
+                                                            <small class="text-white-50 d-block mt-1">Grupna faza + Završnica. Bez razigravanja i utješnog.</small>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </label>
-                                        </div>
-                                        <div class="col-12 col-lg-4">
-                                            <input type="radio" class="btn-check" name="SistemTurnira" id="sysDouble" value="DoubleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleElimination ? "checked" : "") autocomplete="off">
-                                            <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysDouble">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="bi bi-diagram-3-fill text-info fs-3 me-3 mt-1"></i>
-                                                    <div>
-                                                        <strong class="d-block text-white">Double Elimination</strong>
-                                                        <small class="text-white-50 d-block mt-1">Grupna faza + Završnica sa razigravanjem. Bez utješnog turnira.</small>
+                                                </label>
+                                            </div>
+                                            <div class="col-12 col-lg-4">
+                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysDouble" value="DoubleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleElimination ? "checked" : "") autocomplete="off">
+                                                <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysDouble">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="bi bi-diagram-3-fill text-info fs-3 me-3 mt-1"></i>
+                                                        <div>
+                                                            <strong class="d-block text-white">Double Elimination</strong>
+                                                            <small class="text-white-50 d-block mt-1">Grupna faza + Završnica sa razigravanjem. Bez utješnog turnira.</small>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </label>
-                                        </div>
-                                        <div class="col-12 col-lg-4">
-                                            <input type="radio" class="btn-check" name="SistemTurnira" id="sysDoubleUtjesni" value="DoubleEliminationUtjesni" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleEliminationUtjesni ? "checked" : "") autocomplete="off">
-                                            <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysDoubleUtjesni">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="bi bi-patch-check-fill text-orange fs-3 me-3 mt-1"></i>
-                                                    <div>
-                                                        <strong class="d-block text-white">Double Elimination + Utješni</strong>
-                                                        <small class="text-white-50 d-block mt-1">Grupna faza + Završnica sa razigravanjem + Utješni turnir.</small>
+                                                </label>
+                                            </div>
+                                            <div class="col-12 col-lg-4">
+                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysDoubleUtjesni" value="DoubleEliminationUtjesni" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleEliminationUtjesni ? "checked" : "") autocomplete="off">
+                                                <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysDoubleUtjesni">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="bi bi-patch-check-fill text-orange fs-3 me-3 mt-1"></i>
+                                                        <div>
+                                                            <strong class="d-block text-white">Double Elimination + Utješni</strong>
+                                                            <small class="text-white-50 d-block mt-1">Grupna faza + Završnica sa razigravanjem + Utješni turnir.</small>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </label>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                }
                             </div>
                         </div>
 

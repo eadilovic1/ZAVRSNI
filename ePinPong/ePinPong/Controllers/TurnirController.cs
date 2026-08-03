@@ -399,6 +399,9 @@ namespace ePinPong.Controllers
             ligeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
             ViewBag.Lige = ligeSelectList;
 
+            var odabranaLiga = turnir.LigaID.HasValue ? lige.FirstOrDefault(l => l.ID == turnir.LigaID.Value) : null;
+            ViewBag.IsMasters = odabranaLiga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(odabranaLiga);
+
             return View(turnir);
         }
 
@@ -456,6 +459,9 @@ namespace ePinPong.Controllers
             var sveLigeSelectList = sveLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv, Selected = turnir.LigaID == l.ID }).ToList();
             sveLigeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
             ViewBag.Lige = sveLigeSelectList;
+
+            var postojecaLiga = turnir.LigaID.HasValue ? sveLige.FirstOrDefault(l => l.ID == turnir.LigaID.Value) : null;
+            ViewBag.IsMasters = postojecaLiga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(postojecaLiga);
 
             return View(turnir);
         }
@@ -668,6 +674,78 @@ namespace ePinPong.Controllers
             return RedirectToAction(nameof(Details), new { id = turnirId });
         }
 
+        // POST: /Turnir/DodajViseIgraca
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> DodajViseIgraca(int turnirId, List<string> korisnikIds)
+        {
+            var turnir = await _context.Turniri
+                .Include(t => t.Registracije)
+                .FirstOrDefaultAsync(t => t.ID == turnirId);
+
+            if (turnir == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            if (turnir.Status != StatusTurnira.Planiran)
+            {
+                TempData["Error"] = "Igrači se mogu dodavati samo na turnire koji su u fazi planiranja.";
+                return RedirectToAction(nameof(Details), new { id = turnirId });
+            }
+
+            if (korisnikIds == null || !korisnikIds.Any())
+            {
+                TempData["Error"] = "Morate označiti bar jednog igrača za prijavu.";
+                return RedirectToAction(nameof(Details), new { id = turnirId });
+            }
+
+            var slobodnaMjesta = turnir.MaxIgraca - turnir.Registracije.Count;
+            if (slobodnaMjesta <= 0)
+            {
+                TempData["Error"] = "Turnir je već popunjen.";
+                return RedirectToAction(nameof(Details), new { id = turnirId });
+            }
+
+            // Filtriraj samo one koji već nisu prijavljeni
+            var vecPrijavljeniIds = turnir.Registracije.Select(r => r.KorisnikID).ToHashSet();
+            var korisniciZaPrijavu = korisnikIds
+                .Where(id => !vecPrijavljeniIds.Contains(id))
+                .Take(slobodnaMjesta)
+                .ToList();
+
+            if (!korisniciZaPrijavu.Any())
+            {
+                TempData["Error"] = "Svi označeni igrači su već prijavljeni na ovaj turnir.";
+                return RedirectToAction(nameof(Details), new { id = turnirId });
+            }
+
+            var novaRegistracije = korisniciZaPrijavu.Select(kId => new Registracija
+            {
+                TurnirID = turnirId,
+                KorisnikID = kId,
+                DatumRegistracije = DateTime.Now,
+                Odobren = true
+            }).ToList();
+
+            _context.Registracije.AddRange(novaRegistracije);
+            await _context.SaveChangesAsync();
+
+            int brojPrijavljenih = novaRegistracije.Count;
+            int preskoceni = korisnikIds.Count - korisniciZaPrijavu.Count;
+
+            if (preskoceni > 0)
+                TempData["Success"] = $"Uspješno prijavljeno {brojPrijavljenih} igrača. {preskoceni} igrač(a) je preskočeno (već prijavljeni ili popunjen turnir).";
+            else
+                TempData["Success"] = $"Uspješno je prijavljeno {brojPrijavljenih} igrača na turnir!";
+
+            return RedirectToAction(nameof(Details), new { id = turnirId });
+        }
+
         // POST: /Turnir/DodajNovogGosta
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -778,6 +856,56 @@ namespace ePinPong.Controllers
             else
             {
                 TempData["Error"] = "Igrač nije registrovan na ovom turniru.";
+            }
+
+            return RedirectToAction(nameof(Details), new { id = turnirId });
+        }
+
+        // POST: /Turnir/UkloniViseIgraca
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Organizator")]
+        public async Task<IActionResult> UkloniViseIgraca(int turnirId, List<string> korisnikIds)
+        {
+            var turnir = await _context.Turniri
+                .Include(t => t.Registracije)
+                .Include(t => t.Mecevi)
+                .FirstOrDefaultAsync(t => t.ID == turnirId);
+
+            if (turnir == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            if (turnir.Status != StatusTurnira.Planiran || turnir.Mecevi.Any())
+            {
+                TempData["Error"] = "Igrači se mogu uklanjati samo sa turnira koji su u fazi planiranja.";
+                return RedirectToAction(nameof(Details), new { id = turnirId });
+            }
+
+            if (korisnikIds == null || !korisnikIds.Any())
+            {
+                TempData["Error"] = "Morate označiti bar jednog igrača za odjavu.";
+                return RedirectToAction(nameof(Details), new { id = turnirId });
+            }
+
+            var registracijeZaUklanjanje = turnir.Registracije
+                .Where(r => korisnikIds.Contains(r.KorisnikID))
+                .ToList();
+
+            if (registracijeZaUklanjanje.Any())
+            {
+                int brojUklonjenih = registracijeZaUklanjanje.Count;
+                _context.Registracije.RemoveRange(registracijeZaUklanjanje);
+                await _context.SaveChangesAsync();
+                TempData["Success"] = $"Uspješno je odjavljeno {brojUklonjenih} igrača sa turnira!";
+            }
+            else
+            {
+                TempData["Error"] = "Nijedan od označenih igrača nije pronađen na ovom turniru.";
             }
 
             return RedirectToAction(nameof(Details), new { id = turnirId });

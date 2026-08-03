@@ -1892,26 +1892,62 @@
 
         @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
         {
+            var slobodniKorisniciList = ViewBag.SlobodniKorisnici as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>;
+            
             <!-- Panel za dodavanje igrača (Organizator / Admin) -->
             <div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
-                <div class="card-header bg-dark-card-footer border-bottom border-warning p-4">
+                <div class="card-header bg-dark-card-footer border-bottom border-warning p-4 d-flex align-items-center justify-content-between">
                     <h5 class="text-warning fw-bold mb-0"><i class="bi bi-person-plus-fill me-2"></i>Dodaj igrača (Organizator)</h5>
+                    @if (slobodniKorisniciList != null && slobodniKorisniciList.Any())
+                    {
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-check mb-0 d-flex align-items-center">
+                                <input type="checkbox" class="form-check-input me-1" id="selectAllFreePlayers" style="cursor: pointer;" />
+                                <label class="form-check-label text-white-50 small" for="selectAllFreePlayers" style="cursor: pointer; user-select: none;">Označi sve</label>
+                            </div>
+                            <button type="submit" form="bulkRegisterForm" id="btnBulkRegister"
+                                    class="btn btn-warning btn-sm px-3 fw-bold d-none"
+                                    onclick="return confirm('Da li ste sigurni da želite prijaviti označene igrače na turnir?');">
+                                <i class="bi bi-person-check-fill me-1"></i> Prijavi označene (<span id="selectedFreePlayersCount">0</span>)
+                            </button>
+                        </div>
+                    }
                 </div>
                 <div class="card-body p-4">
-                    <!-- Opcija A: Izbor postojećeg igrača -->
-                    <form asp-action="DodajPostojecegIgraca" method="post" class="mb-4 pb-4 border-bottom border-dark-glow">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="turnirId" value="@Model.ID" />
-                        <label class="form-label text-white fw-semibold small">Odaberi postojećeg igrača / gosta:</label>
-                        <div class="d-flex gap-2">
-                            <select name="korisnikId" class="form-select bg-dark-input border-dark-glow text-white" asp-items="ViewBag.SlobodniKorisnici" required>
-                                <option value="">-- Odaberi igrača --</option>
-                            </select>
-                            <button type="submit" class="btn btn-warning fw-bold"><i class="bi bi-plus-lg"></i> Dodaj</button>
-                        </div>
-                    </form>
+                    @if (slobodniKorisniciList != null && slobodniKorisniciList.Any())
+                    {
+                        <form asp-action="DodajViseIgraca" method="post" id="bulkRegisterForm" class="mb-4 pb-4 border-bottom border-dark-glow">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="turnirId" value="@Model.ID" />
 
-                    <!-- Opcija B: Brzo kreiranje novog gosta -->
+                            <!-- Filter pretraga -->
+                            <div class="mb-2">
+                                <input type="text" id="filterFreePlayersInput" class="form-control form-control-sm bg-dark-input border-dark-glow text-white"
+                                       placeholder="🔍 Pretraži igrače..." autocomplete="off" />
+                            </div>
+
+                            <!-- Lista slobodnih igrača sa checkboxima -->
+                            <div id="freePlayers-list" style="max-height: 280px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 4px 0;">
+                                @foreach (var item in slobodniKorisniciList)
+                                {
+                                    <div class="free-player-row d-flex align-items-center px-3 py-2" style="border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;">
+                                        <input type="checkbox" name="korisnikIds" value="@item.Value"
+                                               class="form-check-input free-player-checkbox me-3"
+                                               id="freePlayer_@item.Value"
+                                               style="cursor: pointer; width: 1.15em; height: 1.15em;" />
+                                        <label for="freePlayer_@item.Value" class="text-white small mb-0 flex-grow-1"
+                                               style="cursor: pointer; user-select: none;"
+                                               data-search="@item.Text.ToLower()">
+                                            <i class="bi bi-person text-orange me-1" style="font-size:0.85rem;"></i>
+                                            @item.Text
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                        </form>
+                    }
+
+                    <!-- Kreiraj novog gosta -->
                     <form asp-action="DodajNovogGosta" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="turnirId" value="@Model.ID" />
@@ -1933,8 +1969,20 @@
 
         <!-- Spisak registrovanih igrača -->
         <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
-            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="text-white fw-bold mb-0"><i class="bi bi-people-fill text-orange me-2"></i>Prijavljeni igrači (@Model.Registracije.Count)</h5>
+                @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any() && Model.Registracije.Any())
+                {
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="form-check mb-0 d-flex align-items-center">
+                            <input type="checkbox" class="form-check-input me-1" id="selectAllPlayers" style="cursor: pointer;" />
+                            <label class="form-check-label text-white-50 small" for="selectAllPlayers" style="cursor: pointer; user-select: none;">Označi sve</label>
+                        </div>
+                        <button type="submit" form="bulkUnregisterForm" id="btnBulkUnregister" class="btn btn-danger btn-sm px-3 fw-bold d-none" onclick="return confirm('Da li ste sigurni da želite odjaviti označene igrače sa turnira?');">
+                            <i class="bi bi-trash-fill me-1"></i> Odjavi označene (<span id="selectedPlayersCount">0</span>)
+                        </button>
+                    </div>
+                }
             </div>
             <div class="card-body p-4">
                 @if (!Model.Registracije.Any())
@@ -1945,52 +1993,67 @@
                 }
                 else
                 {
-                    <ul class="list-group list-group-flush bg-transparent">
-                        @foreach (var reg in Model.Registracije)
-                        {
-                            <li class="list-group-item bg-transparent border-bottom border-dark-glow px-0 py-3 d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center">
-                                    <div class="user-avatar-mini me-3">
-                                        @if (reg.Korisnik != null && reg.Korisnik.Ime.Length > 0)
+                    <form asp-controller="Turnir" asp-action="UkloniViseIgraca" method="post" id="bulkUnregisterForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="turnirId" value="@Model.ID" />
+                        <ul class="list-group list-group-flush bg-transparent">
+                            @foreach (var reg in Model.Registracije)
+                            {
+                                <li class="list-group-item bg-transparent border-bottom border-dark-glow px-0 py-3 d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
                                         {
-                                            <span>@reg.Korisnik.Ime[0]</span>
+                                            <input type="checkbox" name="korisnikIds" value="@reg.KorisnikID" class="form-check-input player-select-checkbox me-3" style="cursor: pointer; width: 1.15em; height: 1.15em;" />
                                         }
-                                        else
-                                        {
-                                            <span>I</span>
-                                        }
-                                    </div>
-                                    <div>
-                                        <a href="/Korisnik/Index/@reg.KorisnikID" class="text-white hover-orange fw-bold">
-                                            @reg.Korisnik?.Ime @reg.Korisnik?.Prezime
-                                            @if (reg.Korisnik != null && reg.Korisnik.IsGost)
+                                        <div class="user-avatar-mini me-3">
+                                            @if (reg.Korisnik != null && reg.Korisnik.Ime.Length > 0)
                                             {
-                                                <span class="badge bg-secondary text-muted ms-1" style="font-size: 0.75rem; vertical-align: middle;">Gost</span>
+                                                <span>@reg.Korisnik.Ime[0]</span>
                                             }
-                                        </a>
-                                        <div class="d-flex align-items-center gap-2 mt-1">
-                                            <small class="text-muted">@reg.Korisnik?.Grad</small>
-                                            <span class="badge bg-dark-glow border border-dark-glow text-orange rounded-pill pot-badge-sidebar" id="sidebar-pot-badge-@reg.KorisnikID" style="font-size: 0.7rem; padding: 2px 6px;">Šešir @reg.Sesir</span>
+                                            else
+                                            {
+                                                <span>I</span>
+                                            }
+                                        </div>
+                                        <div>
+                                            <a href="/Korisnik/Index/@reg.KorisnikID" class="text-white hover-orange fw-bold">
+                                                @reg.Korisnik?.Ime @reg.Korisnik?.Prezime
+                                                @if (reg.Korisnik != null && reg.Korisnik.IsGost)
+                                                {
+                                                    <span class="badge bg-secondary text-muted ms-1" style="font-size: 0.75rem; vertical-align: middle;">Gost</span>
+                                                }
+                                            </a>
+                                            <div class="d-flex align-items-center gap-2 mt-1">
+                                                <small class="text-muted">@reg.Korisnik?.Grad</small>
+                                                <span class="badge bg-dark-glow border border-dark-glow text-orange rounded-pill pot-badge-sidebar" id="sidebar-pot-badge-@reg.KorisnikID" style="font-size: 0.7rem; padding: 2px 6px;">Šešir @reg.Sesir</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-dark-glow border border-dark-glow text-orange rounded-pill small px-2 py-1">Registriran</span>
-                                    @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
-                                    {
-                                        <form asp-controller="Turnir" asp-action="UkloniIgraca" method="post" style="display:inline;" onsubmit="return confirm('Da li ste sigurni da želite ukloniti ovog igrača sa turnira?');">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="turnirId" value="@Model.ID" />
-                                            <input type="hidden" name="korisnikId" value="@reg.KorisnikID" />
-                                            <button type="submit" class="btn btn-outline-danger btn-sm p-1" style="line-height:1;" title="Ukloni igrača">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-dark-glow border border-dark-glow text-orange rounded-pill small px-2 py-1">Registriran</span>
+                                        @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
+                                        {
+                                            <button type="submit" form="singleDeleteForm_@reg.KorisnikID" class="btn btn-outline-danger btn-sm p-1" style="line-height:1;" title="Ukloni igrača">
                                                 <i class="bi bi-trash-fill" style="font-size: 0.85rem;"></i>
                                             </button>
-                                        </form>
-                                    }
-                                </div>
-                            </li>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </form>
+
+                    @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
+                    {
+                        foreach (var reg in Model.Registracije)
+                        {
+                            <form id="singleDeleteForm_@reg.KorisnikID" asp-controller="Turnir" asp-action="UkloniIgraca" method="post" style="display:none;" onsubmit="return confirm('Da li ste sigurni da želite ukloniti ovog igrača sa turnira?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="turnirId" value="@Model.ID" />
+                                <input type="hidden" name="korisnikId" value="@reg.KorisnikID" />
+                            </form>
                         }
-                    </ul>
+                    }
                 }
             </div>
         </div>
@@ -2000,6 +2063,106 @@
 @section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // Logika za masovno odjavljivanje igrača
+            const selectAllCb = document.getElementById("selectAllPlayers");
+            const playerCbs = document.querySelectorAll(".player-select-checkbox");
+            const btnBulk = document.getElementById("btnBulkUnregister");
+            const countSpan = document.getElementById("selectedPlayersCount");
+
+            function updateBulkUnregisterState() {
+                if (!playerCbs || playerCbs.length === 0) return;
+                const checkedCount = document.querySelectorAll(".player-select-checkbox:checked").length;
+                if (countSpan) countSpan.textContent = checkedCount;
+
+                if (checkedCount > 0) {
+                    if (btnBulk) btnBulk.classList.remove("d-none");
+                } else {
+                    if (btnBulk) btnBulk.classList.add("d-none");
+                }
+
+                if (selectAllCb) {
+                    selectAllCb.checked = checkedCount === playerCbs.length && playerCbs.length > 0;
+                    selectAllCb.indeterminate = checkedCount > 0 && checkedCount < playerCbs.length;
+                }
+            }
+
+            if (selectAllCb) {
+                selectAllCb.addEventListener("change", function () {
+                    const isChecked = this.checked;
+                    playerCbs.forEach(cb => {
+                        cb.checked = isChecked;
+                    });
+                    updateBulkUnregisterState();
+                });
+            }
+
+            playerCbs.forEach(cb => {
+                cb.addEventListener("change", updateBulkUnregisterState);
+            });
+
+            // Logika za masovnu prijavu igrača
+            const selectAllFreeCb = document.getElementById("selectAllFreePlayers");
+            const freeCbs = document.querySelectorAll(".free-player-checkbox");
+            const btnBulkReg = document.getElementById("btnBulkRegister");
+            const countSpanReg = document.getElementById("selectedFreePlayersCount");
+
+            function getVisibleFreeCbs() {
+                return Array.from(document.querySelectorAll(".free-player-checkbox")).filter(cb => {
+                    const row = cb.closest(".free-player-row");
+                    return row && row.style.display !== "none";
+                });
+            }
+
+            function updateBulkRegisterState() {
+                const checkedCount = Array.from(document.querySelectorAll(".free-player-checkbox:checked")).length;
+                if (countSpanReg) countSpanReg.textContent = checkedCount;
+
+                if (btnBulkReg) {
+                    if (checkedCount > 0) btnBulkReg.classList.remove("d-none");
+                    else btnBulkReg.classList.add("d-none");
+                }
+
+                if (selectAllFreeCb) {
+                    const visibleCbs = getVisibleFreeCbs();
+                    const visibleChecked = visibleCbs.filter(cb => cb.checked).length;
+                    selectAllFreeCb.checked = visibleChecked === visibleCbs.length && visibleCbs.length > 0;
+                    selectAllFreeCb.indeterminate = visibleChecked > 0 && visibleChecked < visibleCbs.length;
+                }
+            }
+
+            if (selectAllFreeCb) {
+                selectAllFreeCb.addEventListener("change", function () {
+                    const isChecked = this.checked;
+                    getVisibleFreeCbs().forEach(cb => { cb.checked = isChecked; });
+                    updateBulkRegisterState();
+                });
+            }
+
+            freeCbs.forEach(cb => {
+                cb.addEventListener("change", updateBulkRegisterState);
+            });
+
+            // Filter / pretraga slobodnih igrača
+            const filterInput = document.getElementById("filterFreePlayersInput");
+            if (filterInput) {
+                filterInput.addEventListener("input", function () {
+                    const query = this.value.toLowerCase().trim();
+                    document.querySelectorAll(".free-player-row").forEach(row => {
+                        const label = row.querySelector("label[data-search]");
+                        const searchVal = label ? label.getAttribute("data-search") : "";
+                        row.style.display = searchVal.includes(query) ? "" : "none";
+                    });
+                    // Deselect hidden checkboxes after filter change
+                    document.querySelectorAll(".free-player-row").forEach(row => {
+                        if (row.style.display === "none") {
+                            const cb = row.querySelector(".free-player-checkbox");
+                            if (cb) cb.checked = false;
+                        }
+                    });
+                    updateBulkRegisterState();
+                });
+            }
+
             // Tab recovery code
             var tabTriggers = document.querySelectorAll('#tournamentTabs button[data-bs-toggle="pill"]');
             var storageKey = 'activeTab_Turnir_' + '@Model.ID';

@@ -52,6 +52,25 @@ namespace ePinPong.Services
             return candidate;
         }
 
+        public static DateTime GetMastersTurnirDatum(Liga liga)
+        {
+            if (liga == null) throw new ArgumentNullException(nameof(liga));
+
+            DateTime lastRegularDate;
+            var regularniTurniri = GetRegularniTurniri(liga).ToList();
+            if (regularniTurniri.Any())
+            {
+                lastRegularDate = regularniTurniri.Max(t => t.DatumPocetka);
+            }
+            else
+            {
+                lastRegularDate = GetRegularTurnirDatum(liga, liga.BrojRegularnihTurnira);
+            }
+
+            var targetMonth = lastRegularDate.Date.AddMonths(1);
+            return GetLastSundayOfMonth(targetMonth.Year, targetMonth.Month);
+        }
+
         public static int? GetSljedeceKolo(Liga liga)
         {
             var usedKola = GetRegularniTurniri(liga)

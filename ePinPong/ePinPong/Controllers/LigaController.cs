@@ -237,7 +237,32 @@ namespace ePinPong.Controllers
                 return Challenge();
             }
 
-            var mastersStart = DateTime.Today.AddDays(7).AddHours(10);
+            // Izračunaj datum mastersa: zadnja nedjelja u mjesecu nakon zadnjeg regularnog turnira
+            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+            var zadnjiRegularniTurnir = liga.Turniri
+                .Where(t => t.Kolo.HasValue && t.Kolo.Value != mastersKolo)
+                .OrderByDescending(t => t.DatumPocetka)
+                .FirstOrDefault();
+
+            DateTime mastersReferentniMjesec;
+            if (zadnjiRegularniTurnir != null)
+            {
+                // Sljedeći mjesec nakon zadnjeg regularnog turnira
+                mastersReferentniMjesec = new DateTime(zadnjiRegularniTurnir.DatumPocetka.Year, zadnjiRegularniTurnir.DatumPocetka.Month, 1).AddMonths(1);
+            }
+            else
+            {
+                // Fallback: sljedeći mjesec od danas
+                mastersReferentniMjesec = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1);
+            }
+
+            // Pronađi zadnji dan u tom mjesecu, pa pronađi zadnju nedjelju
+            var zadnjiDanMjeseca = new DateTime(mastersReferentniMjesec.Year, mastersReferentniMjesec.Month,
+                DateTime.DaysInMonth(mastersReferentniMjesec.Year, mastersReferentniMjesec.Month));
+            var daniDoPovratka = (int)zadnjiDanMjeseca.DayOfWeek; // DayOfWeek.Sunday == 0
+            var zadnjaNedjelja = zadnjiDanMjeseca.AddDays(-daniDoPovratka);
+
+            var mastersStart = zadnjaNedjelja.AddHours(10);
             var mastersEnd = mastersStart.AddHours(8);
 
             var turnir = new Turnir
