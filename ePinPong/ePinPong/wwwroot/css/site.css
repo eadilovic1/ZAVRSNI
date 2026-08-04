@@ -39,6 +39,54 @@ body {
     color: var(--orange) !important;
 }
 
+.bg-orange {
+    background-color: var(--orange) !important;
+}
+
+.bg-orange-subtle {
+    background-color: rgba(255, 107, 0, 0.15) !important;
+}
+
+.bg-success-transparent {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    color: #4ade80 !important;
+}
+
+.bg-success-transparent i,
+.bg-success-transparent .text-success,
+.bg-success-transparent span,
+.bg-success-transparent strong {
+    color: #4ade80 !important;
+}
+
+.bg-warning-transparent {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    color: #fbbf24 !important;
+}
+
+.bg-warning-transparent i,
+.bg-warning-transparent .text-warning,
+.bg-warning-transparent span,
+.bg-warning-transparent strong {
+    color: #fbbf24 !important;
+}
+
+.shadow-glow {
+    box-shadow: 0 0 15px rgba(255, 107, 0, 0.4) !important;
+}
+
+/* Nav Pills - Aktivna opcija i ikonica */
+.nav-pills .nav-link.active,
+.nav-pills .nav-link.active.text-white {
+    background-color: var(--orange) !important;
+    color: #0f141d !important;
+    box-shadow: 0 0 15px rgba(255, 107, 0, 0.4);
+}
+.nav-pills .nav-link.active i,
+.nav-pills .nav-link.active .text-orange {
+    color: #0f141d !important;
+}
+
 .logo-icon {
     font-size: 1.5rem;
 }
@@ -66,6 +114,25 @@ body {
 }
 .alert-success {
     border-left: 4px solid #10b981 !important;
+    color: #4ade80 !important;
+}
+.alert-success i,
+.alert-success span,
+.alert-success strong {
+    color: #4ade80 !important;
+}
+.alert-warning {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    border-left: 4px solid #f59e0b !important;
+    color: #fbbf24 !important;
+}
+.alert-warning i,
+.alert-warning strong {
+    color: #fbbf24 !important;
+}
+.alert-warning span {
+    color: rgba(255, 255, 255, 0.85) !important;
 }
 .alert-danger {
     border-left: 4px solid #ef4444 !important;

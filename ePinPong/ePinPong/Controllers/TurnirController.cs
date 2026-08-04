@@ -391,6 +391,12 @@ namespace ePinPong.Controllers
                 return Forbid();
             }
 
+            if (!User.IsInRole("Administrator") && turnir.Status == StatusTurnira.Zavrsen)
+            {
+                TempData["Error"] = "Organizator ne može uređivati završen turnir.";
+                return RedirectToAction(nameof(Details), new { id = turnir.ID });
+            }
+
             var returnUrl = Request.Query["returnUrl"].ToString();
             if (string.IsNullOrWhiteSpace(returnUrl))
             {
@@ -439,8 +445,26 @@ namespace ePinPong.Controllers
                 return Forbid();
             }
 
-            // Očuvaj organizatora
+            if (!User.IsInRole("Administrator") && postojeci.Status == StatusTurnira.Zavrsen)
+            {
+                TempData["Error"] = "Organizator ne može uređivati završen turnir.";
+                return RedirectToAction(nameof(Details), new { id = postojeci.ID });
+            }
+
+            // Očuvaj organizatora i plasmane
             turnir.OrganizatorId = postojeci.OrganizatorId;
+            turnir.PobjednikID = postojeci.PobjednikID;
+            turnir.DrugoplasiraniID = postojeci.DrugoplasiraniID;
+            turnir.TrecaplasiraniID = postojeci.TrecaplasiraniID;
+
+            if (!turnir.LigaID.HasValue)
+            {
+                turnir.Kolo = null;
+            }
+            else if (postojeci.Kolo.HasValue && postojeci.LigaID == turnir.LigaID)
+            {
+                turnir.Kolo = postojeci.Kolo;
+            }
 
             ModelState.Remove("Organizator");
             ModelState.Remove("OrganizatorId");
@@ -1245,7 +1269,7 @@ namespace ePinPong.Controllers
 
         // POST: /Turnir/UkloniPar
         [HttpPost]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UkloniPar(int turnirId, int parId)
         {
@@ -1255,8 +1279,18 @@ namespace ePinPong.Controllers
 
             if (turnir == null) return NotFound();
 
+            var par = await _context.TurnirParovi.FindAsync(parId);
+            if (par == null)
+            {
+                TempData["Error"] = "Par nije pronađen.";
+                return RedirectToAction(nameof(Details), new { id = turnirId });
+            }
+
             var userId = _userManager.GetUserId(User);
-            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            bool isOrganizator = turnir.OrganizatorId == userId || User.IsInRole("Administrator");
+            bool isUserInPair = par.Igrac1ID == userId || par.Igrac2ID == userId;
+
+            if (!isOrganizator && !isUserInPair)
             {
                 return Forbid();
             }
@@ -1269,16 +1303,16 @@ namespace ePinPong.Controllers
                 return RedirectToAction(nameof(Details), new { id = turnirId });
             }
 
-            var par = await _context.TurnirParovi.FindAsync(parId);
-            if (par != null)
+            _context.TurnirParovi.Remove(par);
+            await _context.SaveChangesAsync();
+
+            if (isUserInPair && !isOrganizator)
             {
-                _context.TurnirParovi.Remove(par);
-                await _context.SaveChangesAsync();
-                TempData["Success"] = "Par je uspješno uklonjen sa turnira.";
+                TempData["Success"] = "Uspješno ste odjavili svoj par sa turnira.";
             }
             else
             {
-                TempData["Error"] = "Par nije pronađen.";
+                TempData["Success"] = "Par je uspješno uklonjen sa turnira.";
             }
 
             return RedirectToAction(nameof(Details), new { id = turnirId });

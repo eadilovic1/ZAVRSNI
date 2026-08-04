@@ -2,8 +2,11 @@
 @{
     ViewData["Title"] = "Uredi turnir";
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    var canDelete = User.IsInRole("Administrator");
+    var isAdmin = User.IsInRole("Administrator");
+    var canDelete = isAdmin;
     var returnUrl = ViewBag.ReturnUrl as string;
+    var isZavrsen = Model.Status == ePinPong.Models.StatusTurnira.Zavrsen;
+    var isReadOnlyForOrg = !isAdmin && isZavrsen;
 }
 
 <div class="row justify-content-center py-5">
@@ -14,6 +17,17 @@
                 <p class="text-white-50 mb-0">Uredite informacije o turniru u nastavku.</p>
             </div>
             <div class="card-body p-4">
+                @if (isReadOnlyForOrg)
+                {
+                    <div class="alert alert-warning rounded-4 p-3 mb-4 d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                        <div>
+                            <strong class="d-block mb-1">Turnir je završen!</strong>
+                            <span class="small">Kao organizator završenog turnira, možete mijenjati samo ligu kojoj turnir pripada. Ostale informacije su zaključane.</span>
+                        </div>
+                    </div>
+                }
+
                 <form id="edit-form" asp-action="Edit" method="post">
                     <input type="hidden" asp-for="ID" />
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-4"></div>
@@ -21,20 +35,20 @@
                     <div class="row g-3">
                         <div class="col-12 col-md-8">
                             <label asp-for="Naziv" class="form-label text-white fw-semibold">Naziv turnira</label>
-                            <input asp-for="Naziv" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <input asp-for="Naziv" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isReadOnlyForOrg ? "disabled" : null)" />
                             <span asp-validation-for="Naziv" class="text-danger small"></span>
                         </div>
 
                         <div class="col-12 col-md-4">
                             <label asp-for="Status" class="form-label text-white fw-semibold">Status turnira</label>
-                            <select asp-for="Status" class="form-select bg-dark-input border-dark-glow text-white" asp-items="ViewBag.StatusList">
+                            <select asp-for="Status" class="form-select bg-dark-input border-dark-glow text-white" asp-items="ViewBag.StatusList" disabled="@(isReadOnlyForOrg ? "disabled" : null)">
                             </select>
                             <span asp-validation-for="Status" class="text-danger small"></span>
                         </div>
 
                         <div class="col-12 col-md-6">
                             <label asp-for="MaxIgraca" class="form-label text-white fw-semibold">Maksimalan broj igrača</label>
-                            <input asp-for="MaxIgraca" type="number" min="2" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <input asp-for="MaxIgraca" type="number" min="2" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isReadOnlyForOrg ? "disabled" : null)" />
                             <span asp-validation-for="MaxIgraca" class="text-danger small"></span>
                         </div>
 
@@ -47,25 +61,25 @@
 
                         <div class="col-12 col-md-6">
                             <label asp-for="DatumPocetka" class="form-label text-white fw-semibold">Datum početka</label>
-                            <input asp-for="DatumPocetka" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <input asp-for="DatumPocetka" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isReadOnlyForOrg ? "disabled" : null)" />
                             <span asp-validation-for="DatumPocetka" class="text-danger small"></span>
                         </div>
 
                         <div class="col-12 col-md-6">
                             <label asp-for="DatumKraja" class="form-label text-white fw-semibold">Datum završetka</label>
-                            <input asp-for="DatumKraja" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <input asp-for="DatumKraja" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isReadOnlyForOrg ? "disabled" : null)" />
                             <span asp-validation-for="DatumKraja" class="text-danger small"></span>
                         </div>
 
                         <div class="col-12">
                             <label asp-for="Lokacija" class="form-label text-white fw-semibold">Lokacija / Dvorana</label>
-                            <input asp-for="Lokacija" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <input asp-for="Lokacija" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isReadOnlyForOrg ? "disabled" : null)" />
                             <span asp-validation-for="Lokacija" class="text-danger small"></span>
                         </div>
 
                         <div class="col-12">
                             <label asp-for="SlikaUrl" class="form-label text-white fw-semibold">URL Slike turnira (Opcionalno)</label>
-                            <input asp-for="SlikaUrl" class="form-control bg-dark-input border-dark-glow text-white" />
+                            <input asp-for="SlikaUrl" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isReadOnlyForOrg ? "disabled" : null)" />
                             <span asp-validation-for="SlikaUrl" class="text-danger small"></span>
                         </div>
 
@@ -92,7 +106,7 @@
                                         <label class="form-label text-white fw-semibold mb-2 d-block">Tip Takmičenja</label>
                                         <div class="row g-2">
                                             <div class="col-12 col-md-6">
-                                                <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSingl" value="Singl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Singl ? "checked" : "") autocomplete="off">
+                                                <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSingl" value="Singl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Singl ? "checked" : "") disabled="@(isReadOnlyForOrg ? "disabled" : null)" autocomplete="off">
                                                 <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="tipSingl">
                                                     <div class="d-flex align-items-center">
                                                         <i class="bi bi-person-fill text-orange fs-3 me-3"></i>
@@ -105,7 +119,7 @@
                                             </div>
 
                                             <div class="col-12 col-md-6">
-                                                <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSinglIDubl" value="SinglIDubl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.SinglIDubl ? "checked" : "") autocomplete="off">
+                                                <input type="radio" class="btn-check" name="TipTakmicenja" id="tipSinglIDubl" value="SinglIDubl" @(Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.SinglIDubl ? "checked" : "") disabled="@(isReadOnlyForOrg ? "disabled" : null)" autocomplete="off">
                                                 <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="tipSinglIDubl">
                                                     <div class="d-flex align-items-center">
                                                         <i class="bi bi-diagram-2-fill text-orange fs-3 me-3"></i>
@@ -124,7 +138,7 @@
                                         <label class="form-label text-white fw-semibold mb-2 d-block">Sistem Turnira (Format Završnice)</label>
                                         <div class="row g-2">
                                             <div class="col-12 col-lg-4">
-                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysSingle" value="SingleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.SingleElimination ? "checked" : "") autocomplete="off">
+                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysSingle" value="SingleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.SingleElimination ? "checked" : "") disabled="@(isReadOnlyForOrg ? "disabled" : null)" autocomplete="off">
                                                 <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysSingle">
                                                     <div class="d-flex align-items-start">
                                                         <i class="bi bi-trophy text-warning fs-3 me-3 mt-1"></i>
@@ -136,7 +150,7 @@
                                                 </label>
                                             </div>
                                             <div class="col-12 col-lg-4">
-                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysDouble" value="DoubleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleElimination ? "checked" : "") autocomplete="off">
+                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysDouble" value="DoubleElimination" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleElimination ? "checked" : "") disabled="@(isReadOnlyForOrg ? "disabled" : null)" autocomplete="off">
                                                 <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysDouble">
                                                     <div class="d-flex align-items-start">
                                                         <i class="bi bi-diagram-3-fill text-info fs-3 me-3 mt-1"></i>
@@ -148,7 +162,7 @@
                                                 </label>
                                             </div>
                                             <div class="col-12 col-lg-4">
-                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysDoubleUtjesni" value="DoubleEliminationUtjesni" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleEliminationUtjesni ? "checked" : "") autocomplete="off">
+                                                <input type="radio" class="btn-check" name="SistemTurnira" id="sysDoubleUtjesni" value="DoubleEliminationUtjesni" @(Model.SistemTurnira == ePinPong.Models.SistemTurnira.DoubleEliminationUtjesni ? "checked" : "") disabled="@(isReadOnlyForOrg ? "disabled" : null)" autocomplete="off">
                                                 <label class="btn btn-outline-light-glow w-100 p-3 text-start h-100 rounded-3 border-dark-glow" for="sysDoubleUtjesni">
                                                     <div class="d-flex align-items-start">
                                                         <i class="bi bi-patch-check-fill text-orange fs-3 me-3 mt-1"></i>
@@ -167,7 +181,7 @@
 
                         <div class="col-12">
                             <label asp-for="Opis" class="form-label text-white fw-semibold">Opis i pravila turnira</label>
-                            <textarea asp-for="Opis" rows="4" class="form-control bg-dark-input border-dark-glow text-white"></textarea>
+                            <textarea asp-for="Opis" rows="4" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isReadOnlyForOrg ? "disabled" : null)"></textarea>
                             <span asp-validation-for="Opis" class="text-danger small"></span>
                         </div>
                     </div>

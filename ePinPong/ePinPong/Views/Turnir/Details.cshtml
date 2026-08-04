@@ -4,6 +4,7 @@
     ViewData["Title"] = Model.Naziv;
     var isRegistered = ViewBag.IsRegistered as bool? ?? false;
     var isOrganizator = ViewBag.IsOrganizator as bool? ?? false;
+    var isAdmin = ViewBag.IsAdmin as bool? ?? false;
     var currentUserId = ViewBag.CurrentUserId as string;
 
     var grupniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
@@ -28,10 +29,15 @@
         background-color: rgba(255, 120, 0, 0.1);
         color: #ff7800 !important;
     }
-    .nav-pills .nav-link.active {
+    .nav-pills .nav-link.active,
+    .nav-pills .nav-link.active.text-white {
         background-color: #ff7800 !important;
-        color: #000 !important;
+        color: #000000 !important;
         box-shadow: 0 0 15px rgba(255, 120, 0, 0.4);
+    }
+    .nav-pills .nav-link.active i,
+    .nav-pills .nav-link.active .text-orange {
+        color: #000000 !important;
     }
     .bg-success-transparent-row {
         background-color: rgba(40, 167, 69, 0.1) !important;
@@ -182,7 +188,7 @@
                     }
                 </div>
 
-                @if (isOrganizator)
+                @if (isOrganizator && (isAdmin || Model.Status != StatusTurnira.Zavrsen))
                 {
                     <div class="mt-4 p-3 bg-dark-card border border-warning rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
@@ -1509,12 +1515,20 @@
                                                                     <span class="text-white fw-semibold">@par.Igrac1?.Ime @par.Igrac1?.Prezime</span>
                                                                     <span class="text-muted d-block text-truncate" style="font-size:0.85rem;">/ @par.Igrac2?.Ime @par.Igrac2?.Prezime</span>
                                                                 </div>
-                                                                @if (isOrganizator)
+                                                                @{
+                                                                    var isUserInThisPair = par.Igrac1ID == currentUserId || par.Igrac2ID == currentUserId;
+                                                                    var canDeletePair = (isOrganizator || isUserInThisPair) && !Model.Mecevi.Any(m => m.TipMeca == TipMeca.TurnirParova);
+                                                                }
+                                                                @if (canDeletePair)
                                                                 {
-                                                                    <form asp-controller="Turnir" asp-action="UkloniPar" method="post" class="ms-2">
+                                                                    <form asp-controller="Turnir" asp-action="UkloniPar" method="post" class="d-inline" onsubmit="sessionStorage.setItem('turnirScrollY', window.scrollY); return confirm('Da li ste sigurni da želite ukloniti ovaj par sa turnira?');">
+                                                                        @Html.AntiForgeryToken()
                                                                         <input type="hidden" name="turnirId" value="@Model.ID" />
                                                                         <input type="hidden" name="parId" value="@par.ID" />
-                                                                        <button type="submit" class="btn btn-outline-danger btn-sm p-1 rounded-circle" style="width:28px; height:28px;" title="Ukloni par"><i class="bi bi-trash"></i></button>
+                                                                        <button type="submit" class="btn btn-outline-danger btn-sm p-1 rounded-circle ms-2"
+                                                                            style="width:28px; height:28px;" title="Ukloni par">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
                                                                     </form>
                                                                 }
                                                             </div>
@@ -1539,9 +1553,9 @@
 
                                         @if (isUserRegistered && !isUserPaired)
                                         {
-                                            <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4">
+                                            <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4" id="prijava-par-scroll">
                                                 <h5 class="text-white fw-bold mb-3"><i class="bi bi-person-plus-fill text-orange me-2"></i>Prijavi svoj par</h5>
-                                                <form asp-controller="Turnir" asp-action="PrijaviPar" method="post">
+                                                <form asp-controller="Turnir" asp-action="PrijaviPar" method="post" id="formPrijaviPar">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="turnirId" value="@Model.ID" />
                                                     <div class="mb-3">
@@ -1558,17 +1572,45 @@
                                                 </form>
                                             </div>
                                         }
+                                        else if (isUserRegistered && isUserPaired)
+                                        {
+                                            var myPair = Model.TurnirParovi.FirstOrDefault(p => p.Igrac1ID == currentUserId || p.Igrac2ID == currentUserId);
+                                            var partner = myPair?.Igrac1ID == currentUserId ? myPair?.Igrac2 : myPair?.Igrac1;
+                                            var imaMeceveParova = Model.Mecevi.Any(m => m.TipMeca == TipMeca.TurnirParova);
+
+                                            <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4" id="prijava-par-scroll">
+                                                <h5 class="text-white fw-bold mb-2"><i class="bi bi-people-fill text-orange me-2"></i>Tvoj par</h5>
+                                                <p class="text-white-50 small mb-3">Prijavljeni ste sa: <strong class="text-white">@partner?.Ime @partner?.Prezime</strong></p>
+                                                @if (!imaMeceveParova && myPair != null)
+                                                {
+                                                    <form asp-controller="Turnir" asp-action="UkloniPar" method="post" onsubmit="sessionStorage.setItem('turnirScrollY', window.scrollY); return confirm('Da li ste sigurni da želite odjaviti svoj par sa turnira?');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="turnirId" value="@Model.ID" />
+                                                        <input type="hidden" name="parId" value="@myPair.ID" />
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm text-white fw-bold w-100">
+                                                            <i class="bi bi-person-x-fill me-1"></i> Odjavi svoj par
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <div class="alert alert-secondary mb-0 small text-white-50 py-2">
+                                                        <i class="bi bi-info-circle me-1"></i> Mečevi parova su generisani. Odjava više nije moguća.
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
 
                                         @if (isOrganizator)
                                         {
                                             <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4">
                                                 <h5 class="text-white fw-bold mb-3"><i class="bi bi-magic text-orange me-2"></i>Formiraj par (Admin)</h5>
-                                                <form asp-controller="Turnir" asp-action="DodajParAdmin" method="post">
+                                                <form asp-controller="Turnir" asp-action="DodajParAdmin" method="post" id="formDodajParAdmin">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="turnirId" value="@Model.ID" />
                                                     <div class="mb-2">
                                                         <label class="form-label text-white-50 small">Igrač 1</label>
-                                                        <select name="igrac1Id" class="form-select bg-dark border-dark-glow text-white form-select-sm" required>
+                                                        <select name="igrac1Id" id="adminParIgrac1" class="form-select bg-dark border-dark-glow text-white form-select-sm" required>
                                                             <option value="">-- Izaberi igrača --</option>
                                                             @foreach (var igrac in slobodniIgraciZaPar.Where(u => u != null))
                                                             {
@@ -1578,7 +1620,7 @@
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label text-white-50 small">Igrač 2</label>
-                                                        <select name="igrac2Id" class="form-select bg-dark border-dark-glow text-white form-select-sm" required>
+                                                        <select name="igrac2Id" id="adminParIgrac2" class="form-select bg-dark border-dark-glow text-white form-select-sm" required>
                                                             <option value="">-- Izaberi igrača --</option>
                                                             @foreach (var igrac in slobodniIgraciZaPar.Where(u => u != null))
                                                             {
@@ -1863,7 +1905,7 @@
                     }
                     else
                     {
-                        <form asp-action="Odjava" asp-route-id="@Model.ID" method="post">
+                        <form asp-action="Odjava" asp-route-id="@Model.ID" method="post" id="formOdjavaSingle">
                             <button type="submit" class="btn btn-danger w-100 py-2 fw-bold"><i class="bi bi-x-circle me-2"></i>Odjavi se sa turnira</button>
                         </form>
                     }
@@ -1880,7 +1922,7 @@
                     }
                     else
                     {
-                        <form asp-action="Registracija" asp-route-id="@Model.ID" method="post">
+                        <form asp-action="Registracija" asp-route-id="@Model.ID" method="post" id="formRegistracijaSingle">
                             <button type="submit" class="btn btn-orange w-100 py-2 text-white fw-bold shadow-glow"><i class="bi bi-clipboard-check me-2"></i>Prijavi se na turnir</button>
                         </form>
                     }
@@ -2064,6 +2106,8 @@
         </div>
     </div>
 </div>
+
+
 
 @section Scripts {
     <script>
@@ -2318,7 +2362,8 @@
                         return true;
                     } else {
                         validationAlert.className = "alert alert-danger border border-danger bg-danger-transparent d-flex align-items-center justify-content-between py-2 px-3 mb-4 rounded-3 small";
-                        validationText.innerHTML = "<i class='bi bi-exclamation-triangle-fill text-danger me-2'></i><strong>Nevalidni šeširi:</strong> " + errors.join(", ") + ". Prevucite igrače da izbalansirate šešire.";
+                        const actionInstruction = isOrg ? "Prevucite igrače da izbalansirate šešire." : "Čeka se da organizator izbalansira šešire.";
+                        validationText.innerHTML = "<i class='bi bi-exclamation-triangle-fill text-danger me-2'></i><strong>Nevalidna raspodjela šešira!</strong> " + actionInstruction;
                         validationStatusBadge.className = "badge bg-danger";
                         validationStatusBadge.innerText = "Neispravno";
                         if (submitBtn) submitBtn.disabled = true;
@@ -2801,5 +2846,53 @@
             window.scrollTo({ top: parseInt(savedScroll, 10), behavior: "instant" });
             sessionStorage.removeItem("turnirScrollY");
         }
+
+        // ---- Scroll preservation za sve forme ----
+        function attachScrollSave(formId) {
+            const frm = document.getElementById(formId);
+            if (frm) {
+                frm.addEventListener("submit", function () {
+                    sessionStorage.setItem("turnirScrollY", window.scrollY);
+                });
+            }
+        }
+        attachScrollSave("formPrijaviPar");
+        attachScrollSave("formDodajParAdmin");
+        attachScrollSave("formOdjavaSingle");
+        attachScrollSave("formRegistracijaSingle");
+        attachScrollSave("bulkRegisterForm");
+        attachScrollSave("bulkUnregisterForm");
+        // DodajNovogGosta i DodajViseIgraca nemaju poseban ID ali su form elementi
+        document.querySelectorAll("form[action*='DodajNovogGosta'], form[action*='DodajViseIgraca']").forEach(function(frm) {
+            frm.addEventListener("submit", function () {
+                sessionStorage.setItem("turnirScrollY", window.scrollY);
+            });
+        });
+        // UkloniIgraca forme
+        document.querySelectorAll("[id^='singleDeleteForm_']").forEach(function(frm) {
+            frm.addEventListener("submit", function () {
+                sessionStorage.setItem("turnirScrollY", window.scrollY);
+            });
+        });
+
+        // ---- Dropdown filtriranje za Admin par formu (Igrač1 / Igrač2) ----
+        const sel1 = document.getElementById("adminParIgrac1");
+        const sel2 = document.getElementById("adminParIgrac2");
+        if (sel1 && sel2) {
+            function syncParDropdowns(changedSel, otherSel) {
+                const selectedVal = changedSel.value;
+                Array.from(otherSel.options).forEach(function(opt) {
+                    if (opt.value === "") return; // placeholder
+                    opt.hidden = (opt.value === selectedVal);
+                });
+                // Ako je isti igrač odabran u oba, resetuj drugi
+                if (otherSel.value !== "" && otherSel.value === selectedVal) {
+                    otherSel.value = "";
+                }
+            }
+            sel1.addEventListener("change", function() { syncParDropdowns(sel1, sel2); });
+            sel2.addEventListener("change", function() { syncParDropdowns(sel2, sel1); });
+        }
+
     });
 </script>
