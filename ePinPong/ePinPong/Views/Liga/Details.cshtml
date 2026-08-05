@@ -1,137 +1,245 @@
 @model ePinPong.Models.Liga
 @{
     ViewData["Title"] = Model.Naziv;
-    var standings = ViewBag.Standings as List<ePinPong.Controllers.LigaStandingsViewModel> ?? new List<ePinPong.Controllers.LigaStandingsViewModel>();
-    var zavrseniTurniri = ViewBag.ZavrseniTurniri as List<ePinPong.Models.Turnir> ?? new List<ePinPong.Models.Turnir>();
+
+    var standings = ViewBag.Standings as List<ePinPong.Controllers.LigaStandingsViewModel>
+        ?? new List<ePinPong.Controllers.LigaStandingsViewModel>();
+
+    var zavrseniTurniri = ViewBag.ZavrseniTurniri as List<ePinPong.Models.Turnir>
+        ?? new List<ePinPong.Models.Turnir>();
+
     var isAdminOrOrganizator = ViewBag.IsAdminOrOrganizator as bool? ?? false;
     var canCreateRegular = ViewBag.CanCreateRegular as bool? ?? false;
     var canCreateMasters = ViewBag.CanCreateMasters as bool? ?? false;
+
+    var sviTurniriSortirani = (Model.Turniri ?? new List<ePinPong.Models.Turnir>())
+        .OrderBy(t => t.DatumPocetka)
+        .ToList();
+
+    var zavrseniTurniriSortirani = zavrseniTurniri
+        .OrderBy(t => t.DatumPocetka)
+        .ToList();
 }
 
+<style>
+    .liga-turniri-scroll-wrapper {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 6px;
+        scrollbar-width: thin;
+        max-height: 100%;
+    }
+
+    .liga-turniri-scroll {
+        min-width: max-content;
+        width: max-content;
+    }
+
+    .liga-turnir-card {
+        width: 245px;
+        min-height: 150px;
+    }
+
+    .liga-top-widget {
+        min-height: 420px;
+    }
+
+    .liga-top-panel {
+        min-height: 100%;
+    }
+</style>
+
 <div class="row g-4 py-4">
-    <!-- Lijevi dio: Detalji lige -->
-    <div class="col-12 col-lg-8">
-        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg mb-0 h-100">
-            <div class="card-body p-4">
-                <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-1">Sezona @Model.Sezona</span>
-                <h2 class="text-white fw-bold mb-3">@Model.Naziv</h2>
-                <p class="text-white-50 lead fs-6">@Model.Opis</p>
-                
-                <hr class="border-secondary my-4">
+    <div class="col-12">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg liga-top-widget">
+            <div class="card-body p-4 p-md-5">
+                <div class="row g-4 h-100 align-items-stretch">
+                    <!-- LIJEVI DIO -->
+                    <div class="col-12 col-lg-5">
+                        <div class="d-flex flex-column h-100 liga-top-panel">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-1">
+                                        Sezona @Model.Sezona
+                                    </span>
+                                    <h2 class="text-white fw-bold mb-2">@Model.Naziv</h2>
+                                </div>
 
-                <div class="row g-3">
-                    <div class="col-12 col-md-6">
-                        <div class="d-flex align-items-center text-white-50">
-                            <i class="bi bi-calendar-event text-orange fs-4 me-3"></i>
-                            <div>
-                                <small class="text-muted d-block">Početak Sezone</small>
-                                <strong class="text-white">@Model.DatumPocetka.ToString("MMMM yyyy")</strong>
+                                @if (User.IsInRole("Administrator") || isAdminOrOrganizator)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-warning fw-bold px-3 py-2 text-nowrap">
+                                        <i class="bi bi-pencil-square me-2"></i>Uredi Ligu
+                                    </a>
+                                }
                             </div>
+
+                            <p class="text-white-50 fs-6 mb-3">@Model.Opis</p>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-12">
+                                    <div class="d-flex align-items-center text-white-50 p-3 rounded-3 bg-black bg-opacity-25 border border-dark-glow h-100">
+                                        <i class="bi bi-calendar-event text-orange fs-4 me-3"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Početak Sezone</small>
+                                            <strong class="text-white">@Model.DatumPocetka.ToString("MMMM yyyy")</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="d-flex align-items-center text-white-50 p-3 rounded-3 bg-black bg-opacity-25 border border-dark-glow h-100">
+                                        <i class="bi bi-grid-3x3-gap text-orange fs-4 me-3"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Ukupno Kola</small>
+                                            <strong class="text-white">@Model.BrojRegularnihTurnira Kola + Završni Masters</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (User.IsInRole("Administrator") || isAdminOrOrganizator)
+                            {
+                                <div class="mt-auto p-3 bg-dark-card border border-warning rounded-3">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                        <div>
+                                            <span class="text-warning fw-bold d-block mb-1">
+                                                <i class="bi bi-shield-lock-fill me-2"></i>Organizatorski panel
+                                            </span>
+                                            <small class="d-block text-white-50">
+                                                Kao organizator možete mijenjati podatke lige i upravljati turnirima.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         </div>
                     </div>
-                    <div class="col-12 col-md-6">
-                        <div class="d-flex align-items-center text-white-50">
-                            <i class="bi bi-grid-3x3-gap text-orange fs-4 me-3"></i>
-                            <div>
-                                <small class="text-muted d-block">Ukupno Kola</small>
-                                <strong class="text-white">@Model.BrojRegularnihTurnira Kola + Završni Masters</strong>
+
+                    <!-- DESNI DIO -->
+                    <div class="col-12 col-lg-7">
+                        <div class="p-3 p-md-4 bg-dark-card border border-dark-glow rounded-4 shadow-sm h-100 d-flex flex-column">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                <div>
+                                    <h5 class="text-white fw-bold mb-1">
+                                        <i class="bi bi-calendar3 text-orange me-2"></i>Turniri lige
+                                    </h5>
+                                    <small class="text-white-50">Pregled svih turnira u hronološkom redoslijedu.</small>
+                                </div>
+
+                                @if (isAdminOrOrganizator)
+                                {
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @if (canCreateMasters)
+                                        {
+                                            <form asp-controller="Liga" asp-action="CreateMasters" asp-route-id="@Model.ID" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
+                                                        title="Kreiraj završni Masters u ovoj ligi">
+                                                    <i class="bi bi-trophy-fill me-1"></i>Kreiraj Masters
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (canCreateRegular)
+                                        {
+                                            <a asp-controller="Turnir" asp-action="Create" asp-route-ligaId="@Model.ID"
+                                               class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
+                                               title="Kreiraj novi turnir u ovoj ligi">
+                                                <i class="bi bi-plus-circle-fill me-1"></i>Novi turnir
+                                            </a>
+                                        }
+                                    </div>
+                                }
                             </div>
+
+                            @if (!sviTurniriSortirani.Any())
+                            {
+                                <div class="text-center py-5 text-white-50 border border-dark-glow rounded-4 bg-black bg-opacity-25 flex-grow-1 d-flex align-items-center justify-content-center">
+                                    <div>
+                                        <i class="bi bi-inbox fs-2 mb-2 d-block"></i>
+                                        <small>Nema turnira za prikaz.</small>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="liga-turniri-scroll-wrapper flex-grow-1">
+                                    <div class="liga-turniri-scroll d-flex flex-row flex-nowrap gap-3">
+                                        @foreach (var turnir in sviTurniriSortirani)
+                                        {
+                                            var statusClass = turnir.Status == StatusTurnira.Zavrsen
+                                                ? "bg-success"
+                                                : (turnir.Status == StatusTurnira.UToku ? "bg-warning text-dark" : "bg-secondary");
+
+                                            <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-sm liga-turnir-card flex-shrink-0">
+                                                <div class="card-body p-3 d-flex flex-column justify-content-between h-100">
+                                                    <div>
+                                                        <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                                                            <span class="badge bg-orange text-dark fw-bold text-truncate d-inline-block"
+                                                                  style="max-width: 135px;"
+                                                                  title="@turnir.Naziv">
+                                                                @turnir.Naziv
+                                                            </span>
+                                                            <span class="badge @statusClass px-2 py-1 small fw-bold">
+                                                                @turnir.Status
+                                                            </span>
+                                                        </div>
+
+                                                        <div class="text-white-50 small mb-1">
+                                                            <i class="bi bi-calendar-event me-1"></i>
+                                                            @turnir.DatumPocetka.ToString("dd.MM.yyyy")
+                                                        </div>
+
+                                                        <div class="text-muted small mb-1">
+                                                            Prijavljeno: <strong>@turnir.Registracije.Count / @turnir.MaxIgraca</strong>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                                        <span class="text-white-50 small">Kolo @turnir.Kolo</span>
+                                                        <a asp-controller="Turnir" asp-action="Details" asp-route-id="@turnir.ID"
+                                                           class="btn btn-sm btn-orange-outline py-1 px-2">
+                                                            Detalji <i class="bi bi-chevron-right small"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>
-
-                @if (User.IsInRole("Administrator") || isAdminOrOrganizator)
-                {
-                    <div class="mt-4 p-3 bg-dark-card border border-warning rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-                        <div>
-                            <span class="text-warning fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Organizatorski panel</span>
-                            <small class="d-block text-white-50">Kao organizator možete mijenjati podatke lige i upravljati turnirima.</small>
-                        </div>
-                        <div>
-                            <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-warning fw-bold px-4 py-2">
-                                <i class="bi bi-pencil-square me-2"></i>Uredi Ligu
-                            </a>
-                        </div>
-                    </div>
-                }
             </div>
         </div>
     </div>
 
-    <!-- Desni dio: Raspored kola (Turniri) -->
-    <div class="col-12 col-lg-4">
-        <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg h-100">
-            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 d-flex justify-content-between align-items-center">
-                <h5 class="text-white fw-bold mb-0"><i class="bi bi-calendar3 text-orange me-2"></i>Kola i Turniri</h5>
-                @if (isAdminOrOrganizator)
-                {
-                    if (canCreateMasters)
-                    {
-                        <form asp-controller="Liga" asp-action="CreateMasters" asp-route-id="@Model.ID" method="post" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit"
-                                    class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
-                                    title="Kreiraj završni Masters u ovoj ligi">
-                                <i class="bi bi-trophy-fill me-1"></i>Kreiraj Masters
-                            </button>
-                        </form>
-                    }
-                    else if (canCreateRegular)
-                    {
-                        <a asp-controller="Turnir" asp-action="Create" asp-route-ligaId="@Model.ID"
-                           class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
-                           title="Kreiraj novi turnir u ovoj ligi">
-                            <i class="bi bi-plus-circle-fill me-1"></i>Novi turnir
-                        </a>
-                    }
-                }
-            </div>
-            <div class="card-body p-4">
-                <div class="list-group list-group-flush bg-transparent">
-                    @foreach (var turnir in Model.Turniri.OrderBy(t => t.Kolo))
-                    {
-                        var statusClass = turnir.Status == StatusTurnira.Zavrsen ? "bg-success" : (turnir.Status == StatusTurnira.UToku ? "bg-warning text-dark" : "bg-secondary");
-                        var koloNaziv = turnir.Kolo == 10 ? "Masters" : $"Kolo {turnir.Kolo}";
-
-                        <div class="list-group-item bg-transparent border-bottom border-dark-glow px-0 py-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-orange text-dark fw-bold font-monospace">@koloNaziv</span>
-                                <span class="badge @statusClass px-2 py-1 small fw-bold">@turnir.Status</span>
-                            </div>
-                            <h6 class="text-white fw-bold mb-1">@turnir.Naziv</h6>
-                            <div class="text-white-50 small mb-2">
-                                <i class="bi bi-calendar-event me-1"></i> @turnir.DatumPocetka.ToString("dd.MM.yyyy")
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-muted small">Prijavljeno: <strong>@turnir.Registracije.Count / @turnir.MaxIgraca</strong></span>
-                                <a asp-controller="Turnir" asp-action="Details" asp-route-id="@turnir.ID" class="btn btn-sm btn-orange-outline py-1">
-                                    Detalji <i class="bi bi-chevron-right small"></i>
-                                </a>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabela standings (Leaderboard) — puna širina, horizontalni scroll -->
+    <!-- Tabela standings -->
     <div class="col-12">
         <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
             <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h4 class="text-white fw-bold mb-0"><i class="bi bi-list-ol text-orange me-2"></i>Tabela Lige (Bodovi Sezone)</h4>
-                @if (zavrseniTurniri.Any())
+                <h4 class="text-white fw-bold mb-0">
+                    <i class="bi bi-list-ol text-orange me-2"></i>Tabela Lige (Bodovi Sezone)
+                </h4>
+
+                @if (zavrseniTurniriSortirani.Any())
                 {
-                    <small class="text-white-50"><i class="bi bi-arrow-left-right me-1"></i>Pomaknite tabelu lijevo–desno za bodove po turniru</small>
+                    <small class="text-white-50">
+                        <i class="bi bi-arrow-left-right me-1"></i>Pomaknite tabelu lijevo–desno za bodove po završnim turnirima
+                    </small>
                 }
             </div>
+
             <div class="card-body p-4">
                 @if (!standings.Any())
                 {
                     <div class="text-center py-5 text-white-50">
                         <i class="bi bi-info-circle fs-2 mb-3"></i>
                         <h5>Nema rezultata za prikaz</h5>
-                        <p class="small mb-0">Nakon što se završi barem jedan turnir u ovoj ligi, ovdje će se pojaviti bodovna tabela igrača.</p>
+                        <p class="small mb-0">
+                            Nakon što se završi barem jedan turnir u ovoj ligi, ovdje će se pojaviti bodovna tabela igrača.
+                        </p>
                     </div>
                 }
                 else
@@ -144,11 +252,10 @@
                                     <th class="liga-col-sticky liga-col-player">IGRAČ</th>
                                     <th class="text-center">KLUB/GRAD</th>
                                     <th class="text-center">ODIGRANO</th>
-                                    @for (int t = 0; t < zavrseniTurniri.Count; t++)
+                                    @for (int t = 0; t < zavrseniTurniriSortirani.Count; t++)
                                     {
-                                        var turnir = zavrseniTurniri[t];
-                                        var koloNaziv = turnir.Kolo == 10 ? "Masters" : $"Kolo {turnir.Kolo}";
-                                        <th class="text-center liga-col-kolo" title="@turnir.Naziv">@koloNaziv</th>
+                                        var turnir = zavrseniTurniriSortirani[t];
+                                        <th class="text-center liga-col-kolo" title="@turnir.Naziv">@turnir.Naziv</th>
                                     }
                                     <th class="text-center">UKUPNO BODOVA</th>
                                 </tr>
@@ -159,7 +266,8 @@
                                     var row = standings[i];
                                     var isPodium = i < 3;
                                     var medalClass = i == 0 ? "text-warning" : (i == 1 ? "text-secondary" : "text-danger");
-                                    var rankDisplay = isPodium ? $"🥇" : $"{i + 1}.";
+                                    var rankDisplay = $"{i + 1}.";
+                                    if (i == 0) rankDisplay = "🥇";
                                     if (i == 1) rankDisplay = "🥈";
                                     if (i == 2) rankDisplay = "🥉";
 
@@ -183,7 +291,7 @@
                                         </td>
                                         <td class="text-center text-white-50 small">@row.Korisnik.Grad</td>
                                         <td class="text-center fw-semibold">@row.BrojOdigranihTurnira / 10</td>
-                                        @for (int t = 0; t < zavrseniTurniri.Count; t++)
+                                        @for (int t = 0; t < zavrseniTurniriSortirani.Count; t++)
                                         {
                                             var bodovi = t < row.BodoviPoKolima.Count ? row.BodoviPoKolima[t] : 0;
                                             <td class="text-center liga-col-kolo">
