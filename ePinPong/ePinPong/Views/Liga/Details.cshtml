@@ -1,5 +1,42 @@
 @model ePinPong.Models.Liga
+
+@* =====================================================================
+   HELPER FUNKCIJE
+   Sva "inline" logika iz markupa je izdvojena ovdje radi preglednosti.
+   ===================================================================== *@
+@functions {
+    private static string GetTurnirStatusClass(ePinPong.Models.StatusTurnira status) => status switch
+    {
+        ePinPong.Models.StatusTurnira.Zavrsen => "bg-success",
+        ePinPong.Models.StatusTurnira.UToku  => "bg-warning text-dark",
+        _                                    => "bg-secondary"
+    };
+
+    private static int GetPopunjenostPct(ePinPong.Models.Turnir turnir) => turnir.MaxIgraca > 0
+        ? Math.Min(100, (int)Math.Round(turnir.Registracije.Count * 100.0 / turnir.MaxIgraca))
+        : 0;
+
+    private static string GetRankBadge(int index) => index switch
+    {
+        0 => "🥇",
+        1 => "🥈",
+        2 => "🥉",
+        _ => $"{index + 1}."
+    };
+
+    private static string GetMedalClass(int index) => index switch
+    {
+        0 => "text-warning",
+        1 => "text-secondary",
+        2 => "text-danger",
+        _ => ""
+    };
+}
+
 @{
+    // ---------------------------------------------------------------
+    // PODACI IZ ViewBag / ViewData
+    // ---------------------------------------------------------------
     ViewData["Title"] = Model.Naziv;
 
     var standings = ViewBag.Standings as List<ePinPong.Controllers.LigaStandingsViewModel>
@@ -9,9 +46,12 @@
         ?? new List<ePinPong.Models.Turnir>();
 
     var isAdminOrOrganizator = ViewBag.IsAdminOrOrganizator as bool? ?? false;
-    var canCreateRegular = ViewBag.CanCreateRegular as bool? ?? false;
-    var canCreateMasters = ViewBag.CanCreateMasters as bool? ?? false;
+    var canCreateRegular     = ViewBag.CanCreateRegular as bool? ?? false;
+    var canCreateMasters     = ViewBag.CanCreateMasters as bool? ?? false;
 
+    // ---------------------------------------------------------------
+    // SORTIRANE LISTE TURNIRA
+    // ---------------------------------------------------------------
     var sviTurniriSortirani = (Model.Turniri ?? new List<ePinPong.Models.Turnir>())
         .OrderBy(t => t.DatumPocetka)
         .ToList();
@@ -19,65 +59,149 @@
     var zavrseniTurniriSortirani = zavrseniTurniri
         .OrderBy(t => t.DatumPocetka)
         .ToList();
+
+    var prikaziOrganizatorskiPanel = User.IsInRole("Administrator") || isAdminOrOrganizator;
 }
 
 <style>
+    /* ===== Scroll traka za turnire ===== */
     .liga-turniri-scroll-wrapper {
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding-bottom: 6px;
-        scrollbar-width: thin;
-        max-height: 100%;
+        position: relative;
+        overflow: hidden;
     }
 
     .liga-turniri-scroll {
-        min-width: max-content;
-        width: max-content;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        padding-bottom: .5rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--bs-orange, #e67e22) transparent;
     }
 
+    .liga-turniri-scroll::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .liga-turniri-scroll::-webkit-scrollbar-thumb {
+        background: var(--bs-orange, #e67e22);
+        border-radius: 10px;
+    }
+
+    .liga-turniri-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    /* ===== Kartica turnira ===== */
     .liga-turnir-card {
-        width: 245px;
-        min-height: 150px;
+        width: 230px;
+        min-height: 190px;
+        scroll-snap-align: start;
+        margin-top: 8px;
+        transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
 
+    .liga-turnir-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--bs-orange, #e67e22) !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, .35);
+    }
+
+    .liga-turnir-card .card-body {
+        padding: 0.9rem !important;
+    }
+
+    .liga-turnir-card .turnir-top {
+        min-height: 76px;
+    }
+
+    .liga-turnir-card .turnir-middle {
+        flex-grow: 1;
+    }
+
+    .turnir-naziv-badge {
+        max-width: 120px;
+    }
+
+    .turnir-progress {
+        height: 6px;
+        background-color: rgba(255, 255, 255, .08);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .turnir-progress .progress-bar {
+        transition: width .4s ease;
+    }
+
+    /* ===== Dugmad ===== */
+    .btn-orange-outline {
+        transition: background-color .2s ease, color .2s ease, transform .15s ease;
+    }
+
+    .btn-orange-outline:hover {
+        transform: translateX(2px);
+    }
+
+    /* ===== Gornji widget (info + turniri) ===== */
     .liga-top-widget {
-        min-height: 420px;
+        min-height: 360px;
+    }
+
+    .liga-top-widget .card-body {
+        padding-top: 1.25rem !important;
+        padding-bottom: 1.25rem !important;
     }
 
     .liga-top-panel {
         min-height: 100%;
     }
+
+    .liga-compact-title {
+        line-height: 1.15;
+    }
+
+    .liga-compact-text {
+        line-height: 1.35;
+    }
+
+    .liga-info-box {
+        padding: 0.85rem 1rem !important;
+    }
+
+    .liga-organizer-panel {
+        padding: 0.9rem 1rem !important;
+    }
+
+    .liga-organizer-panel .btn {
+        white-space: nowrap;
+    }
 </style>
 
 <div class="row g-4 py-4">
+
+    @* =============================================================
+       GORNJI WIDGET: OSNOVNE INFORMACIJE O LIGI + LISTA TURNIRA
+       ============================================================= *@
     <div class="col-12">
         <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg liga-top-widget">
-            <div class="card-body p-4 p-md-5">
-                <div class="row g-4 h-100 align-items-stretch">
-                    <!-- LIJEVI DIO -->
+            <div class="card-body p-4 p-md-4">
+                <div class="row g-3 h-100 align-items-stretch">
+
+                    @* ----- Lijevi dio: opis lige + organizatorski panel ----- *@
                     <div class="col-12 col-lg-5">
                         <div class="d-flex flex-column h-100 liga-top-panel">
-                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                                <div>
-                                    <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-1">
-                                        Sezona @Model.Sezona
-                                    </span>
-                                    <h2 class="text-white fw-bold mb-2">@Model.Naziv</h2>
-                                </div>
-
-                                @if (User.IsInRole("Administrator") || isAdminOrOrganizator)
-                                {
-                                    <a asp-action="Edit" asp-route-id="@Model.ID" class="btn btn-warning fw-bold px-3 py-2 text-nowrap">
-                                        <i class="bi bi-pencil-square me-2"></i>Uredi Ligu
-                                    </a>
-                                }
+                            <div class="mb-2">
+                                <span class="badge bg-orange text-dark fw-bold mb-2 rounded-pill px-3 py-1">
+                                    Sezona @Model.Sezona
+                                </span>
+                                <h2 class="text-white fw-bold mb-1 liga-compact-title">@Model.Naziv</h2>
                             </div>
 
-                            <p class="text-white-50 fs-6 mb-3">@Model.Opis</p>
+                            <p class="text-white-50 fs-6 mb-2 liga-compact-text">@Model.Opis</p>
 
-                            <div class="row g-2 mb-3">
+                            <div class="row g-2 mb-2">
                                 <div class="col-12">
-                                    <div class="d-flex align-items-center text-white-50 p-3 rounded-3 bg-black bg-opacity-25 border border-dark-glow h-100">
+                                    <div class="d-flex align-items-center text-white-50 liga-info-box rounded-3 bg-black bg-opacity-25 border border-dark-glow h-100">
                                         <i class="bi bi-calendar-event text-orange fs-4 me-3"></i>
                                         <div>
                                             <small class="text-muted d-block">Početak Sezone</small>
@@ -87,7 +211,7 @@
                                 </div>
 
                                 <div class="col-12">
-                                    <div class="d-flex align-items-center text-white-50 p-3 rounded-3 bg-black bg-opacity-25 border border-dark-glow h-100">
+                                    <div class="d-flex align-items-center text-white-50 liga-info-box rounded-3 bg-black bg-opacity-25 border border-dark-glow h-100">
                                         <i class="bi bi-grid-3x3-gap text-orange fs-4 me-3"></i>
                                         <div>
                                             <small class="text-muted d-block">Ukupno Kola</small>
@@ -97,28 +221,35 @@
                                 </div>
                             </div>
 
-                            @if (User.IsInRole("Administrator") || isAdminOrOrganizator)
+                            @if (prikaziOrganizatorskiPanel)
                             {
-                                <div class="mt-auto p-3 bg-dark-card border border-warning rounded-3">
-                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                                        <div>
+                                <div class="mt-auto liga-organizer-panel bg-dark-card border border-warning rounded-3">
+                                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                                        <div class="flex-grow-1">
                                             <span class="text-warning fw-bold d-block mb-1">
                                                 <i class="bi bi-shield-lock-fill me-2"></i>Organizatorski panel
                                             </span>
-                                            <small class="d-block text-white-50">
+                                            <small class="d-block text-white-50 liga-compact-text">
                                                 Kao organizator možete mijenjati podatke lige i upravljati turnirima.
                                             </small>
                                         </div>
+
+                                        <a asp-action="Edit"
+                                           asp-route-id="@Model.ID"
+                                           class="btn btn-outline-warning btn-sm fw-bold px-3 py-2 text-nowrap flex-shrink-0">
+                                            <i class="bi bi-pencil-square me-1"></i>Uredi Ligu
+                                        </a>
                                     </div>
                                 </div>
                             }
                         </div>
                     </div>
 
-                    <!-- DESNI DIO -->
+                    @* ----- Desni dio: lista turnira lige ----- *@
                     <div class="col-12 col-lg-7">
-                        <div class="p-3 p-md-4 bg-dark-card border border-dark-glow rounded-4 shadow-sm h-100 d-flex flex-column">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div class="p-3 p-md-3 bg-dark-card border border-dark-glow rounded-4 shadow-sm h-100 d-flex flex-column">
+
+                            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
                                 <div>
                                     <h5 class="text-white fw-bold mb-1">
                                         <i class="bi bi-calendar3 text-orange me-2"></i>Turniri lige
@@ -134,7 +265,7 @@
                                             <form asp-controller="Liga" asp-action="CreateMasters" asp-route-id="@Model.ID" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit"
-                                                        class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
+                                                        class="btn btn-sm btn-orange fw-bold text-white shadow-glow px-3 py-2"
                                                         title="Kreiraj završni Masters u ovoj ligi">
                                                     <i class="bi bi-trophy-fill me-1"></i>Kreiraj Masters
                                                 </button>
@@ -143,7 +274,7 @@
                                         else if (canCreateRegular)
                                         {
                                             <a asp-controller="Turnir" asp-action="Create" asp-route-ligaId="@Model.ID"
-                                               class="btn btn-sm btn-orange fw-bold text-white shadow-glow"
+                                               class="btn btn-sm btn-orange fw-bold text-white shadow-glow px-3 py-2"
                                                title="Kreiraj novi turnir u ovoj ligi">
                                                 <i class="bi bi-plus-circle-fill me-1"></i>Novi turnir
                                             </a>
@@ -164,44 +295,60 @@
                             else
                             {
                                 <div class="liga-turniri-scroll-wrapper flex-grow-1">
-                                    <div class="liga-turniri-scroll d-flex flex-row flex-nowrap gap-3">
+                                    <div class="liga-turniri-scroll d-flex flex-row flex-nowrap gap-3 align-items-stretch">
                                         @foreach (var turnir in sviTurniriSortirani)
                                         {
-                                            var statusClass = turnir.Status == StatusTurnira.Zavrsen
-                                                ? "bg-success"
-                                                : (turnir.Status == StatusTurnira.UToku ? "bg-warning text-dark" : "bg-secondary");
+                                            var statusClass = GetTurnirStatusClass(turnir.Status);
+                                            var popunjenostPct = GetPopunjenostPct(turnir);
 
                                             <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-sm liga-turnir-card flex-shrink-0">
-                                                <div class="card-body p-3 d-flex flex-column justify-content-between h-100">
-                                                    <div>
-                                                        <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
-                                                            <span class="badge bg-orange text-dark fw-bold text-truncate d-inline-block"
-                                                                  style="max-width: 135px;"
-                                                                  title="@turnir.Naziv">
-                                                                @turnir.Naziv
-                                                            </span>
-                                                            <span class="badge @statusClass px-2 py-1 small fw-bold">
-                                                                @turnir.Status
-                                                            </span>
+                                                <div class="card-body d-flex flex-column h-100">
+
+                                                    @* Header *@
+                                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                                        <span class="badge bg-orange text-dark fw-bold text-truncate d-inline-block turnir-naziv-badge"
+                                                              title="@turnir.Naziv">
+                                                            @turnir.Naziv
+                                                        </span>
+                                                        <span class="badge @statusClass px-2 py-1 small fw-bold text-nowrap">
+                                                            @turnir.Status
+                                                        </span>
+                                                    </div>
+
+                                                    <div class="text-white-50 small d-flex align-items-center gap-1 mb-3">
+                                                        <i class="bi bi-calendar-event"></i>
+                                                        @turnir.DatumPocetka.ToString("dd.MM.yyyy")
+                                                    </div>
+
+                                                    @* Sredina: popunjenost + kolo *@
+                                                    <div class="turnir-middle flex-grow-1 d-flex flex-column justify-content-center gap-2">
+                                                        <div>
+                                                            <div class="d-flex justify-content-between align-items-center small text-white-50 mb-1">
+                                                                <span>Prijavljeno</span>
+                                                                <span class="text-white fw-semibold">@turnir.Registracije.Count / @turnir.MaxIgraca</span>
+                                                            </div>
+                                                            <div class="progress turnir-progress">
+                                                                <div class="progress-bar bg-orange" role="progressbar"
+                                                                     style="width:@popunjenostPct%"
+                                                                     aria-valuenow="@popunjenostPct" aria-valuemin="0" aria-valuemax="100">
+                                                                </div>
+                                                            </div>
                                                         </div>
 
-                                                        <div class="text-white-50 small mb-1">
-                                                            <i class="bi bi-calendar-event me-1"></i>
-                                                            @turnir.DatumPocetka.ToString("dd.MM.yyyy")
-                                                        </div>
-
-                                                        <div class="text-muted small mb-1">
-                                                            Prijavljeno: <strong>@turnir.Registracije.Count / @turnir.MaxIgraca</strong>
+                                                        <div class="text-white-50 small d-flex align-items-center gap-1">
+                                                            <i class="bi bi-arrow-repeat"></i>
+                                                            Kolo <span class="text-white fw-semibold ms-1">@turnir.Kolo</span>
                                                         </div>
                                                     </div>
 
-                                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                                        <span class="text-white-50 small">Kolo @turnir.Kolo</span>
+                                                    @* Footer *@
+                                                    <div class="d-flex justify-content-end mt-3 pt-2 border-top border-dark-glow">
                                                         <a asp-controller="Turnir" asp-action="Details" asp-route-id="@turnir.ID"
-                                                           class="btn btn-sm btn-orange-outline py-1 px-2">
+                                                           class="btn btn-sm btn-orange-outline py-1 px-3 d-inline-flex align-items-center gap-1">
                                                             Detalji <i class="bi bi-chevron-right small"></i>
                                                         </a>
                                                     </div>
+
                                                 </div>
                                             </div>
                                         }
@@ -210,14 +357,18 @@
                             }
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabela standings -->
+    @* =============================================================
+       TABELA LIGE (BODOVI SEZONE)
+       ============================================================= *@
     <div class="col-12">
         <div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
+
             <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h4 class="text-white fw-bold mb-0">
                     <i class="bi bi-list-ol text-orange me-2"></i>Tabela Lige (Bodovi Sezone)
@@ -252,9 +403,8 @@
                                     <th class="liga-col-sticky liga-col-player">IGRAČ</th>
                                     <th class="text-center">KLUB/GRAD</th>
                                     <th class="text-center">ODIGRANO</th>
-                                    @for (int t = 0; t < zavrseniTurniriSortirani.Count; t++)
+                                    @foreach (var turnir in zavrseniTurniriSortirani)
                                     {
-                                        var turnir = zavrseniTurniriSortirani[t];
                                         <th class="text-center liga-col-kolo" title="@turnir.Naziv">@turnir.Naziv</th>
                                     }
                                     <th class="text-center">UKUPNO BODOVA</th>
@@ -265,15 +415,12 @@
                                 {
                                     var row = standings[i];
                                     var isPodium = i < 3;
-                                    var medalClass = i == 0 ? "text-warning" : (i == 1 ? "text-secondary" : "text-danger");
-                                    var rankDisplay = $"{i + 1}.";
-                                    if (i == 0) rankDisplay = "🥇";
-                                    if (i == 1) rankDisplay = "🥈";
-                                    if (i == 2) rankDisplay = "🥉";
+                                    var medalClass = GetMedalClass(i);
+                                    var rankBadge = GetRankBadge(i);
 
                                     <tr class="border-bottom border-dark-glow">
                                         <td class="text-center fw-bold fs-5 liga-col-sticky liga-col-rank">
-                                            <span class="@(isPodium ? medalClass : "")">@rankDisplay</span>
+                                            <span class="@(isPodium ? medalClass : "")">@rankBadge</span>
                                         </td>
                                         <td class="liga-col-sticky liga-col-player">
                                             <div class="d-flex align-items-center">
@@ -315,4 +462,5 @@
             </div>
         </div>
     </div>
+
 </div>
