@@ -308,18 +308,20 @@ namespace ePinPong.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Provjera da li su svi mečevi odigrani - ako jesu i završnica je generisana, zatvori turnir i proglasi pobjednika
+            // Provjera da li su svi mečevi odigrani - ako jesu, zatvori turnir i proglasi pobjednika
             if (mec.TipMeca != TipMeca.TurnirParova)
             {
                 var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == mec.TurnirID).ToListAsync();
                 var imaZavrsnicu = sviMecevi.Any(m => m.TipMeca == TipMeca.Zavrsnica);
                 var grupniMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
                 var brojGrupa = grupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
-                var isGroupOnly = grupniMecevi.Any() && !imaZavrsnicu && brojGrupa == 1;
+
+                var turnir = await _context.Turniri.Include(t => t.Liga).FirstOrDefaultAsync(t => t.ID == mec.TurnirID);
+                var isMasters = turnir != null && LigaTurnirHelper.IsMastersTurnir(turnir);
+                var isGroupOnly = grupniMecevi.Any() && !imaZavrsnicu && (brojGrupa == 1 || isMasters);
 
                 if (sviMecevi.All(m => m.Odigran && m.TipMeca != TipMeca.TurnirParova) && imaZavrsnicu)
                 {
-                    var turnir = await _context.Turniri.FindAsync(mec.TurnirID);
                     if (turnir != null)
                     {
                         turnir.Status = StatusTurnira.Zavrsen;
@@ -335,10 +337,9 @@ namespace ePinPong.Controllers
                         await _context.SaveChangesAsync();
                     }
                 }
-                else if (isGroupOnly && grupniMecevi.All(m => m.Odigran))
+                else if ((isGroupOnly || isMasters) && grupniMecevi.Any() && grupniMecevi.All(m => m.Odigran))
                 {
-                    // Group-only turnir (npr. 5 igrača u 1 grupi) – svi grupni mečevi odigrani, zatvori turnir
-                    var turnir = await _context.Turniri.FindAsync(mec.TurnirID);
+                    // Group-only ili Masters turnir – svi grupni mečevi odigrani, zatvori turnir
                     if (turnir != null && turnir.Status != StatusTurnira.Zavrsen)
                     {
                         turnir.Status = StatusTurnira.Zavrsen;

@@ -17,9 +17,9 @@
     var utjesniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith("UT_")).ToList();
     var utjesniGlavniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_"))).ToList();
     var utjesniRazigravanjeMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || m.MatchCode.StartsWith("UT_RR_"))).ToList();
-    // Detektuj group-only turnir: 1 grupa sa svim igračima, bez završnice/utješnog (npr. 5 igrača)
+    // Detektuj group-only turnir: 1 grupa sa svim igračima, bez završnice/utješnog (npr. 5 igrača) ili Masters turnir
     var brojGrupaUTurniru = grupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
-    var isGroupOnly = grupniMecevi.Any() && !sviZavrsniMecevi.Any() && !utjesniMecevi.Any() && brojGrupaUTurniru == 1;
+    var isGroupOnly = grupniMecevi.Any() && !sviZavrsniMecevi.Any() && !utjesniMecevi.Any() && (brojGrupaUTurniru == 1 || isMasters);
 }
 
 <style>
@@ -208,7 +208,7 @@
             </div>
         </div>
 
-        @if (!isMasters && (Model.Status == StatusTurnira.Zavrsen || (isGroupOnly && grupniMecevi.Any() && grupniMecevi.All(m => m.Odigran))) && ranking != null && ranking.Any())
+        @if ((Model.Status == StatusTurnira.Zavrsen || (isGroupOnly && grupniMecevi.Any() && grupniMecevi.All(m => m.Odigran))) && ranking != null && ranking.Any())
         {
             <!-- Krajnji poredak turnira -->
             <div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
@@ -645,7 +645,7 @@
 
                                     <div class="mb-5 p-3 rounded-4 bg-dark-card border border-dark-glow shadow-sm">
                                         <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h4 class="text-orange fw-bold mb-0"><i class="bi bi-table text-orange me-2"></i>@(isGroupOnly ? (nazivGrupe + " - Konačni plasman") : (nazivGrupe + " - Tabela i mečevi"))</h4>
+                                            <h4 class="text-orange fw-bold mb-0"><i class="bi bi-table text-orange me-2"></i>@((isGroupOnly || isMasters) ? (nazivGrupe + " - Konačni plasman") : (nazivGrupe + " - Tabela i mečevi"))</h4>
                                             <button class="btn btn-outline-light-glow btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" type="button" data-bs-toggle="collapse" data-bs-target="#groupCollapse-@nazivGrupe.Replace(" ", "")" aria-expanded="true" aria-controls="groupCollapse-@nazivGrupe.Replace(" ", "")">
                                                 <i class="bi bi-chevron-up toggle-chevron"></i>
                                             </button>
@@ -686,7 +686,7 @@
                                                                 @(row.SetRazlika >= 0 ? "+" : "")@row.SetRazlika
                                                             </td>
                                                             <td>
-                                                                @if (isGroupOnly)
+                                                                @if (isGroupOnly || isMasters)
                                                                 {
                                                                     string plasmanLabel = (idx + 1) switch
                                                                     {

@@ -988,8 +988,9 @@ namespace ePinPong.Services
             var grupnaFazaIds = registracije.Select(r => r.KorisnikID)
                 .Where(id => !playerRanks.ContainsKey(id) && !JeSlobodan(id)).ToList();
 
-            // Detektuj "group-only" turnir: samo 1 grupa sa svim igračima, bez završnice i utješnog
-            bool isGroupOnly = !zavrsniMecevi.Any() && !utjesniMecevi.Any() && grupniMecevi.Any() && brojGrupa == 1;
+            // Detektuj "group-only" ili Masters turnir: bez završnice i utješnog (ili Masters)
+            bool isMasters = turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(turnir.Liga);
+            bool isGroupOnly = !zavrsniMecevi.Any() && !utjesniMecevi.Any() && grupniMecevi.Any() && (brojGrupa == 1 || isMasters);
 
             if (isGroupOnly)
             {

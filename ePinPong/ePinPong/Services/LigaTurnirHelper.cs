@@ -12,6 +12,9 @@ namespace ePinPong.Services
         public static bool IsMastersTurnir(Turnir turnir, Liga liga)
             => turnir.Kolo == GetMastersKolo(liga);
 
+        public static bool IsMastersTurnir(Turnir turnir)
+            => turnir != null && turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == GetMastersKolo(turnir.Liga);
+
         public static bool IsRegularTurnir(Turnir turnir, Liga liga)
             => turnir.LigaID == liga.ID && !IsMastersTurnir(turnir, liga);
 
