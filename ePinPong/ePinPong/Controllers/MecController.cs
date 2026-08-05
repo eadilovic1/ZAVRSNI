@@ -313,6 +313,9 @@ namespace ePinPong.Controllers
             {
                 var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == mec.TurnirID).ToListAsync();
                 var imaZavrsnicu = sviMecevi.Any(m => m.TipMeca == TipMeca.Zavrsnica);
+                var grupniMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
+                var brojGrupa = grupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+                var isGroupOnly = grupniMecevi.Any() && !imaZavrsnicu && brojGrupa == 1;
 
                 if (sviMecevi.All(m => m.Odigran && m.TipMeca != TipMeca.TurnirParova) && imaZavrsnicu)
                 {
@@ -328,6 +331,52 @@ namespace ePinPong.Controllers
                             turnir.PobjednikID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac1ID : finalMec.Igrac2ID;
                             turnir.DrugoplasiraniID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac2ID : finalMec.Igrac1ID;
                         }
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                else if (isGroupOnly && grupniMecevi.All(m => m.Odigran))
+                {
+                    // Group-only turnir (npr. 5 igrača u 1 grupi) – svi grupni mečevi odigrani, zatvori turnir
+                    var turnir = await _context.Turniri.FindAsync(mec.TurnirID);
+                    if (turnir != null && turnir.Status != StatusTurnira.Zavrsen)
+                    {
+                        turnir.Status = StatusTurnira.Zavrsen;
+
+                        // Odredi pobjednika i drugoplasiranog na osnovu grupnog poretka
+                        var igraciGrupe = grupniMecevi
+                            .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
+                            .Where(id => id != null && id != BracketService.SLOBODAN)
+                            .Distinct()
+                            .ToList();
+
+                        var groupStats = igraciGrupe.Select(pid =>
+                        {
+                            int wins = 0, setsWon = 0, setsLost = 0;
+                            foreach (var gm in grupniMecevi.Where(m => m.Odigran && (m.Igrac1ID == pid || m.Igrac2ID == pid)))
+                            {
+                                if (gm.Igrac1ID == pid)
+                                {
+                                    setsWon  += gm.PoeniIgrac1 ?? 0;
+                                    setsLost += gm.PoeniIgrac2 ?? 0;
+                                    if ((gm.PoeniIgrac1 ?? 0) > (gm.PoeniIgrac2 ?? 0)) wins++;
+                                }
+                                else
+                                {
+                                    setsWon  += gm.PoeniIgrac2 ?? 0;
+                                    setsLost += gm.PoeniIgrac1 ?? 0;
+                                    if ((gm.PoeniIgrac2 ?? 0) > (gm.PoeniIgrac1 ?? 0)) wins++;
+                                }
+                            }
+                            return new { PlayerId = pid, Wins = wins, SetDiff = setsWon - setsLost, SetsWon = setsWon };
+                        })
+                        .OrderByDescending(x => x.Wins)
+                        .ThenByDescending(x => x.SetDiff)
+                        .ThenByDescending(x => x.SetsWon)
+                        .ToList();
+
+                        if (groupStats.Count > 0) turnir.PobjednikID = groupStats[0].PlayerId;
+                        if (groupStats.Count > 1) turnir.DrugoplasiraniID = groupStats[1].PlayerId;
 
                         await _context.SaveChangesAsync();
                     }

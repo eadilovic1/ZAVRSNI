@@ -988,7 +988,57 @@ namespace ePinPong.Services
             var grupnaFazaIds = registracije.Select(r => r.KorisnikID)
                 .Where(id => !playerRanks.ContainsKey(id) && !JeSlobodan(id)).ToList();
 
-            if (!imaUtjesni)
+            // Detektuj "group-only" turnir: samo 1 grupa sa svim igračima, bez završnice i utješnog
+            bool isGroupOnly = !zavrsniMecevi.Any() && !utjesniMecevi.Any() && grupniMecevi.Any() && brojGrupa == 1;
+
+            if (isGroupOnly)
+            {
+                // Turnir sa jednom grupom (npr. 5 igrača) – grupni poredak je konačni plasman
+                var groupStats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
+                foreach (var pid in grupnaFazaIds)
+                {
+                    int wins = 0, setsWon = 0, setsLost = 0;
+                    var igracMecevi = grupniMecevi
+                        .Where(m => m.Odigran && (m.Igrac1ID == pid || m.Igrac2ID == pid));
+                    foreach (var m in igracMecevi)
+                    {
+                        if (m.Igrac1ID == pid)
+                        {
+                            setsWon  += m.PoeniIgrac1 ?? 0;
+                            setsLost += m.PoeniIgrac2 ?? 0;
+                            if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
+                        }
+                        else
+                        {
+                            setsWon  += m.PoeniIgrac2 ?? 0;
+                            setsLost += m.PoeniIgrac1 ?? 0;
+                            if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
+                        }
+                    }
+                    groupStats.Add((pid, wins, setsWon - setsLost, setsWon));
+                }
+
+                var sortedGroup = groupStats
+                    .OrderByDescending(x => x.Wins)
+                    .ThenByDescending(x => x.SetDiff)
+                    .ThenByDescending(x => x.SetsWon)
+                    .ToList();
+
+                int pos = 1;
+                foreach (var item in sortedGroup)
+                {
+                    string opis = pos switch
+                    {
+                        1 => "1. mjesto 🏆 Pobjednik",
+                        2 => "2. mjesto 🥈",
+                        3 => "3. mjesto 🥉",
+                        _ => $"{pos}. mjesto"
+                    };
+                    playerRanks[item.PlayerId] = (pos, DajBodoveZaPoziciju(pos), opis);
+                    pos++;
+                }
+            }
+            else if (!imaUtjesni)
             {
                 // Bez utješnog turnira: svi ostali igrači koji su ispali u grupnoj fazi dijele isti plasman (brojGrupa * 2 + 1)
                 foreach (var pid in grupnaFazaIds)

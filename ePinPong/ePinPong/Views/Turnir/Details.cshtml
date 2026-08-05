@@ -17,6 +17,9 @@
     var utjesniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith("UT_")).ToList();
     var utjesniGlavniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_"))).ToList();
     var utjesniRazigravanjeMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || m.MatchCode.StartsWith("UT_RR_"))).ToList();
+    // Detektuj group-only turnir: 1 grupa sa svim igračima, bez završnice/utješnog (npr. 5 igrača)
+    var brojGrupaUTurniru = grupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+    var isGroupOnly = grupniMecevi.Any() && !sviZavrsniMecevi.Any() && !utjesniMecevi.Any() && brojGrupaUTurniru == 1;
 }
 
 <style>
@@ -205,7 +208,7 @@
             </div>
         </div>
 
-        @if (!isMasters && Model.Status == StatusTurnira.Zavrsen && ranking != null && ranking.Any())
+        @if (!isMasters && (Model.Status == StatusTurnira.Zavrsen || (isGroupOnly && grupniMecevi.Any() && grupniMecevi.All(m => m.Odigran))) && ranking != null && ranking.Any())
         {
             <!-- Krajnji poredak turnira -->
             <div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
@@ -503,11 +506,14 @@
                                                 <i class="bi bi-grid-3x3-gap-fill text-orange me-2"></i>Grupna Faza
                                             </button>
                                         </li>
+                                        @if (!isGroupOnly)
+                                        {
                                         <li class="nav-item flex-shrink-0" role="presentation">
                                             <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="knockout-tab" data-bs-toggle="pill" data-bs-target="#knockout-pane" type="button" role="tab" aria-controls="knockout-pane" aria-selected="false">
                                                 <i class="bi bi-trophy-fill text-orange me-2"></i>Glavni turnir
                                             </button>
                                         </li>
+                                        }
                                         @if (razigravanjeMecevi.Any())
                                         {
                                             <li class="nav-item flex-shrink-0" role="presentation">
@@ -639,7 +645,7 @@
 
                                     <div class="mb-5 p-3 rounded-4 bg-dark-card border border-dark-glow shadow-sm">
                                         <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h4 class="text-orange fw-bold mb-0"><i class="bi bi-table text-orange me-2"></i>@nazivGrupe - Tabela i mečevi</h4>
+                                            <h4 class="text-orange fw-bold mb-0"><i class="bi bi-table text-orange me-2"></i>@(isGroupOnly ? (nazivGrupe + " - Konačni plasman") : (nazivGrupe + " - Tabela i mečevi"))</h4>
                                             <button class="btn btn-outline-light-glow btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" type="button" data-bs-toggle="collapse" data-bs-target="#groupCollapse-@nazivGrupe.Replace(" ", "")" aria-expanded="true" aria-controls="groupCollapse-@nazivGrupe.Replace(" ", "")">
                                                 <i class="bi bi-chevron-up toggle-chevron"></i>
                                             </button>
@@ -680,7 +686,25 @@
                                                                 @(row.SetRazlika >= 0 ? "+" : "")@row.SetRazlika
                                                             </td>
                                                             <td>
-                                                                @if (prolaz)
+                                                                @if (isGroupOnly)
+                                                                {
+                                                                    string plasmanLabel = (idx + 1) switch
+                                                                    {
+                                                                        1 => "🏆 1. mjesto",
+                                                                        2 => "🥈 2. mjesto",
+                                                                        3 => "🥉 3. mjesto",
+                                                                        _ => $"{idx + 1}. mjesto"
+                                                                    };
+                                                                    string badgeClass = (idx + 1) switch
+                                                                    {
+                                                                        1 => "bg-warning text-dark",
+                                                                        2 => "bg-secondary text-white",
+                                                                        3 => "bg-danger text-white",
+                                                                        _ => "bg-dark-glow text-muted"
+                                                                    };
+                                                                    <span class="badge @badgeClass px-2 py-1 rounded-pill">@plasmanLabel</span>
+                                                                }
+                                                                else if (prolaz)
                                                                 {
                                                                     <span class="badge bg-success text-white px-2 py-1 rounded-pill">Prolaz dalje</span>
                                                                 }
@@ -791,6 +815,16 @@
                             }
                             @if (!sviZavrsniMecevi.Any())
                             {
+                                @if (isGroupOnly)
+                                {
+                                    <div class="text-center py-5">
+                                        <i class="bi bi-grid-3x3-gap-fill text-orange fs-2 mb-3"></i>
+                                        <h5 class="text-white fw-bold">Grupna faza je konačni plasman</h5>
+                                        <p class="text-white-50 small mb-0">Ovaj turnir nema posebnu završnicu. Konačni poredak određen je rezultatima grupne faze.</p>
+                                    </div>
+                                }
+                                else
+                                {
                                 <div class="text-center py-5">
                                     <i class="bi bi-trophy text-white-50 fs-2 mb-3"></i>
                                     <h5 class="text-white">Glavni turnir još nije generisan</h5>
@@ -807,6 +841,7 @@
                                         <p class="text-white-50 small mb-0">Parovi glavnog turnira će biti dostupni nakon što svi mečevi grupne faze budu odigrani.</p>
                                     }
                                 </div>
+                                }
                             }
                             else if (!zavrsniMecevi.Any())
                             {
@@ -1871,7 +1906,7 @@
                                                                 <th style="width: 13%;">Pobjede</th>
                                                                 <th style="width: 13%;">Porazi</th>
                                                                 <th style="width: 13%;">Set Razlika</th>
-                                                                <th style="width: 13%;">Status</th>
+                                                                <th style="width: 13%;">@(isGroupOnly ? "Plasman" : "Status")</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
