@@ -988,11 +988,70 @@ namespace ePinPong.Services
             var grupnaFazaIds = registracije.Select(r => r.KorisnikID)
                 .Where(id => !playerRanks.ContainsKey(id) && !JeSlobodan(id)).ToList();
 
-            // Detektuj "group-only" ili Masters turnir: bez završnice i utješnog (ili Masters)
+            // Detektuj Masters ili "group-only" turnir
             bool isMasters = turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(turnir.Liga);
-            bool isGroupOnly = !zavrsniMecevi.Any() && !utjesniMecevi.Any() && grupniMecevi.Any() && (brojGrupa == 1 || isMasters);
 
-            if (isGroupOnly)
+            if (isMasters)
+            {
+                // Masters turnir: igrači se rangiraju u sklopu svoje grupe po kvalitetu (Grupa A = top igrači, Grupa B, itd.)
+                var meceviPoGrupama = grupniMecevi.GroupBy(m => m.NazivGrupe).OrderBy(g => g.Key).ToList();
+                int overallPos = 1;
+
+                foreach (var grupaGroup in meceviPoGrupama)
+                {
+                    string gNaziv = grupaGroup.Key ?? "Grupa";
+                    var meceviGrupe = grupaGroup.ToList();
+                    var igraciGrupe = meceviGrupe
+                        .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
+                        .Where(id => id != null && !JeSlobodan(id) && !playerRanks.ContainsKey(id))
+                        .Distinct()
+                        .ToList();
+
+                    var stats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
+                    foreach (var pid in igraciGrupe)
+                    {
+                        int wins = 0, setsWon = 0, setsLost = 0;
+                        foreach (var m in meceviGrupe.Where(m => m.Odigran && (m.Igrac1ID == pid || m.Igrac2ID == pid)))
+                        {
+                            if (m.Igrac1ID == pid)
+                            {
+                                setsWon  += m.PoeniIgrac1 ?? 0;
+                                setsLost += m.PoeniIgrac2 ?? 0;
+                                if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
+                            }
+                            else
+                            {
+                                setsWon  += m.PoeniIgrac2 ?? 0;
+                                setsLost += m.PoeniIgrac1 ?? 0;
+                                if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
+                            }
+                        }
+                        stats.Add((pid, wins, setsWon - setsLost, setsWon));
+                    }
+
+                    var sorted = stats
+                        .OrderByDescending(x => x.Wins)
+                        .ThenByDescending(x => x.SetDiff)
+                        .ThenByDescending(x => x.SetsWon)
+                        .ToList();
+
+                    int groupRank = 1;
+                    foreach (var item in sorted)
+                    {
+                        string opis = groupRank switch
+                        {
+                            1 => $"1. mjesto 🏆 ({gNaziv})",
+                            2 => $"2. mjesto 🥈 ({gNaziv})",
+                            3 => $"3. mjesto 🥉 ({gNaziv})",
+                            _ => $"{groupRank}. mjesto ({gNaziv})"
+                        };
+                        playerRanks[item.PlayerId] = (overallPos, DajBodoveZaPoziciju(overallPos), opis);
+                        overallPos++;
+                        groupRank++;
+                    }
+                }
+            }
+            else if (!zavrsniMecevi.Any() && !utjesniMecevi.Any() && grupniMecevi.Any() && brojGrupa == 1)
             {
                 // Turnir sa jednom grupom (npr. 5 igrača) – grupni poredak je konačni plasman
                 var groupStats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
