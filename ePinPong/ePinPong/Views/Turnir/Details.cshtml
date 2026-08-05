@@ -2576,6 +2576,9 @@
 
                 // 1. Izračunaj kapacitete šešira
                 function calculatePotCapacities(N) {
+                    if (N === 5) {
+                        return { pot1: 1, pot2: 1, pot3: 1, pot4: 2, G: 1, x: 1 };
+                    }
                     let x = 0;
                     let y = 0;
                     for (let candX = Math.floor(N / 4); candX >= 0; candX--) {
@@ -2587,7 +2590,8 @@
                         }
                     }
                     let G = x + y;
-                    return { pot1: G, pot2: G, pot3: G, pot4: x, G: G, x: x };
+                    let pot4Cap = Math.max(0, N - (3 * G));
+                    return { pot1: G, pot2: G, pot3: G, pot4: pot4Cap, G: G, x: x };
                 }
 
                 // 2. Validacija šešira
@@ -2615,7 +2619,8 @@
 
                     if (errors.length === 0) {
                         validationAlert.className = "alert alert-success border border-success bg-success-transparent d-flex align-items-center justify-content-between py-2 px-3 mb-4 rounded-3 small";
-                        validationText.innerHTML = "<i class='bi bi-check-circle-fill text-success me-2'></i><strong>Šeširi su balansirani!</strong> Raspodjela je ispravna za " + N + " igrača (Grupe: " + caps.G + ", od čega " + caps.x + " sa 4 igrača).";
+                        let groupText = N === 5 ? "1 grupa sa 5 igrača" : ("Grupe: " + caps.G + ", od čega " + caps.x + " sa 4 igrača");
+                        validationText.innerHTML = "<i class='bi bi-check-circle-fill text-success me-2'></i><strong>Šeširi su balansirani!</strong> Raspodjela je ispravna za " + N + " igrača (" + groupText + ").";
                         validationStatusBadge.className = "badge bg-success text-dark";
                         validationStatusBadge.innerText = "Ispravno";
                         if (submitBtn) submitBtn.disabled = false;

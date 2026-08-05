@@ -49,9 +49,9 @@ namespace ePinPong.Controllers
 
             var isMasters = turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(turnir.Liga);
             int count = turnir.Registracije.Count;
-            if (count < 3 || (!isMasters && count == 5))
+            if (count < 3)
             {
-                TempData["Error"] = "Broj igrača mora biti najmanje 3, a ne može biti tačno 5 (jer se ne mogu formirati grupe od 3 i 4 igrača).";
+                TempData["Error"] = "Broj igrača mora biti najmanje 3.";
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
 
@@ -613,7 +613,7 @@ namespace ePinPong.Controllers
         {
             var registrations = turnir.Registracije.ToList();
             int N = registrations.Count;
-            if (N < 3 || N == 5) return;
+            if (N < 3) return;
 
             var points = await GetLeaguePointsForTurnirAsync(turnir);
 
@@ -624,17 +624,25 @@ namespace ePinPong.Controllers
 
             int x = 0;
             int y = 0;
-            for (int candX = N / 4; candX >= 0; candX--)
+            if (N == 5)
             {
-                int ostalo = N - (candX * 4);
-                if (ostalo % 3 == 0)
+                x = 1;
+                y = 0;
+            }
+            else
+            {
+                for (int candX = N / 4; candX >= 0; candX--)
                 {
-                    x = candX;
-                    y = ostalo / 3;
-                    break;
+                    int ostalo = N - (candX * 4);
+                    if (ostalo % 3 == 0)
+                    {
+                        x = candX;
+                        y = ostalo / 3;
+                        break;
+                    }
                 }
             }
-            int G = x + y;
+            int G = (N == 5) ? 1 : (x + y);
 
             for (int i = 0; i < N; i++)
             {

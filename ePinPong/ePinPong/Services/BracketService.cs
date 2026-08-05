@@ -63,11 +63,12 @@ namespace ePinPong.Services
             var grupeIgraca = new List<List<string>>();
             for (int i = 0; i < ukGrupa; i++) grupeIgraca.Add(new List<string>());
 
+            int expectedPot4Count = groupSizes.Sum(size => Math.Max(0, size - 3));
             if (useQualityGrouping)
             {
                 grupeIgraca = DistributeOrderedPlayersIntoGroups(igracIds, groupSizes);
             }
-            else if (pot1.Count == ukGrupa && pot2.Count == ukGrupa && pot3.Count == ukGrupa && pot4.Count == groupsOf4)
+            else if (pot1.Count == ukGrupa && pot2.Count == ukGrupa && pot3.Count == ukGrupa && pot4.Count == expectedPot4Count)
             {
                 var shuffledPot1 = pot1.OrderBy(a => rng.Next()).ToList();
                 var shuffledPot2 = pot2.OrderBy(a => rng.Next()).ToList();
@@ -79,10 +80,14 @@ namespace ePinPong.Services
                     grupeIgraca[g].Add(shuffledPot1[g]);
                     grupeIgraca[g].Add(shuffledPot2[g]);
                     grupeIgraca[g].Add(shuffledPot3[g]);
-                    if (groupSizes[g] == 4)
+                    int extraCount = groupSizes[g] - 3;
+                    for (int e = 0; e < extraCount; e++)
                     {
-                        grupeIgraca[g].Add(shuffledPot4[0]);
-                        shuffledPot4.RemoveAt(0);
+                        if (shuffledPot4.Count > 0)
+                        {
+                            grupeIgraca[g].Add(shuffledPot4[0]);
+                            shuffledPot4.RemoveAt(0);
+                        }
                     }
                 }
             }
@@ -1242,8 +1247,11 @@ namespace ePinPong.Services
 
         private static List<int> GetGroupSizes(int playerCount)
         {
-            if (playerCount < 3 || playerCount == 5)
+            if (playerCount < 3)
                 return new List<int>();
+
+            if (playerCount == 5)
+                return new List<int> { 5 };
 
             int groupCount = (playerCount + 3) / 4;
             int remainder = playerCount % 4;
