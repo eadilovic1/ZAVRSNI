@@ -476,7 +476,7 @@ namespace ePinPong.Controllers
             // 2. Provjeri i generiši razigravanja za utješni turnir (UT_R i UT_PL_)
             if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni)
             {
-                var utMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_R") || m.MatchCode.StartsWith("UT_PL_"))).ToList();
+                var utMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_")))).ToList();
                 await GenerisiRazigravanjaZaSkupinu(turnir, sviMecevi, utMecevi, isUtjesni: true);
             }
 

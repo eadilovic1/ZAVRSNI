@@ -191,7 +191,7 @@
                     }
                 </div>
 
-                @if (isOrganizator && (isAdmin || Model.Status != StatusTurnira.Zavrsen))
+                @if (isOrganizator)
                 {
                     <div class="mt-4 p-3 bg-dark-card border border-warning rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
@@ -2078,62 +2078,122 @@
                                             <p class="text-white-50 small mb-0">Postolje pobjednika turnira parova</p>
                                         </div>
 
-                                        <div class="row g-3 align-items-stretch justify-content-center">
+                                        <div class="row g-3 mb-4 justify-content-center align-items-end">
                                             <!-- 2. Mjesto (Srebro) -->
                                             @if (drugoMjesto.HasValue && drugoMjesto.Value.Igrac1 != null)
                                             {
+                                                var p2_1 = drugoMjesto.Value.Igrac1;
+                                                var p2_2 = drugoMjesto.Value.Igrac2;
                                                 <div class="col-12 col-md-4 order-2 order-md-1">
-                                                    <div class="p-3 rounded-4 bg-dark-input border border-secondary text-center position-relative h-100 d-flex flex-column justify-content-between">
-                                                        <div class="badge bg-secondary text-white position-absolute top-0 start-50 translate-middle px-3 py-1 rounded-pill fw-bold">
+                                                    <div class="card bg-dark-card border border-secondary rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+                                                        <div class="position-absolute top-0 start-50 translate-middle-x bg-secondary text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
                                                             🥈 2. Mjesto
                                                         </div>
-                                                        <div class="pt-3 pb-2">
-                                                            <i class="bi bi-award-fill text-secondary fs-1 mb-2 d-block"></i>
-                                                            <h6 class="text-white fw-bold mb-1">@drugoMjesto.Value.Igrac1?.Ime @drugoMjesto.Value.Igrac1?.Prezime</h6>
-                                                            <h6 class="text-white-50 fw-bold mb-0">/ @drugoMjesto.Value.Igrac2?.Ime @drugoMjesto.Value.Igrac2?.Prezime</h6>
+                                                        <div class="pt-4 mb-2">
+                                                            <div class="d-flex justify-content-center gap-1 mb-2">
+                                                                <div class="user-avatar-mini border border-secondary" style="width: 46px; height: 46px; font-size: 1.1rem;">
+                                                                    @if (!string.IsNullOrEmpty(p2_1?.Ime))
+                                                                    {
+                                                                        <span>@p2_1.Ime[0]</span>
+                                                                    }
+                                                                </div>
+                                                                @if (p2_2 != null)
+                                                                {
+                                                                    <div class="user-avatar-mini border border-secondary" style="width: 46px; height: 46px; font-size: 1.1rem;">
+                                                                        @if (!string.IsNullOrEmpty(p2_2?.Ime))
+                                                                        {
+                                                                            <span>@p2_2.Ime[0]</span>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                            <a href="/Korisnik/Index/@p2_1?.Id" class="text-white hover-orange fw-bold d-block fs-6 mb-1">@p2_1?.Ime @p2_1?.Prezime</a>
+                                                            @if (p2_2 != null)
+                                                            {
+                                                                <a href="/Korisnik/Index/@p2_2?.Id" class="text-white-50 hover-orange fw-bold d-block small">/ @p2_2?.Ime @p2_2?.Prezime</a>
+                                                            }
                                                         </div>
-                                                        <div class="mt-2 text-secondary small fw-semibold">2. MJESTO</div>
                                                     </div>
                                                 </div>
                                             }
 
-                                            <!-- 1. Mjesto (Zlato - Pobjednici) -->
+                                            <!-- 1. Mjesto (Zlato - Sredina i Više) -->
                                             @if (prvoMjesto.HasValue && prvoMjesto.Value.Igrac1 != null)
                                             {
-                                                <div class="col-12 col-md-4 order-1 order-md-2 mb-3 mb-md-0">
-                                                    <div class="p-4 rounded-4 bg-dark-input border border-warning text-center position-relative h-100 d-flex flex-column justify-content-between shadow-glow" style="border-width: 2px !important;">
-                                                        <div class="badge bg-warning text-dark position-absolute top-0 start-50 translate-middle px-4 py-2 rounded-pill fw-bold fs-6">
-                                                            🥇 1. Mjesto (POBJEDNICI)
+                                                var p1_1 = prvoMjesto.Value.Igrac1;
+                                                var p1_2 = prvoMjesto.Value.Igrac2;
+                                                <div class="col-12 col-md-4 order-1 order-md-2">
+                                                    <div class="card bg-dark-card border border-warning rounded-4 text-center p-3 shadow-lg h-100 d-flex flex-column justify-content-between position-relative overflow-hidden" style="background: linear-gradient(180deg, rgba(255, 193, 7, 0.12) 0%, rgba(20, 20, 20, 0.95) 100%);">
+                                                        <div class="position-absolute top-0 start-50 translate-middle-x bg-warning text-dark px-4 py-1 rounded-bottom fw-bold text-nowrap shadow-sm">
+                                                            👑 1. Mjesto
                                                         </div>
-                                                        <div class="pt-3 pb-2">
-                                                            <i class="bi bi-trophy-fill text-warning display-4 mb-2 d-block"></i>
-                                                            <h5 class="text-white fw-bold mb-1">@prvoMjesto.Value.Igrac1?.Ime @prvoMjesto.Value.Igrac1?.Prezime</h5>
-                                                            <h5 class="text-warning fw-bold mb-0">/ @prvoMjesto.Value.Igrac2?.Ime @prvoMjesto.Value.Igrac2?.Prezime</h5>
+                                                        <div class="pt-4 mb-2">
+                                                            <div class="d-flex justify-content-center gap-2 mb-2">
+                                                                <div class="user-avatar-mini bg-warning text-dark border border-warning shadow-sm" style="width: 58px; height: 58px; font-size: 1.4rem;">
+                                                                    @if (!string.IsNullOrEmpty(p1_1?.Ime))
+                                                                    {
+                                                                        <span>@p1_1.Ime[0]</span>
+                                                                    }
+                                                                </div>
+                                                                @if (p1_2 != null)
+                                                                {
+                                                                    <div class="user-avatar-mini bg-warning text-dark border border-warning shadow-sm" style="width: 58px; height: 58px; font-size: 1.4rem;">
+                                                                        @if (!string.IsNullOrEmpty(p1_2?.Ime))
+                                                                        {
+                                                                            <span>@p1_2.Ime[0]</span>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                            <a href="/Korisnik/Index/@p1_1?.Id" class="text-warning hover-orange fw-bold d-block fs-5 mb-1">@p1_1?.Ime @p1_1?.Prezime</a>
+                                                            @if (p1_2 != null)
+                                                            {
+                                                                <a href="/Korisnik/Index/@p1_2?.Id" class="text-white hover-orange fw-bold d-block fs-6">/ @p1_2?.Ime @p1_2?.Prezime</a>
+                                                            }
                                                         </div>
-                                                        <div class="mt-2 text-warning small fw-bold">ŠAMPIONI TURNIRA PAROVA</div>
                                                     </div>
                                                 </div>
                                             }
 
-                                            <!-- 3. Mjesta (Bronza) -->
+                                            <!-- 3. Mjesto (Bronza) -->
                                             @if (trecaMjesta.Any())
                                             {
                                                 <div class="col-12 col-md-4 order-3">
-                                                    <div class="p-3 rounded-4 bg-dark-input border text-center position-relative h-100 d-flex flex-column justify-content-between" style="border-color: #cd7f32 !important;">
-                                                        <div class="badge text-white position-absolute top-0 start-50 translate-middle px-3 py-1 rounded-pill fw-bold" style="background-color: #cd7f32;">
+                                                    <div class="card bg-dark-card border border-danger rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+                                                        <div class="position-absolute top-0 start-50 translate-middle-x bg-danger text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
                                                             🥉 @(trecaMjesta.Count > 1 ? "3. Mjesta" : "3. Mjesto")
                                                         </div>
-                                                        <div class="pt-3 pb-2">
-                                                            <i class="bi bi-award-fill fs-1 mb-2 d-block" style="color: #cd7f32;"></i>
+                                                        <div class="pt-4 mb-2">
                                                             @foreach (var par in trecaMjesta)
                                                             {
+                                                                var p3_1 = par.Igrac1;
+                                                                var p3_2 = par.Igrac2;
                                                                 <div class="mb-2 pb-2 @(par != trecaMjesta.Last() ? "border-bottom border-dark-glow" : "")">
-                                                                    <span class="text-white fw-bold d-block">@par.Igrac1?.Ime @par.Igrac1?.Prezime</span>
-                                                                    <span class="text-white-50 small d-block">/ @par.Igrac2?.Ime @par.Igrac2?.Prezime</span>
+                                                                    <div class="d-flex justify-content-center gap-1 mb-1">
+                                                                        <div class="user-avatar-mini border border-danger text-orange" style="width: 40px; height: 40px; font-size: 1rem;">
+                                                                            @if (!string.IsNullOrEmpty(p3_1?.Ime))
+                                                                            {
+                                                                                <span>@p3_1.Ime[0]</span>
+                                                                            }
+                                                                        </div>
+                                                                        @if (p3_2 != null)
+                                                                        {
+                                                                            <div class="user-avatar-mini border border-danger text-orange" style="width: 40px; height: 40px; font-size: 1rem;">
+                                                                                @if (!string.IsNullOrEmpty(p3_2?.Ime))
+                                                                                {
+                                                                                    <span>@p3_2.Ime[0]</span>
+                                                                                }
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                    <a href="/Korisnik/Index/@p3_1?.Id" class="text-white hover-orange fw-bold d-block fs-6 mb-1">@p3_1?.Ime @p3_1?.Prezime</a>
+                                                                    @if (p3_2 != null)
+                                                                    {
+                                                                        <a href="/Korisnik/Index/@p3_2?.Id" class="text-white-50 hover-orange fw-bold d-block small">/ @p3_2?.Ime @p3_2?.Prezime</a>
+                                                                    }
                                                                 </div>
                                                             }
                                                         </div>
-                                                        <div class="mt-1 small fw-semibold" style="color: #cd7f32;">@(trecaMjesta.Count > 1 ? "POLUFINALISTI" : "3. MJESTO")</div>
                                                     </div>
                                                 </div>
                                             }

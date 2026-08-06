@@ -62,6 +62,7 @@ namespace ePinPong.Controllers
             ViewBag.CurrentUserId = userId;
             var isOrganizator = turnir.OrganizatorId == userId || User.IsInRole("Administrator");
             ViewBag.IsOrganizator = isOrganizator;
+            ViewBag.IsAdmin = User.IsInRole("Administrator");
             var isMasters = turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(turnir.Liga);
             ViewBag.IsMasters = isMasters;
 
@@ -182,7 +183,11 @@ namespace ePinPong.Controllers
         public IActionResult Create(int? ligaId = null)
         {
             var lige = _context.Lige.Include(l => l.Turniri).ToList();
-            var ligeSelectList = lige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv }).ToList();
+            var dostupneLige = lige
+                .Where(l => (ligaId.HasValue && l.ID == ligaId.Value) || LigaTurnirHelper.CanCreateRegular(l))
+                .ToList();
+
+            var ligeSelectList = dostupneLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv }).ToList();
             ligeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
             ViewBag.Lige = ligeSelectList;
 
@@ -399,8 +404,11 @@ namespace ePinPong.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var sveLige = _context.Lige.ToList();
-            var sveLigeSelectList = sveLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv }).ToList();
+            var sveLige = _context.Lige.Include(l => l.Turniri).ToList();
+            var dostupneLige = sveLige
+                .Where(l => (turnir.LigaID.HasValue && l.ID == turnir.LigaID.Value) || LigaTurnirHelper.CanCreateRegular(l))
+                .ToList();
+            var sveLigeSelectList = dostupneLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv, Selected = turnir.LigaID == l.ID }).ToList();
             sveLigeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
             ViewBag.Lige = sveLigeSelectList;
 
@@ -450,15 +458,10 @@ namespace ePinPong.Controllers
             }
 
             var userId = _userManager.GetUserId(User);
-            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var isAdmin = User.IsInRole("Administrator");
+            if (turnir.OrganizatorId != userId && !isAdmin)
             {
                 return Forbid();
-            }
-
-            if (!User.IsInRole("Administrator") && turnir.Status == StatusTurnira.Zavrsen)
-            {
-                TempData["Error"] = "Organizator ne može uređivati završen turnir.";
-                return RedirectToAction(nameof(Details), new { id = turnir.ID });
             }
 
             var returnUrl = Request.Query["returnUrl"].ToString();
@@ -478,12 +481,30 @@ namespace ePinPong.Controllers
                 .Cast<StatusTurnira>()
                 .Select(s => new SelectListItem { Value = s.ToString(), Text = s.ToString(), Selected = turnir.Status == s });
 
-            var lige = await _context.Lige.ToListAsync();
-            var ligeSelectList = lige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv, Selected = turnir.LigaID == l.ID }).ToList();
+            var sveLige = await _context.Lige
+                .Include(l => l.Turniri)
+                .ToListAsync();
+
+            List<Liga> dostupneLige;
+            if (isAdmin)
+            {
+                dostupneLige = sveLige
+                    .Where(l => l.ID == turnir.LigaID || LigaTurnirHelper.CanCreateRegular(l))
+                    .ToList();
+            }
+            else
+            {
+                // Organizator može izabrati samo ligu koju je sam organizovao i čiji broj regularnih turnira nije popunjen (ili trenutnu ligu turnira)
+                dostupneLige = sveLige
+                    .Where(l => l.ID == turnir.LigaID || ((!l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
+                    .ToList();
+            }
+
+            var ligeSelectList = dostupneLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv, Selected = turnir.LigaID == l.ID }).ToList();
             ligeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
             ViewBag.Lige = ligeSelectList;
 
-            var odabranaLiga = turnir.LigaID.HasValue ? lige.FirstOrDefault(l => l.ID == turnir.LigaID.Value) : null;
+            var odabranaLiga = turnir.LigaID.HasValue ? sveLige.FirstOrDefault(l => l.ID == turnir.LigaID.Value) : null;
             ViewBag.IsMasters = odabranaLiga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(odabranaLiga);
 
             return View(turnir);
@@ -504,15 +525,51 @@ namespace ePinPong.Controllers
             if (postojeci == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-            if (postojeci.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var isAdmin = User.IsInRole("Administrator");
+
+            if (postojeci.OrganizatorId != userId && !isAdmin)
             {
                 return Forbid();
             }
 
-            if (!User.IsInRole("Administrator") && postojeci.Status == StatusTurnira.Zavrsen)
+            // Ako organizator uređuje završen turnir, samo liga se smije mijenjati
+            if (!isAdmin && postojeci.Status == StatusTurnira.Zavrsen)
             {
-                TempData["Error"] = "Organizator ne može uređivati završen turnir.";
-                return RedirectToAction(nameof(Details), new { id = postojeci.ID });
+                turnir.Naziv = postojeci.Naziv;
+                turnir.Status = postojeci.Status;
+                turnir.MaxIgraca = postojeci.MaxIgraca;
+                turnir.DatumPocetka = postojeci.DatumPocetka;
+                turnir.DatumKraja = postojeci.DatumKraja;
+                turnir.Lokacija = postojeci.Lokacija;
+                turnir.Opis = postojeci.Opis;
+                turnir.SlikaUrl = postojeci.SlikaUrl;
+                turnir.TipTakmicenja = postojeci.TipTakmicenja;
+                turnir.SistemTurnira = postojeci.SistemTurnira;
+            }
+
+            // Validacija: Nova liga ne smije imati popunjen broj regularnih turnira
+            if (turnir.LigaID.HasValue && turnir.LigaID != postojeci.LigaID)
+            {
+                var odabranaLigaObj = await _context.Lige
+                    .Include(l => l.Turniri)
+                    .FirstOrDefaultAsync(l => l.ID == turnir.LigaID.Value);
+
+                if (odabranaLigaObj != null)
+                {
+                    if (!isAdmin)
+                    {
+                        bool jeIstiOrganizator = !odabranaLigaObj.Turniri.Any() || odabranaLigaObj.Turniri.Any(t => t.OrganizatorId == userId);
+                        if (!jeIstiOrganizator)
+                        {
+                            ModelState.AddModelError("LigaID", "Možete izabrati samo ligu koju ste vi organizovali.");
+                        }
+                    }
+
+                    if (!LigaTurnirHelper.CanCreateRegular(odabranaLigaObj))
+                    {
+                        ModelState.AddModelError("LigaID", $"U ligi '{odabranaLigaObj.Naziv}' je već kreiran maksimalan broj regularnih turnira ({odabranaLigaObj.BrojRegularnihTurnira}). Ova liga se ne može izabrati.");
+                    }
+                }
             }
 
             // Očuvaj organizatora i plasmane
@@ -557,10 +614,27 @@ namespace ePinPong.Controllers
                 .Cast<StatusTurnira>()
                 .Select(s => new SelectListItem { Value = s.ToString(), Text = s.ToString(), Selected = turnir.Status == s });
 
-            var sveLige = await _context.Lige.ToListAsync();
-            var sveLigeSelectList = sveLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv, Selected = turnir.LigaID == l.ID }).ToList();
-            sveLigeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
-            ViewBag.Lige = sveLigeSelectList;
+            var sveLige = await _context.Lige
+                .Include(l => l.Turniri)
+                .ToListAsync();
+
+            List<Liga> dostupneLige;
+            if (isAdmin)
+            {
+                dostupneLige = sveLige
+                    .Where(l => l.ID == turnir.LigaID || LigaTurnirHelper.CanCreateRegular(l))
+                    .ToList();
+            }
+            else
+            {
+                dostupneLige = sveLige
+                    .Where(l => l.ID == turnir.LigaID || ((!l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
+                    .ToList();
+            }
+
+            var ligeSelectList = dostupneLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv, Selected = turnir.LigaID == l.ID }).ToList();
+            ligeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
+            ViewBag.Lige = ligeSelectList;
 
             var postojecaLiga = turnir.LigaID.HasValue ? sveLige.FirstOrDefault(l => l.ID == turnir.LigaID.Value) : null;
             ViewBag.IsMasters = postojecaLiga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(postojecaLiga);
