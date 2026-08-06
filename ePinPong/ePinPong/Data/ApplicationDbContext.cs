@@ -42,7 +42,7 @@ namespace ePinPong.Data
                 .HasOne(t => t.Organizator)
                 .WithMany(u => u.MojiTurniri)
                 .HasForeignKey(t => t.OrganizatorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Registracija -> Turnir i Korisnik
             builder.Entity<Registracija>()

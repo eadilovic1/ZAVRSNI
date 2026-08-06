@@ -114,9 +114,17 @@ namespace ePinPong.Controllers
             var registracije = _context.Registracije.Where(r => r.KorisnikID == id);
             _context.Registracije.RemoveRange(registracije);
 
-            // 2. Obriši mečeve u kojima je korisnik igrao
-            var mecevi = _context.Mecevi.Where(m => m.Igrac1ID == id || m.Igrac2ID == id);
-            _context.Mecevi.RemoveRange(mecevi);
+            // 2. Preusmjeri mečeve u kojima je korisnik igrao na korisnika SLOBODAN umjesto brisanja mečeva
+            var mecevi = await _context.Mecevi
+                .Where(m => m.Igrac1ID == id || m.Igrac2ID == id || m.Igrac1PartnerID == id || m.Igrac2PartnerID == id)
+                .ToListAsync();
+            foreach (var m in mecevi)
+            {
+                if (m.Igrac1ID == id) m.Igrac1ID = "SLOBODAN";
+                if (m.Igrac2ID == id) m.Igrac2ID = "SLOBODAN";
+                if (m.Igrac1PartnerID == id) m.Igrac1PartnerID = null;
+                if (m.Igrac2PartnerID == id) m.Igrac2PartnerID = null;
+            }
 
             // 3. Obriši notifikacije korisnika
             var notifikacije = _context.Notifikacije.Where(n => n.KorisnikId == id);
@@ -126,9 +134,25 @@ namespace ePinPong.Controllers
             var pracenja = _context.Pracenja.Where(p => p.PratilacID == id || p.PraceniID == id);
             _context.Pracenja.RemoveRange(pracenja);
 
-            // 5. Obriši turnire koje je organizovao
-            var turniri = _context.Turniri.Where(t => t.OrganizatorId == id);
-            _context.Turniri.RemoveRange(turniri);
+            // 5. Prebaci organizaciju svih turnira i liga na Administratora umjesto brisanja
+            var currentAdminId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(currentAdminId))
+            {
+                var adminUsers = await _userManager.GetUsersInRoleAsync("Administrator");
+                currentAdminId = adminUsers.FirstOrDefault()?.Id ?? id;
+            }
+
+            var organizovaniTurniri = await _context.Turniri.Where(t => t.OrganizatorId == id).ToListAsync();
+            foreach (var t in organizovaniTurniri)
+            {
+                t.OrganizatorId = currentAdminId;
+            }
+
+            var organizovaneLige = await _context.Lige.Where(l => l.OrganizatorId == id).ToListAsync();
+            foreach (var l in organizovaneLige)
+            {
+                l.OrganizatorId = currentAdminId;
+            }
 
             await _context.SaveChangesAsync();
 
