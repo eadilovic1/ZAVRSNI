@@ -23,6 +23,13 @@ namespace ePinPong.Data
         {
             base.OnModelCreating(builder);
 
+            // Liga -> Organizator
+            builder.Entity<Liga>()
+                .HasOne(l => l.Organizator)
+                .WithMany()
+                .HasForeignKey(l => l.OrganizatorId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Turnir -> Liga
             builder.Entity<Turnir>()
                 .HasOne(t => t.Liga)

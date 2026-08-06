@@ -384,7 +384,6 @@ namespace ePinPong.Controllers
                 }
             }
 
-            TempData["Success"] = "Rezultat meča je uspješno unesen!";
             return RedirectToAction("Details", "Turnir", new { id = mec.TurnirID });
         }
 
@@ -452,7 +451,6 @@ namespace ePinPong.Controllers
             {
                 _context.Mecevi.AddRange(noviMecevi);
                 await _context.SaveChangesAsync();
-                TempData["Success"] = $"Razigravanje za mjesta {plL}–{plR} je uspješno generisano!";
             }
             else
             {
@@ -583,7 +581,6 @@ namespace ePinPong.Controllers
                 _context.Mecevi.AddRange(meceviZavrsnice);
                 await _context.SaveChangesAsync();
                 await ProvjeriIGenerirajRazigravanja(turnirId);
-                TempData["Success"] = "Završnica (parovi) je uspješno generisana!";
             }
             else
             {
@@ -766,7 +763,6 @@ namespace ePinPong.Controllers
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Turnir parova je uspješno generisan!";
             return RedirectToAction("Details", "Turnir", new { id = turnirId, tab = "doubles-tab" });
         }
     }

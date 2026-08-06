@@ -14,14 +14,10 @@ namespace ePinPong.Controllers
     public class HomeController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly UserManager<ApplicationUser> _userManager;
 
-        public HomeController(ApplicationDbContext context, SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
+        public HomeController(ApplicationDbContext context)
         {
             _context = context;
-            _signInManager = signInManager;
-            _userManager = userManager;
         }
 
         public async Task<IActionResult> Index(
@@ -89,62 +85,6 @@ namespace ePinPong.Controllers
         public IActionResult Privacy()
         {
             return View();
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> SimulateRole(string role, string? returnUrl)
-        {
-            await _signInManager.SignOutAsync();
-
-            if (role == "Igrac")
-            {
-                var user = await _userManager.FindByEmailAsync("igrac@epinpong.com");
-                if (user != null)
-                {
-                    await _signInManager.SignInAsync(user, isPersistent: true);
-                    TempData["Success"] = "Uspješno ste se prebacili na ulogu Igrač!";
-                }
-                else
-                {
-                    TempData["Error"] = "Korisnik za simulaciju igrača nije pronađen.";
-                }
-            }
-            else if (role == "Organizator")
-            {
-                var user = await _userManager.FindByEmailAsync("organizator@epinpong.com");
-                if (user != null)
-                {
-                    await _signInManager.SignInAsync(user, isPersistent: true);
-                    TempData["Success"] = "Uspješno ste se prebacili na ulogu Organizator!";
-                }
-                else
-                {
-                    TempData["Error"] = "Korisnik za simulaciju organizatora nije pronađen.";
-                }
-            }
-            else if (role == "Admin")
-            {
-                var user = await _userManager.FindByEmailAsync("admin@epinpong.com");
-                if (user != null)
-                {
-                    await _signInManager.SignInAsync(user, isPersistent: true);
-                    TempData["Success"] = "Uspješno ste se prebacili na ulogu Administrator (Babo)!";
-                }
-                else
-                {
-                    TempData["Error"] = "Korisnik za simulaciju administratora nije pronađen.";
-                }
-            }
-            else
-            {
-                TempData["Success"] = "Odjavljeni ste sa sistema (Uloga: Gost).";
-            }
-
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-            {
-                return Redirect(returnUrl);
-            }
-            return RedirectToAction("Index", "Home");
         }
     }
 }

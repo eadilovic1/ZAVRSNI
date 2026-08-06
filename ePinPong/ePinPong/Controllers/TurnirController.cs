@@ -182,9 +182,13 @@ namespace ePinPong.Controllers
         [Authorize(Roles = "Administrator,Organizator")]
         public IActionResult Create(int? ligaId = null)
         {
+            var userId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Administrator");
+
             var lige = _context.Lige.Include(l => l.Turniri).ToList();
             var dostupneLige = lige
-                .Where(l => (ligaId.HasValue && l.ID == ligaId.Value) || LigaTurnirHelper.CanCreateRegular(l))
+                .Where(l => (isAdmin || l.OrganizatorId == userId) &&
+                            ((ligaId.HasValue && l.ID == ligaId.Value) || LigaTurnirHelper.CanCreateRegular(l)))
                 .ToList();
 
             var ligeSelectList = dostupneLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv }).ToList();
@@ -297,6 +301,12 @@ namespace ePinPong.Controllers
 
                 if (liga != null)
                 {
+                    if (liga.OrganizatorId != userId && !User.IsInRole("Administrator"))
+                    {
+                        TempData["Error"] = "Možete kreirati turnir samo u ligi koju ste vi organizovali.";
+                        return RedirectToAction("Details", "Liga", new { id = liga.ID });
+                    }
+
                     isMastersRequest = turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(liga);
                     var canCreateRegular = LigaTurnirHelper.CanCreateRegular(liga);
                     var canCreateMasters = LigaTurnirHelper.CanCreateMasters(liga);
@@ -397,16 +407,14 @@ namespace ePinPong.Controllers
                 }
 
                 await _context.SaveChangesAsync();
-                if (liga != null && isMastersRequest)
-                {
-                    return RedirectToAction("Details", "Turnir", new { id = turnir.ID });
-                }
-                return RedirectToAction("Index", "Home");
+                TempData["Success"] = "Uspješno ste kreirali turnir!";
+                return RedirectToAction("Details", "Turnir", new { id = turnir.ID });
             }
 
+            var isAdmin = User.IsInRole("Administrator");
             var sveLige = _context.Lige.Include(l => l.Turniri).ToList();
             var dostupneLige = sveLige
-                .Where(l => (turnir.LigaID.HasValue && l.ID == turnir.LigaID.Value) || LigaTurnirHelper.CanCreateRegular(l))
+                .Where(l => (isAdmin || l.OrganizatorId == userId) && ((turnir.LigaID.HasValue && l.ID == turnir.LigaID.Value) || LigaTurnirHelper.CanCreateRegular(l)))
                 .ToList();
             var sveLigeSelectList = dostupneLige.Select(l => new SelectListItem { Value = l.ID.ToString(), Text = l.Naziv, Selected = turnir.LigaID == l.ID }).ToList();
             sveLigeSelectList.Insert(0, new SelectListItem { Value = "", Text = "Ne pripada nijednoj ligi (Samostalni turnir)" });
@@ -496,7 +504,7 @@ namespace ePinPong.Controllers
             {
                 // Organizator može izabrati samo ligu koju je sam organizovao i čiji broj regularnih turnira nije popunjen (ili trenutnu ligu turnira)
                 dostupneLige = sveLige
-                    .Where(l => l.ID == turnir.LigaID || ((!l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
+                    .Where(l => l.ID == turnir.LigaID || ((l.OrganizatorId == userId || !l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
                     .ToList();
             }
 
@@ -558,7 +566,7 @@ namespace ePinPong.Controllers
                 {
                     if (!isAdmin)
                     {
-                        bool jeIstiOrganizator = !odabranaLigaObj.Turniri.Any() || odabranaLigaObj.Turniri.Any(t => t.OrganizatorId == userId);
+                        bool jeIstiOrganizator = odabranaLigaObj.OrganizatorId == userId || !odabranaLigaObj.Turniri.Any() || odabranaLigaObj.Turniri.Any(t => t.OrganizatorId == userId);
                         if (!jeIstiOrganizator)
                         {
                             ModelState.AddModelError("LigaID", "Možete izabrati samo ligu koju ste vi organizovali.");
@@ -628,7 +636,7 @@ namespace ePinPong.Controllers
             else
             {
                 dostupneLige = sveLige
-                    .Where(l => l.ID == turnir.LigaID || ((!l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
+                    .Where(l => l.ID == turnir.LigaID || ((l.OrganizatorId == userId || !l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
                     .ToList();
             }
 
@@ -845,7 +853,6 @@ namespace ePinPong.Controllers
             _context.Registracije.Add(registracija);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Igrač je uspješno dodan na turnir!";
             return RedirectToAction(nameof(Details), new { id = turnirId });
         }
 
@@ -1033,7 +1040,6 @@ namespace ePinPong.Controllers
             {
                 _context.Registracije.Remove(registracija);
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Igrač je uspješno uklonjen sa turnira!";
             }
             else
             {
@@ -1401,7 +1407,6 @@ namespace ePinPong.Controllers
             _context.TurnirParovi.Add(noviPar);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Par je uspješno kreiran i dodan na turnir!";
             return RedirectToAction(nameof(Details), new { id = turnirId });
         }
 
@@ -1447,10 +1452,6 @@ namespace ePinPong.Controllers
             if (isUserInPair && !isOrganizator)
             {
                 TempData["Success"] = "Uspješno ste odjavili svoj par sa turnira.";
-            }
-            else
-            {
-                TempData["Success"] = "Par je uspješno uklonjen sa turnira.";
             }
 
             return RedirectToAction(nameof(Details), new { id = turnirId });

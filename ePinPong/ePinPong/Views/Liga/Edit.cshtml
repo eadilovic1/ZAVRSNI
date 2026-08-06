@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Uredi Ligu";
     var minBrojRegularnihTurnira = ViewBag.MinBrojRegularnihTurnira as int? ?? 1;
+    var isBrojKolaLocked = ViewBag.IsBrojKolaLocked as bool? ?? false;
 }
 
 <div class="container py-4">
@@ -43,8 +44,15 @@
 
                         <div class="mb-4">
                             <label asp-for="BrojRegularnihTurnira" class="form-label text-white fw-bold">Broj regularnih turnira u ligi</label>
-                            <input asp-for="BrojRegularnihTurnira" type="number" min="@minBrojRegularnihTurnira" class="form-control bg-dark-input border-dark-glow text-white" required />
-                            <small class="text-muted d-block mt-1">Minimalna vrijednost je @minBrojRegularnihTurnira jer je već odigrano toliko regularnih kola.</small>
+                            <input asp-for="BrojRegularnihTurnira" type="number" min="@minBrojRegularnihTurnira" class="form-control bg-dark-input border-dark-glow text-white" disabled="@(isBrojKolaLocked ? "disabled" : null)" required />
+                            @if (isBrojKolaLocked)
+                            {
+                                <small class="text-warning d-block mt-1"><i class="bi bi-lock-fill me-1"></i>Broj kola se ne može mijenjati jer su svi turniri i završni Masters ove lige već odigrani.</small>
+                            }
+                            else
+                            {
+                                <small class="text-muted d-block mt-1">Minimalna vrijednost je @minBrojRegularnihTurnira jer je već odigrano toliko regularnih kola.</small>
+                            }
                             <span asp-validation-for="BrojRegularnihTurnira" class="text-danger small"></span>
                         </div>
                     </form>

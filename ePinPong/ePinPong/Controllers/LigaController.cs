@@ -38,6 +38,7 @@ namespace ePinPong.Controllers
         public async Task<IActionResult> Details(int id)
         {
             var liga = await _context.Lige
+                .Include(l => l.Organizator)
                 .Include(l => l.Turniri)
                     .ThenInclude(t => t.Registracije)
                 .Include(l => l.Turniri)
@@ -58,7 +59,7 @@ namespace ePinPong.Controllers
                 .ToList();
 
             var userId = _userManager.GetUserId(User);
-            ViewBag.IsAdminOrOrganizator = User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || User.IsInRole("Organizator"));
+            ViewBag.IsAdminOrOrganizator = User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || (User.IsInRole("Organizator") && liga.OrganizatorId == userId));
             ViewBag.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
             ViewBag.MastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
             ViewBag.CanCreateRegular = LigaTurnirHelper.CanCreateRegular(liga);
@@ -83,6 +84,7 @@ namespace ePinPong.Controllers
         public async Task<IActionResult> Edit(int id)
         {
             var liga = await _context.Lige
+                .Include(l => l.Turniri)
                 .FirstOrDefaultAsync(l => l.ID == id);
 
             if (liga == null)
@@ -90,11 +92,18 @@ namespace ePinPong.Controllers
                 return NotFound();
             }
 
+            var userId = _userManager.GetUserId(User);
+            if (liga.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
             var mastersKoloForLiga = liga.BrojRegularnihTurnira + 1;
             var completedRegularCount = await _context.Turniri
                 .CountAsync(t => t.LigaID == liga.ID && t.Status == StatusTurnira.Zavrsen && t.Kolo.HasValue && t.Kolo.Value != mastersKoloForLiga);
 
             ViewBag.MinBrojRegularnihTurnira = Math.Max(1, completedRegularCount);
+            ViewBag.IsBrojKolaLocked = LigaTurnirHelper.IsLigaOkoncana(liga);
             return View(liga);
         }
 
@@ -105,6 +114,7 @@ namespace ePinPong.Controllers
         public async Task<IActionResult> Edit(Liga liga)
         {
             var existingLiga = await _context.Lige
+                .Include(l => l.Turniri)
                 .FirstOrDefaultAsync(l => l.ID == liga.ID);
 
             if (existingLiga == null)
@@ -112,12 +122,25 @@ namespace ePinPong.Controllers
                 return NotFound();
             }
 
+            var userId = _userManager.GetUserId(User);
+            if (existingLiga.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
+            }
+
+            var isOkoncana = LigaTurnirHelper.IsLigaOkoncana(existingLiga);
+            if (isOkoncana && liga.BrojRegularnihTurnira != existingLiga.BrojRegularnihTurnira)
+            {
+                ModelState.AddModelError(nameof(liga.BrojRegularnihTurnira), "Broj kola se ne može mijenjati jer su svi turniri i završni Masters ove lige već odigrani.");
+                liga.BrojRegularnihTurnira = existingLiga.BrojRegularnihTurnira;
+            }
+
             var mastersKoloForExisting = existingLiga.BrojRegularnihTurnira + 1;
             var completedRegularCount = await _context.Turniri
                 .CountAsync(t => t.LigaID == existingLiga.ID && t.Status == StatusTurnira.Zavrsen && t.Kolo.HasValue && t.Kolo.Value != mastersKoloForExisting);
             var minAllowed = Math.Max(1, completedRegularCount);
 
-            if (liga.BrojRegularnihTurnira < minAllowed)
+            if (!isOkoncana && liga.BrojRegularnihTurnira < minAllowed)
             {
                 ModelState.AddModelError(nameof(liga.BrojRegularnihTurnira), $"Broj regularnih turnira ne može biti manji od {minAllowed} jer je već odigrano {completedRegularCount} kola.");
             }
@@ -138,7 +161,10 @@ namespace ePinPong.Controllers
                 existingLiga.Opis = liga.Opis;
                 existingLiga.Sezona = liga.Sezona;
                 existingLiga.DatumPocetka = liga.DatumPocetka;
-                existingLiga.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
+                if (!isOkoncana)
+                {
+                    existingLiga.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
+                }
 
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Uspješno ste ažurirali ligu!";
@@ -146,6 +172,7 @@ namespace ePinPong.Controllers
             }
 
             ViewBag.MinBrojRegularnihTurnira = minAllowed;
+            ViewBag.IsBrojKolaLocked = isOkoncana;
             return View(existingLiga);
         }
 
@@ -172,6 +199,7 @@ namespace ePinPong.Controllers
 
             if (ModelState.IsValid)
             {
+                liga.OrganizatorId = _userManager.GetUserId(User);
                 _context.Add(liga);
                 await _context.SaveChangesAsync();
 
@@ -235,6 +263,11 @@ namespace ePinPong.Controllers
             if (string.IsNullOrEmpty(userId))
             {
                 return Challenge();
+            }
+
+            if (liga.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            {
+                return Forbid();
             }
 
             // Izračunaj datum mastersa: zadnja nedjelja u mjesecu nakon zadnjeg turnira u ligi

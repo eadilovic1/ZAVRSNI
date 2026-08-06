@@ -37,6 +37,14 @@ namespace ePinPong.Services
         public static bool CanCreateAnyTurnir(Liga liga)
             => CanCreateRegular(liga) || CanCreateMasters(liga);
 
+        public static bool IsLigaOkoncana(Liga liga)
+        {
+            if (liga == null || liga.Turniri == null) return false;
+            return GetZavrseniRegularniTurniri(liga).Count() >= liga.BrojRegularnihTurnira
+                   && HasMasters(liga)
+                   && liga.Turniri.Any(t => IsMastersTurnir(t, liga) && t.Status == StatusTurnira.Zavrsen);
+        }
+
         public static DateTime GetDefaultStandaloneTurnirDatum()
         {
             var today = DateTime.Today;

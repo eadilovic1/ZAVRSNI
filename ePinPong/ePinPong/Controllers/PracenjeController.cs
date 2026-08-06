@@ -66,7 +66,6 @@ namespace ePinPong.Controllers
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Uspješno ste zapratili igrača.";
             return RedirectToAction("Index", "Korisnik", new { id = praceniId });
         }
 
@@ -87,7 +86,6 @@ namespace ePinPong.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            TempData["Success"] = "Više ne pratite ovog igrača.";
             return RedirectToAction("Index", "Korisnik", new { id = praceniId });
         }
     }

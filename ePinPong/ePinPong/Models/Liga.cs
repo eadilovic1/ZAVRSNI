@@ -12,6 +12,10 @@ namespace ePinPong.Models
         public DateTime DatumPocetka { get; set; } = DateTime.Today;
         public int BrojRegularnihTurnira { get; set; } = 1;
 
+        // Organizator
+        public string? OrganizatorId { get; set; }
+        public virtual ApplicationUser? Organizator { get; set; }
+
         // Relacija sa turnirima
         public virtual ICollection<Turnir> Turniri { get; set; } = new List<Turnir>();
     }
