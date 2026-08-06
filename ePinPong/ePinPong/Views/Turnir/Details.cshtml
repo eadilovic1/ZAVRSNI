@@ -2837,12 +2837,33 @@
             // Tab recovery code
             var tabTriggers = document.querySelectorAll('#tournamentTabs button[data-bs-toggle="pill"]');
             var storageKey = 'activeTab_Turnir_' + '@Model.ID';
-            var savedTabId = localStorage.getItem(storageKey);
-            if (savedTabId) {
-                var tabEl = document.getElementById(savedTabId);
-                if (tabEl) {
-                    var tab = new bootstrap.Tab(tabEl);
+
+            // 1. Provjeri da li server šalje ?tab= parametar (npr. nakon generisanja grupa/parova)
+            var urlParams = new URLSearchParams(window.location.search);
+            var urlTab = urlParams.get('tab');
+            if (urlTab) {
+                var urlTabEl = document.getElementById(urlTab);
+                if (urlTabEl) {
+                    localStorage.setItem(storageKey, urlTab);
+                    var tab = new bootstrap.Tab(urlTabEl);
                     tab.show();
+                }
+                // Ukloni ?tab= iz URL-a bez ponovnog učitavanja stranice
+                var cleanUrl = window.location.pathname + window.location.hash;
+                history.replaceState(null, '', cleanUrl);
+            } else {
+                // 2. Inače pokušaj obnoviti tab iz localStorage-a,
+                //    ali samo ako taj tab element postoji na ovoj stranici
+                var savedTabId = localStorage.getItem(storageKey);
+                if (savedTabId) {
+                    var savedTabEl = document.getElementById(savedTabId);
+                    if (savedTabEl) {
+                        var savedTab = new bootstrap.Tab(savedTabEl);
+                        savedTab.show();
+                    } else {
+                        // Tab ne postoji na ovoj stranici — resetuj na default (grupna faza)
+                        localStorage.removeItem(storageKey);
+                    }
                 }
             }
             tabTriggers.forEach(function (tabEl) {

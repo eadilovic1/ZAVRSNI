@@ -136,7 +136,7 @@ namespace ePinPong.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Grupna faza je uspješno generisana!";
-            return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            return RedirectToAction("Details", "Turnir", new { id = turnirId, tab = "groups-tab" });
         }
 
         // GET: /Mec/UnosRezultata/5
@@ -767,7 +767,7 @@ namespace ePinPong.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Turnir parova je uspješno generisan!";
-            return RedirectToAction("Details", "Turnir", new { id = turnirId });
+            return RedirectToAction("Details", "Turnir", new { id = turnirId, tab = "doubles-tab" });
         }
     }
 }
