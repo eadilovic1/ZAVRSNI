@@ -1,0 +1,18 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+charset = utf-8-bom
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Nullable reference types upozorenja tretiraj ozbiljno
+dotnet_diagnostic.CS8600.severity = warning
+dotnet_diagnostic.CS8602.severity = warning
+dotnet_diagnostic.CS8603.severity = warning
+dotnet_diagnostic.CS8604.severity = warning
+
+[*.{cshtml,razor}]
+indent_style = space
+indent_size = 4

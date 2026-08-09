@@ -1,0 +1,16 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# SQLite baze (razvojne/demo, ne pripadaju repou)
+*.db
+*.db-shm
+*.db-wal
+
+# Ostalo
+*.log
