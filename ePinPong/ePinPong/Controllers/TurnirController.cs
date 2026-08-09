@@ -362,7 +362,7 @@ namespace ePinPong.Controllers
                 return RedirectToAction("Details", "Turnir", new { id = turnir.ID });
             }
 
-            var isAdmin = User.IsInRole("Administrator");
+            var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
             var sveLige = _context.Lige.Include(l => l.Turniri).ToList();
             var dostupneLige = sveLige
                 .Where(l => (isAdmin || l.OrganizatorId == userId) && ((turnir.LigaID.HasValue && l.ID == turnir.LigaID.Value) || LigaTurnirHelper.CanCreateRegular(l)))
