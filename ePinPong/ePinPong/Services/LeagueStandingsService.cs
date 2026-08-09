@@ -11,12 +11,12 @@ namespace ePinPong.Services
     public class LeagueStandingsService : ILeagueStandingsService
     {
         private readonly ApplicationDbContext _context;
-        private readonly IBracketService _bracketService;
+        private readonly IStandingsCalculationService _standingsCalculationService;
 
-        public LeagueStandingsService(ApplicationDbContext context, IBracketService bracketService)
+        public LeagueStandingsService(ApplicationDbContext context, IStandingsCalculationService standingsCalculationService)
         {
             _context = context;
-            _bracketService = bracketService;
+            _standingsCalculationService = standingsCalculationService;
         }
 
         public async Task<Dictionary<string, int>> GetPlayerPointsAsync(Turnir turnir)
@@ -39,7 +39,7 @@ namespace ePinPong.Services
 
             foreach (var ft in finishedTournaments)
             {
-                var plasmani = _bracketService.IzracunajPlasman(ft);
+                var plasmani = _standingsCalculationService.IzracunajPlasman(ft);
                 foreach (var pl in plasmani)
                 {
                     if (playerPoints.ContainsKey(pl.KorisnikId))
@@ -68,7 +68,6 @@ namespace ePinPong.Services
                 };
             }
 
-            // Jedan batch upit umjesto N+1 (ranije se svaki turnir dohvatao sinhrono unutar petlje)
             var zavrseniTurniri = await _context.Turniri
                 .Where(t => t.LigaID == liga.ID && t.Status == StatusTurnira.Zavrsen)
                 .Include(t => t.Registracije).ThenInclude(r => r.Korisnik)
@@ -79,7 +78,7 @@ namespace ePinPong.Services
 
             foreach (var turnir in zavrseniTurniri)
             {
-                var plasmani = _bracketService.IzracunajPlasman(turnir);
+                var plasmani = _standingsCalculationService.IzracunajPlasman(turnir);
 
                 foreach (var item in tabeleMap)
                 {

@@ -45,6 +45,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 // 4. Registracija Servisa i Interfejsa (SOLID principi!)
 builder.Services.AddScoped<IMailService, MailService>();
+builder.Services.AddScoped<IBracketDrawService, BracketDrawService>();
+builder.Services.AddScoped<IBracketProgressionService, BracketProgressionService>();
+builder.Services.AddScoped<IStandingsCalculationService, StandingsCalculationService>();
 builder.Services.AddScoped<IBracketService, BracketService>();
 builder.Services.AddScoped<ILeagueStandingsService, LeagueStandingsService>();
 
