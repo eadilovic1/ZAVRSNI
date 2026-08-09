@@ -20,13 +20,15 @@ namespace ePinPong.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IBracketService _bracketService;
         private readonly IMailService _mailService;
+        private readonly ILeagueStandingsService _leagueStandingsService;
 
-        public MecController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBracketService bracketService, IMailService mailService)
+        public MecController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBracketService bracketService, IMailService mailService, ILeagueStandingsService leagueStandingsService)
         {
             _context = context;
             _userManager = userManager;
             _bracketService = bracketService;
             _mailService = mailService;
+            _leagueStandingsService = leagueStandingsService;
         }
 
         // POST: /Mec/GenerirajBracket/5
@@ -596,73 +598,13 @@ namespace ePinPong.Controllers
             public int Sesir { get; set; }
         }
 
-        private async Task<Dictionary<string, int>> GetLeaguePointsForTurnirAsync(Turnir turnir)
-        {
-            var playerPoints = new Dictionary<string, int>();
-            foreach (var reg in turnir.Registracije)
-            {
-                playerPoints[reg.KorisnikID] = 0;
-            }
-
-            if (turnir.LigaID != null)
-            {
-                var finishedTournaments = await _context.Turniri
-                    .Where(t => t.LigaID == turnir.LigaID && t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID)
-                    .Include(t => t.Registracije)
-                        .ThenInclude(r => r.Korisnik)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac1)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac2)
-                    .ToListAsync();
-
-                foreach (var ft in finishedTournaments)
-                {
-                    var plasmani = _bracketService.IzracunajPlasman(ft);
-                    foreach (var pl in plasmani)
-                    {
-                        if (playerPoints.ContainsKey(pl.KorisnikId))
-                        {
-                            playerPoints[pl.KorisnikId] += pl.Bodovi;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                var finishedTournaments = await _context.Turniri
-                    .Where(t => t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID)
-                    .Include(t => t.Registracije)
-                        .ThenInclude(r => r.Korisnik)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac1)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac2)
-                    .ToListAsync();
-
-                foreach (var ft in finishedTournaments)
-                {
-                    var plasmani = _bracketService.IzracunajPlasman(ft);
-                    foreach (var pl in plasmani)
-                    {
-                        if (playerPoints.ContainsKey(pl.KorisnikId))
-                        {
-                            playerPoints[pl.KorisnikId] += pl.Bodovi;
-                        }
-                    }
-                }
-            }
-
-            return playerPoints;
-        }
-
         private async Task AutoRasporediSesire(Turnir turnir)
         {
             var registrations = turnir.Registracije.ToList();
             int N = registrations.Count;
             if (N < 3) return;
 
-            var points = await GetLeaguePointsForTurnirAsync(turnir);
+            var points = await _leagueStandingsService.GetPlayerPointsAsync(turnir);
 
             var sortedRegs = registrations
                 .OrderByDescending(r => points.ContainsKey(r.KorisnikID) ? points[r.KorisnikID] : 0)
