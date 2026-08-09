@@ -1,6 +1,7 @@
 using ePinPong.Data;
 using ePinPong.Interfaces;
 using ePinPong.Models;
+using ePinPong.Models.ViewModels;
 using ePinPong.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -544,11 +545,6 @@ namespace ePinPong.Controllers
             return RedirectToAction("Details", "Turnir", new { id = turnirId });
         }
 
-        private class PlayerPotDto
-        {
-            public string KorisnikId { get; set; } = string.Empty;
-            public int Sesir { get; set; }
-        }
 
         private async Task AutoRasporediSesire(Turnir turnir)
         {

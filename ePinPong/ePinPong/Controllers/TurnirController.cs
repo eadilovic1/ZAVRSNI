@@ -1171,11 +1171,6 @@ namespace ePinPong.Controllers
             return Ok();
         }
 
-        private class PlayerPotDto
-        {
-            public string KorisnikId { get; set; } = string.Empty;
-            public int Sesir { get; set; }
-        }
 
         // POST: /Turnir/PrijaviPar
         [HttpPost]
