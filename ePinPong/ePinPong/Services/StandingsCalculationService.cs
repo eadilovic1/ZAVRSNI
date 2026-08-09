@@ -62,11 +62,10 @@ namespace ePinPong.Services
             // A) Finale (1. i 2. mjesto)
             if (zFinale != null)
             {
-                if (zFinale.Odigran && zFinale.Igrac1ID != null && zFinale.Igrac2ID != null)
+                var winId = zFinale.PobjednikId;
+                if (winId != null)
                 {
-                    bool i1Pob = (zFinale.PoeniIgrac1 ?? 0) > (zFinale.PoeniIgrac2 ?? 0);
-                    string winId = i1Pob ? zFinale.Igrac1ID : zFinale.Igrac2ID;
-                    string loseId = i1Pob ? zFinale.Igrac2ID : zFinale.Igrac1ID;
+                    var loseId = zFinale.GubitnikId!;
 
                     if (!JeSlobodan(winId))
                         playerRanks[winId] = (1, DajBodoveZaPoziciju(1), "1. mjesto 🏆 Pobjednik");
@@ -98,15 +97,11 @@ namespace ePinPong.Services
 
                     foreach (var m in rundaGroup.Where(m => m.Odigran))
                     {
-                        if (m.Igrac1ID != null && m.Igrac2ID != null)
+                        var loserId = m.GubitnikId;
+                        if (loserId != null && !JeSlobodan(loserId) && !playerRanks.ContainsKey(loserId))
                         {
-                            bool i1Pob = (m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0);
-                            string loserId = i1Pob ? m.Igrac2ID : m.Igrac1ID;
-                            if (!JeSlobodan(loserId) && !playerRanks.ContainsKey(loserId))
-                            {
-                                string opisPozicije = targetPos == 3 ? "3. mjesto 🥉 (Polufinale)" : $"{targetPos}. mjesto";
-                                playerRanks[loserId] = (targetPos, DajBodoveZaPoziciju(targetPos), opisPozicije);
-                            }
+                            string opisPozicije = targetPos == 3 ? "3. mjesto 🥉 (Polufinale)" : $"{targetPos}. mjesto";
+                            playerRanks[loserId] = (targetPos, DajBodoveZaPoziciju(targetPos), opisPozicije);
                         }
                     }
                 }
@@ -128,11 +123,10 @@ namespace ePinPong.Services
                 {
                     var m = item.Match;
                     List<string> orderedPlayers = new List<string>();
-                    if (m.Odigran && m.Igrac1ID != null && m.Igrac2ID != null)
+                    if (m.PobjednikId != null)
                     {
-                        bool i1Pob = (m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0);
-                        orderedPlayers.Add(i1Pob ? m.Igrac1ID : m.Igrac2ID);
-                        orderedPlayers.Add(i1Pob ? m.Igrac2ID : m.Igrac1ID);
+                        orderedPlayers.Add(m.PobjednikId);
+                        orderedPlayers.Add(m.GubitnikId!);
                     }
                     else
                     {
@@ -198,13 +192,13 @@ namespace ePinPong.Services
                             {
                                 setsWon  += m.PoeniIgrac1 ?? 0;
                                 setsLost += m.PoeniIgrac2 ?? 0;
-                                if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
+                                if (m.PobjednikId == pid) wins++;
                             }
                             else
                             {
                                 setsWon  += m.PoeniIgrac2 ?? 0;
                                 setsLost += m.PoeniIgrac1 ?? 0;
-                                if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
+                                if (m.PobjednikId == pid) wins++;
                             }
                         }
                         stats.Add((pid, wins, setsWon - setsLost, setsWon));
@@ -246,13 +240,13 @@ namespace ePinPong.Services
                         {
                             setsWon  += m.PoeniIgrac1 ?? 0;
                             setsLost += m.PoeniIgrac2 ?? 0;
-                            if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
+                            if (m.PobjednikId == pid) wins++;
                         }
                         else
                         {
                             setsWon  += m.PoeniIgrac2 ?? 0;
                             setsLost += m.PoeniIgrac1 ?? 0;
-                            if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
+                            if (m.PobjednikId == pid) wins++;
                         }
                     }
                     groupStats.Add((pid, wins, setsWon - setsLost, setsWon));
@@ -311,13 +305,13 @@ namespace ePinPong.Services
                             {
                                 setsWon += m.PoeniIgrac1 ?? 0;
                                 setsLost += m.PoeniIgrac2 ?? 0;
-                                if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
+                                if (m.PobjednikId == playerId) wins++;
                             }
                             else if (m.Igrac2ID == playerId)
                             {
                                 setsWon += m.PoeniIgrac2 ?? 0;
                                 setsLost += m.PoeniIgrac1 ?? 0;
-                                if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
+                                if (m.PobjednikId == playerId) wins++;
                             }
                         }
                         stats.Add((playerId, wins, setsWon - setsLost, setsWon));
@@ -344,11 +338,10 @@ namespace ePinPong.Services
                     if (utFinale != null)
                     {
                         List<string> orderedUtFinalists = new List<string>();
-                        if (utFinale.Odigran && utFinale.Igrac1ID != null && utFinale.Igrac2ID != null)
+                        if (utFinale.PobjednikId != null)
                         {
-                            bool i1Pob = (utFinale.PoeniIgrac1 ?? 0) > (utFinale.PoeniIgrac2 ?? 0);
-                            orderedUtFinalists.Add(i1Pob ? utFinale.Igrac1ID : utFinale.Igrac2ID);
-                            orderedUtFinalists.Add(i1Pob ? utFinale.Igrac2ID : utFinale.Igrac1ID);
+                            orderedUtFinalists.Add(utFinale.PobjednikId);
+                            orderedUtFinalists.Add(utFinale.GubitnikId!);
                         }
                         else
                         {
@@ -383,11 +376,10 @@ namespace ePinPong.Services
                     {
                         var m = item.Match;
                         List<string> orderedPlayers = new List<string>();
-                        if (m.Odigran && m.Igrac1ID != null && m.Igrac2ID != null)
+                        if (m.PobjednikId != null)
                         {
-                            bool i1Pob = (m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0);
-                            orderedPlayers.Add(i1Pob ? m.Igrac1ID : m.Igrac2ID);
-                            orderedPlayers.Add(i1Pob ? m.Igrac2ID : m.Igrac1ID);
+                            orderedPlayers.Add(m.PobjednikId);
+                            orderedPlayers.Add(m.GubitnikId!);
                         }
                         else
                         {
@@ -424,13 +416,13 @@ namespace ePinPong.Services
                             {
                                 setsWon += m.PoeniIgrac1 ?? 0;
                                 setsLost += m.PoeniIgrac2 ?? 0;
-                                if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) wins++;
+                                if (m.PobjednikId == playerId) wins++;
                             }
                             else
                             {
                                 setsWon += m.PoeniIgrac2 ?? 0;
                                 setsLost += m.PoeniIgrac1 ?? 0;
-                                if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) wins++;
+                                if (m.PobjednikId == playerId) wins++;
                             }
                         }
                         groupStats.Add((playerId, wins, setsWon - setsLost, setsWon));
