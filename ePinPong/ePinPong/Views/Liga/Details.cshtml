@@ -39,8 +39,8 @@
     // ---------------------------------------------------------------
     ViewData["Title"] = Model.Naziv;
 
-    var standings = ViewBag.Standings as List<ePinPong.Controllers.LigaStandingsViewModel>
-        ?? new List<ePinPong.Controllers.LigaStandingsViewModel>();
+    var standings = ViewBag.Standings as List<ePinPong.Models.ViewModels.LigaStandingsViewModel>
+        ?? new List<ePinPong.Models.ViewModels.LigaStandingsViewModel>();
 
     var zavrseniTurniri = ViewBag.ZavrseniTurniri as List<ePinPong.Models.Turnir>
         ?? new List<ePinPong.Models.Turnir>();

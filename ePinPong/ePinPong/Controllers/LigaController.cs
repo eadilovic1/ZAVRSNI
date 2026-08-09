@@ -1,5 +1,6 @@
 using ePinPong.Data;
 using ePinPong.Models;
+using ePinPong.Models.ViewModels;
 using ePinPong.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -17,12 +18,14 @@ namespace ePinPong.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IBracketService _bracketService;
+        private readonly ILeagueStandingsService _leagueStandingsService;
 
-        public LigaController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBracketService bracketService)
+        public LigaController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBracketService bracketService, ILeagueStandingsService leagueStandingsService)
         {
             _context = context;
             _userManager = userManager;
             _bracketService = bracketService;
+            _leagueStandingsService = leagueStandingsService;
         }
 
         // GET: /Liga
@@ -51,7 +54,7 @@ namespace ePinPong.Controllers
             }
 
             // Izračunaj tabelu Lige (Leaderboard)
-            var standings = ObračunajTabeluLige(liga);
+            var standings = await _leagueStandingsService.GetLeagueTableAsync(liga);
             ViewBag.Standings = standings;
             ViewBag.ZavrseniTurniri = liga.Turniri
                 .Where(t => t.Status == StatusTurnira.Zavrsen)
@@ -378,81 +381,7 @@ namespace ePinPong.Controllers
             return lastDay.AddDays(-diff).Date;
         }
 
-        private List<LigaStandingsViewModel> ObračunajTabeluLige(Liga liga)
-        {
-            var tabeleMap = new Dictionary<string, LigaStandingsViewModel>();
-            var sviKorisnici = _context.Users.Where(u => u.Id != "SLOBODAN").ToList();
-
-            // Filtriraj turnire koji su završeni u okviru lige
-            var zavrseniTurniri = liga.Turniri.Where(t => t.Status == StatusTurnira.Zavrsen).OrderBy(t => t.Kolo).ToList();
-
-            foreach (var user in sviKorisnici)
-            {
-                tabeleMap[user.Id] = new LigaStandingsViewModel
-                {
-                    Korisnik = user,
-                    UkupnoBodova = 0,
-                    BrojOdigranihTurnira = 0,
-                    BodoviPoKolima = new List<int>()
-                };
-            }
-
-            foreach (var turnir in zavrseniTurniri)
-            {
-                var turnirSaPodacima = _context.Turniri
-                    .Include(t => t.Registracije)
-                        .ThenInclude(r => r.Korisnik)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac1)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac2)
-                    .FirstOrDefault(t => t.ID == turnir.ID);
-
-                if (turnirSaPodacima != null)
-                {
-                    var plasmani = _bracketService.IzracunajPlasman(turnirSaPodacima);
-
-                    foreach (var item in tabeleMap)
-                    {
-                        string userId = item.Key;
-                        var model = item.Value;
-
-                        var plasmanInfo = plasmani.FirstOrDefault(p => p.KorisnikId == userId);
-                        if (plasmanInfo != null)
-                        {
-                            model.UkupnoBodova += plasmanInfo.Bodovi;
-                            model.BrojOdigranihTurnira++;
-                            model.BodoviPoKolima.Add(plasmanInfo.Bodovi);
-                        }
-                        else
-                        {
-                            model.BodoviPoKolima.Add(0); // Nije učestvovao
-                        }
-                    }
-                }
-                else
-                {
-                    foreach (var item in tabeleMap)
-                    {
-                        item.Value.BodoviPoKolima.Add(0);
-                    }
-                }
-            }
-
-            return tabeleMap.Values
-                .Where(v => v.BrojOdigranihTurnira > 0)
-                .OrderByDescending(v => v.UkupnoBodova)
-                .ToList();
-        }
-
         #endregion
     }
 
-    public class LigaStandingsViewModel
-    {
-        public ApplicationUser Korisnik { get; set; } = null!;
-        public int BrojOdigranihTurnira { get; set; }
-        public int UkupnoBodova { get; set; }
-        public List<int> BodoviPoKolima { get; set; } = new List<int>();
-    }
 }
