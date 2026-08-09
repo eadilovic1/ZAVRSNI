@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace ePinPong.Controllers
 {
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = AppConstants.Roles.Administrator)]
     public class UserManagementController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;

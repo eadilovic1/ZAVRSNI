@@ -84,8 +84,8 @@ namespace ePinPong.Controllers
             }
 
             var isRegistered = turnir.Registracije.Any(r => r.KorisnikID == userId);
-            var isOrganizator = turnir.OrganizatorId == userId || User.IsInRole("Administrator");
-            var isAdmin = User.IsInRole("Administrator");
+            var isOrganizator = turnir.OrganizatorId == userId || User.IsInRole(AppConstants.Roles.Administrator);
+            var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
             var isMasters = turnir.Liga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(turnir.Liga);
 
             var ranking = _bracketService.IzracunajPlasman(turnir);
@@ -251,7 +251,8 @@ namespace ePinPong.Controllers
 
                 if (liga != null)
                 {
-                    if (liga.OrganizatorId != userId && !User.IsInRole(AppConstants.Roles.Administrator))
+                    var authResult = await _authorizationService.AuthorizeAsync(User, liga, "OrganizatorIliAdmin");
+                    if (!authResult.Succeeded)
                     {
                         TempData["Error"] = "Možete kreirati turnir samo u ligi koju ste vi organizovali.";
                         return RedirectToAction("Details", "Liga", new { id = liga.ID });
@@ -418,7 +419,7 @@ namespace ePinPong.Controllers
             }
 
             var userId = _userManager.GetUserId(User);
-            var isAdmin = User.IsInRole("Administrator");
+            var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
             var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
             if (!authResult.Succeeded)
             {
@@ -486,7 +487,7 @@ namespace ePinPong.Controllers
             if (postojeci == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-            var isAdmin = User.IsInRole("Administrator");
+            var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
 
             var authResult = await _authorizationService.AuthorizeAsync(User, postojeci, "OrganizatorIliAdmin");
             if (!authResult.Succeeded)

@@ -19,7 +19,7 @@ namespace ePinPong.Authorization
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context,
             OrganizatorIliAdminRequirement requirement, Turnir resource)
         {
-            if (context.User.IsInRole("Administrator"))
+            if (context.User.IsInRole(AppConstants.Roles.Administrator))
             {
                 context.Succeed(requirement);
                 return Task.CompletedTask;
@@ -46,8 +46,8 @@ namespace ePinPong.Authorization
 
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context,
             OrganizatorIliAdminRequirement requirement, Liga resource)
-        {
-            if (context.User.IsInRole("Administrator"))
+        {           
+            if (context.User.IsInRole(AppConstants.Roles.Administrator))
             {
                 context.Succeed(requirement);
                 return Task.CompletedTask;
@@ -75,7 +75,7 @@ namespace ePinPong.Authorization
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context,
             OrganizatorIliAdminRequirement requirement, Mec resource)
         {
-            if (context.User.IsInRole("Administrator"))
+            if (context.User.IsInRole(AppConstants.Roles.Administrator))
             {
                 context.Succeed(requirement);
                 return Task.CompletedTask;

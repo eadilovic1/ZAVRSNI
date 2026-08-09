@@ -1,4 +1,5 @@
 using ePinPong.Models;
+using ePinPong.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -13,7 +14,7 @@ namespace ePinPong.Data
         public static async Task SeedAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             // 1. Seed Uloga (Roles)
-            string[] uloge = { "Administrator", "Organizator", "Korisnik" };
+            string[] uloge = { AppConstants.Roles.Administrator, AppConstants.Roles.Organizator, AppConstants.Roles.Korisnik };
             foreach (var uloga in uloge)
             {
                 if (!await roleManager.RoleExistsAsync(uloga))
@@ -40,7 +41,7 @@ namespace ePinPong.Data
                 var result = await userManager.CreateAsync(adminUser, "Admin007.");
                 if (result.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(adminUser, "Administrator");
+                    await userManager.AddToRoleAsync(adminUser, AppConstants.Roles.Administrator);
                 }
             }
 
@@ -110,11 +111,11 @@ namespace ePinPong.Data
 
         public static async Task EnsureSlobodanUserExistsAsync(ApplicationDbContext context)
         {
-            if (!await context.Users.AnyAsync(u => u.Id == "SLOBODAN"))
+            if (!await context.Users.AnyAsync(u => u.Id == BracketService.SLOBODAN))
             {
                 var slobodanUser = new ApplicationUser
                 {
-                    Id = "SLOBODAN",
+                    Id = BracketService.SLOBODAN,
                     UserName = "slobodan@epinpong.local",
                     NormalizedUserName = "SLOBODAN@EPINPONG.LOCAL",
                     Email = "slobodan@epinpong.local",
