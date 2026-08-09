@@ -24,6 +24,7 @@ namespace ePinPong.Controllers
         private readonly ILeagueStandingsService _leagueStandingsService;
         private readonly ITurnirCompletionService _turnirCompletionService;
         private readonly IAuthorizationService _authorizationService;
+        private readonly ILogger<MecController> _logger;
 
         public MecController(
             ApplicationDbContext context,
@@ -32,7 +33,8 @@ namespace ePinPong.Controllers
             IMailService mailService,
             ILeagueStandingsService leagueStandingsService,
             ITurnirCompletionService turnirCompletionService,
-            IAuthorizationService authorizationService)
+            IAuthorizationService authorizationService,
+            ILogger<MecController> logger)
         {
             _context = context;
             _userManager = userManager;
@@ -41,6 +43,7 @@ namespace ePinPong.Controllers
             _leagueStandingsService = leagueStandingsService;
             _turnirCompletionService = turnirCompletionService;
             _authorizationService = authorizationService;
+            _logger = logger;
         }
 
         // POST: /Mec/GenerirajBracket/5
@@ -88,8 +91,9 @@ namespace ePinPong.Controllers
                         await _context.SaveChangesAsync();
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Neuspješno parsiranje/snimanje šešira (playerPotsJson) za turnir {TurnirId}, prelazim na automatski raspored.", turnirId);
                     if (!isMasters)
                     {
                         await AutoRasporediSesire(turnir);

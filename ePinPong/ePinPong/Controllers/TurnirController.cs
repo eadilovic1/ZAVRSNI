@@ -26,6 +26,7 @@ namespace ePinPong.Controllers
         private readonly ILeagueStandingsService _leagueStandingsService;
         private readonly ITurnirCompletionService _turnirCompletionService;
         private readonly IAuthorizationService _authorizationService;
+        private readonly ILogger<TurnirController> _logger;
 
         public TurnirController(
             ApplicationDbContext context,
@@ -34,7 +35,8 @@ namespace ePinPong.Controllers
             IBracketService bracketService,
             ILeagueStandingsService leagueStandingsService,
             ITurnirCompletionService turnirCompletionService,
-            IAuthorizationService authorizationService)
+            IAuthorizationService authorizationService,
+            ILogger<TurnirController> logger)
         {
             _context = context;
             _userManager = userManager;
@@ -43,6 +45,7 @@ namespace ePinPong.Controllers
             _leagueStandingsService = leagueStandingsService;
             _turnirCompletionService = turnirCompletionService;
             _authorizationService = authorizationService;
+            _logger = logger;
         }
 
         // GET: /Turnir/Details/5
@@ -565,8 +568,9 @@ namespace ePinPong.Controllers
                     _context.Update(turnir);
                     await _context.SaveChangesAsync();
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DbUpdateConcurrencyException ex)
                 {
+                    _logger.LogWarning(ex, "Concurrency konflikt prilikom ažuriranja turnira {TurnirId}.", turnir.ID);
                     if (!TurnirExists(turnir.ID)) return NotFound();
                     throw;
                 }
@@ -1162,8 +1166,9 @@ namespace ePinPong.Controllers
                         await _context.SaveChangesAsync();
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Neuspješno parsiranje/snimanje šešira (playerPotsJson) za turnir {TurnirId}.", turnirId);
                     return BadRequest();
                 }
             }
