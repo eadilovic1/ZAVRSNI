@@ -20,19 +20,22 @@ namespace ePinPong.Controllers
         private readonly IBracketService _bracketService;
         private readonly ILeagueStandingsService _leagueStandingsService;
         private readonly IAuthorizationService _authorizationService;
+        private readonly IMastersRegistrationService _mastersRegistrationService;
 
         public LigaController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IBracketService bracketService,
             ILeagueStandingsService leagueStandingsService,
-            IAuthorizationService authorizationService)
+            IAuthorizationService authorizationService,
+            IMastersRegistrationService mastersRegistrationService)
         {
             _context = context;
             _userManager = userManager;
             _bracketService = bracketService;
             _leagueStandingsService = leagueStandingsService;
             _authorizationService = authorizationService;
+            _mastersRegistrationService = mastersRegistrationService;
         }
 
         // GET: /Liga
@@ -304,7 +307,7 @@ namespace ePinPong.Controllers
             _context.Turniri.Add(turnir);
             await _context.SaveChangesAsync();
 
-            await AutoRegistrirajIgraceLigeAsync(liga, turnir.ID);
+            await _mastersRegistrationService.AutoRegistrirajIgraceLigeAsync(liga, turnir.ID);
 
             TempData["Success"] = "Uspješno ste kreirali završni Masters turnir.";
             return RedirectToAction("Details", "Turnir", new { id = turnir.ID });
@@ -332,37 +335,6 @@ namespace ePinPong.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private async Task AutoRegistrirajIgraceLigeAsync(Liga liga, int turnirId)
-        {
-            var korisniciNaRankingu = await LigaRankingHelper.GetLeagueMastersParticipantIdsAsync(_context, _bracketService, liga);
-            if (!korisniciNaRankingu.Any())
-            {
-                return;
-            }
-
-            var postojeciIds = await _context.Registracije
-                .Where(r => r.TurnirID == turnirId)
-                .Select(r => r.KorisnikID)
-                .ToHashSetAsync();
-
-            var noveRegistracije = korisniciNaRankingu
-                .Where(korisnikId => !postojeciIds.Contains(korisnikId))
-                .Select(korisnikId => new Registracija
-                {
-                    TurnirID = turnirId,
-                    KorisnikID = korisnikId,
-                    Odobren = true,
-                    DatumRegistracije = DateTime.Now,
-                    Sesir = 1
-                })
-                .ToList();
-
-            if (noveRegistracije.Any())
-            {
-                _context.Registracije.AddRange(noveRegistracije);
-                await _context.SaveChangesAsync();
-            }
-        }
 
         #region Pomoćne Metode
 

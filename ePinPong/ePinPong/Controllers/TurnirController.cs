@@ -27,6 +27,8 @@ namespace ePinPong.Controllers
         private readonly ITurnirCompletionService _turnirCompletionService;
         private readonly IAuthorizationService _authorizationService;
         private readonly ILogger<TurnirController> _logger;
+        private readonly IMastersRegistrationService _mastersRegistrationService;
+
 
         public TurnirController(
             ApplicationDbContext context,
@@ -36,7 +38,8 @@ namespace ePinPong.Controllers
             ILeagueStandingsService leagueStandingsService,
             ITurnirCompletionService turnirCompletionService,
             IAuthorizationService authorizationService,
-            ILogger<TurnirController> logger)
+            ILogger<TurnirController> logger,
+            IMastersRegistrationService mastersRegistrationService)
         {
             _context = context;
             _userManager = userManager;
@@ -46,6 +49,7 @@ namespace ePinPong.Controllers
             _turnirCompletionService = turnirCompletionService;
             _authorizationService = authorizationService;
             _logger = logger;
+            _mastersRegistrationService = mastersRegistrationService;
         }
 
         // GET: /Turnir/Details/5
@@ -325,7 +329,7 @@ namespace ePinPong.Controllers
 
                 if (liga != null && isMastersRequest)
                 {
-                    await AutoRegistrirajIgraceLigeAsync(liga, turnir.ID);
+                    await _mastersRegistrationService.AutoRegistrirajIgraceLigeAsync(liga, turnir.ID);
                 }
 
                 // NAKON KREIRANJA - Posalji notifikacije pratiocima organizatora
@@ -379,37 +383,6 @@ namespace ePinPong.Controllers
             return View(turnir);
         }
 
-        private async Task AutoRegistrirajIgraceLigeAsync(Liga liga, int turnirId)
-        {
-            var korisniciNaRankingu = await LigaRankingHelper.GetLeagueMastersParticipantIdsAsync(_context, _bracketService, liga);
-            if (!korisniciNaRankingu.Any())
-            {
-                return;
-            }
-
-            var postojeciIds = await _context.Registracije
-                .Where(r => r.TurnirID == turnirId)
-                .Select(r => r.KorisnikID)
-                .ToHashSetAsync();
-
-            var noveRegistracije = korisniciNaRankingu
-                .Where(korisnikId => !postojeciIds.Contains(korisnikId))
-                .Select(korisnikId => new Registracija
-                {
-                    TurnirID = turnirId,
-                    KorisnikID = korisnikId,
-                    Odobren = true,
-                    DatumRegistracije = DateTime.Now,
-                    Sesir = 1
-                })
-                .ToList();
-
-            if (noveRegistracije.Any())
-            {
-                _context.Registracije.AddRange(noveRegistracije);
-                await _context.SaveChangesAsync();
-            }
-        }
 
         // GET: /Turnir/Edit/5
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
