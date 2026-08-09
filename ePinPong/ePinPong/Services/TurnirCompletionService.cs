@@ -54,13 +54,13 @@ namespace ePinPong.Services
                             {
                                 setsWon  += gm.PoeniIgrac1 ?? 0;
                                 setsLost += gm.PoeniIgrac2 ?? 0;
-                                if ((gm.PoeniIgrac1 ?? 0) > (gm.PoeniIgrac2 ?? 0)) wins++;
+                                if (gm.PobjednikId == pid) wins++;
                             }
                             else
                             {
                                 setsWon  += gm.PoeniIgrac2 ?? 0;
                                 setsLost += gm.PoeniIgrac1 ?? 0;
-                                if ((gm.PoeniIgrac2 ?? 0) > (gm.PoeniIgrac1 ?? 0)) wins++;
+                                if (gm.PobjednikId == pid) wins++;
                             }
                         }
                         return new { PlayerId = pid, Wins = wins, SetDiff = setsWon - setsLost, SetsWon = setsWon };
