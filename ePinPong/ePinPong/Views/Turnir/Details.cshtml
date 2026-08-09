@@ -1,19 +1,19 @@
-@model ePinPong.Models.Turnir
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
 @using ePinPong.Models.ViewModels
 @{
     ViewData["Title"] = Model.Naziv;
-    var isRegistered = ViewBag.IsRegistered as bool? ?? false;
-    var isOrganizator = ViewBag.IsOrganizator as bool? ?? false;
-    var isAdmin = ViewBag.IsAdmin as bool? ?? false;
-    var currentUserId = ViewBag.CurrentUserId as string;
+    var isRegistered = Model.IsRegistered;
+    var isOrganizator = Model.IsOrganizator;
+    var isAdmin = Model.IsAdmin;
+    var currentUserId = Model.CurrentUserId;
 
     var grupniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
     var zavrsniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith("Z_")).ToList();
     var razigravanjeMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje && m.MatchCode.StartsWith("PL_")).ToList();
     var sviZavrsniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
-    var ranking = ViewBag.Ranking as List<TurnirPlasmanViewModel>;
-    var playerPoints = ViewBag.PlayerPoints as Dictionary<string, int> ?? new Dictionary<string, int>();
-    var isMasters = ViewBag.IsMasters as bool? ?? false;
+    var ranking = Model.Ranking;
+    var playerPoints = Model.PlayerPoints;
+    var isMasters = Model.IsMasters;
     var utjesniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith("UT_")).ToList();
     var utjesniGlavniMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_"))).ToList();
     var utjesniRazigravanjeMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || m.MatchCode.StartsWith("UT_RR_"))).ToList();
@@ -652,12 +652,12 @@
                                                 </select>
                                             </div>
                                             <div id="seedingSourceLigaContainer" class="d-none">
-                                                <select id="seedingSourceLiga" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="ViewBag.LigeZaSeeding">
+                                                <select id="seedingSourceLiga" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="Model.LigeZaSeeding">
                                                     <option value="">-- Odaberi ligu --</option>
                                                 </select>
                                             </div>
                                             <div id="seedingSourceTurnirContainer" class="d-none">
-                                                <select id="seedingSourceTurnir" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="ViewBag.TurniriZaSeeding">
+                                                <select id="seedingSourceTurnir" class="form-select bg-dark-card border-dark-glow text-white form-select-sm" asp-items="Model.TurniriZaSeeding">
                                                     <option value="">-- Odaberi turnir --</option>
                                                 </select>
                                             </div>
@@ -691,7 +691,7 @@
                                                 <div class="card-body p-2 pot-drop-zone d-flex flex-column gap-2" id="pot-zone-@s" data-pot="@s" style="min-height: 250px; background-color: rgba(255,255,255,0.01); transition: background-color 0.2s;">
                                                     @foreach (var reg in sesirPlayers)
                                                     {
-                                                        var bodovi = ViewBag.PlayerPoints != null && ViewBag.PlayerPoints.ContainsKey(reg.KorisnikID) ? ViewBag.PlayerPoints[reg.KorisnikID] : 0;
+                                                        var bodovi = playerPoints != null && playerPoints.ContainsKey(reg.KorisnikID) ? playerPoints[reg.KorisnikID] : 0;
                                                         <div class="player-draggable-card p-2 bg-dark border border-dark-glow rounded d-flex align-items-center justify-content-between" 
                                                              draggable="@(isOrganizator ? "true" : "false")" 
                                                              data-player-id="@reg.KorisnikID" 
@@ -2552,7 +2552,7 @@
 
         @if (isOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
         {
-            var slobodniKorisniciList = ViewBag.SlobodniKorisnici as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>;
+            var slobodniKorisniciList = Model.SlobodniKorisnici;
             
             <!-- Panel za dodavanje igrača (Organizator / Admin) -->
             <div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
@@ -3030,10 +3030,13 @@
                             });
                         }
                         try {
+                            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                            const token = tokenInput ? tokenInput.value : '';
                             const response = await fetch('/Turnir/SacuvajSesire', {
                                 method: 'POST',
                                 headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'X-CSRF-TOKEN': token
                                 },
                                 body: 'turnirId=' + @Model.ID + '&playerPotsJson=' + encodeURIComponent(JSON.stringify(mapping))
                             });

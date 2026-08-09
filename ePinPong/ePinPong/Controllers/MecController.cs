@@ -21,14 +21,25 @@ namespace ePinPong.Controllers
         private readonly IBracketService _bracketService;
         private readonly IMailService _mailService;
         private readonly ILeagueStandingsService _leagueStandingsService;
+        private readonly ITurnirCompletionService _turnirCompletionService;
+        private readonly IAuthorizationService _authorizationService;
 
-        public MecController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBracketService bracketService, IMailService mailService, ILeagueStandingsService leagueStandingsService)
+        public MecController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IBracketService bracketService,
+            IMailService mailService,
+            ILeagueStandingsService leagueStandingsService,
+            ITurnirCompletionService turnirCompletionService,
+            IAuthorizationService authorizationService)
         {
             _context = context;
             _userManager = userManager;
             _bracketService = bracketService;
             _mailService = mailService;
             _leagueStandingsService = leagueStandingsService;
+            _turnirCompletionService = turnirCompletionService;
+            _authorizationService = authorizationService;
         }
 
         // POST: /Mec/GenerirajBracket/5
@@ -43,8 +54,8 @@ namespace ePinPong.Controllers
 
             if (turnir == null) return NotFound();
 
-            var userId = _userManager.GetUserId(User);
-            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }
@@ -155,8 +166,8 @@ namespace ePinPong.Controllers
 
             if (mec == null) return NotFound();
 
-            var userId = _userManager.GetUserId(User);
-            if (mec.Turnir?.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, mec, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }
@@ -180,8 +191,8 @@ namespace ePinPong.Controllers
 
             if (mec == null) return NotFound();
 
-            var userId = _userManager.GetUserId(User);
-            if (mec.Turnir?.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, mec, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }
@@ -313,74 +324,15 @@ namespace ePinPong.Controllers
             // Provjera da li su svi mečevi odigrani - ako jesu, zatvori turnir i proglasi pobjednika
             if (mec.TipMeca != TipMeca.TurnirParova)
             {
-                var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == mec.TurnirID).ToListAsync();
-                var imaZavrsnicu = sviMecevi.Any(m => m.TipMeca == TipMeca.Zavrsnica);
-                var grupniMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
-                var brojGrupa = grupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+                var turnir = await _context.Turniri
+                    .Include(t => t.Liga)
+                    .Include(t => t.Mecevi)
+                    .FirstOrDefaultAsync(t => t.ID == mec.TurnirID);
 
-                var turnir = await _context.Turniri.Include(t => t.Liga).FirstOrDefaultAsync(t => t.ID == mec.TurnirID);
-                var isMasters = turnir != null && LigaTurnirHelper.IsMastersTurnir(turnir);
-                var isGroupOnly = grupniMecevi.Any() && !imaZavrsnicu && (brojGrupa == 1 || isMasters);
-
-                if (sviMecevi.All(m => m.Odigran && m.TipMeca != TipMeca.TurnirParova) && imaZavrsnicu)
+                if (turnir != null)
                 {
-                    if (turnir != null)
+                    if (_turnirCompletionService.EvaluateAndCloseIfFinished(turnir))
                     {
-                        turnir.Status = StatusTurnira.Zavrsen;
-
-                        // Nađi finalni meč (završnica, bez sljedećeg meča)
-                        var finalMec = sviMecevi.FirstOrDefault(m => m.TipMeca == TipMeca.Zavrsnica && string.IsNullOrEmpty(m.WinnerNextMatchCode));
-                        if (finalMec != null && finalMec.Odigran)
-                        {
-                            turnir.PobjednikID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac1ID : finalMec.Igrac2ID;
-                            turnir.DrugoplasiraniID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac2ID : finalMec.Igrac1ID;
-                        }
-
-                        await _context.SaveChangesAsync();
-                    }
-                }
-                else if ((isGroupOnly || isMasters) && grupniMecevi.Any() && grupniMecevi.All(m => m.Odigran))
-                {
-                    // Group-only ili Masters turnir – svi grupni mečevi odigrani, zatvori turnir
-                    if (turnir != null && turnir.Status != StatusTurnira.Zavrsen)
-                    {
-                        turnir.Status = StatusTurnira.Zavrsen;
-
-                        // Odredi pobjednika i drugoplasiranog na osnovu grupnog poretka
-                        var igraciGrupe = grupniMecevi
-                            .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
-                            .Where(id => id != null && id != BracketService.SLOBODAN)
-                            .Distinct()
-                            .ToList();
-
-                        var groupStats = igraciGrupe.Select(pid =>
-                        {
-                            int wins = 0, setsWon = 0, setsLost = 0;
-                            foreach (var gm in grupniMecevi.Where(m => m.Odigran && (m.Igrac1ID == pid || m.Igrac2ID == pid)))
-                            {
-                                if (gm.Igrac1ID == pid)
-                                {
-                                    setsWon  += gm.PoeniIgrac1 ?? 0;
-                                    setsLost += gm.PoeniIgrac2 ?? 0;
-                                    if ((gm.PoeniIgrac1 ?? 0) > (gm.PoeniIgrac2 ?? 0)) wins++;
-                                }
-                                else
-                                {
-                                    setsWon  += gm.PoeniIgrac2 ?? 0;
-                                    setsLost += gm.PoeniIgrac1 ?? 0;
-                                    if ((gm.PoeniIgrac2 ?? 0) > (gm.PoeniIgrac1 ?? 0)) wins++;
-                                }
-                            }
-                            return new { PlayerId = pid, Wins = wins, SetDiff = setsWon - setsLost, SetsWon = setsWon };
-                        })
-                        .OrderByDescending(x => x.Wins)
-                        .ThenByDescending(x => x.SetDiff)
-                        .ThenByDescending(x => x.SetsWon)
-                        .ToList();
-
-                        if (groupStats.Count > 0) turnir.PobjednikID = groupStats[0].PlayerId;
-                        if (groupStats.Count > 1) turnir.DrugoplasiraniID = groupStats[1].PlayerId;
-
                         await _context.SaveChangesAsync();
                     }
                 }
@@ -400,8 +352,8 @@ namespace ePinPong.Controllers
 
             if (turnir == null) return NotFound();
 
-            var userId = _userManager.GetUserId(User);
-            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
                 return Forbid();
 
             var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
@@ -554,8 +506,8 @@ namespace ePinPong.Controllers
 
             if (turnir == null) return NotFound();
 
-            var userId = _userManager.GetUserId(User);
-            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }
@@ -659,8 +611,8 @@ namespace ePinPong.Controllers
 
             if (turnir == null) return NotFound();
 
-            var userId = _userManager.GetUserId(User);
-            if (turnir.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }

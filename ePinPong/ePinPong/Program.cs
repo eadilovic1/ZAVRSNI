@@ -50,6 +50,20 @@ builder.Services.AddScoped<IBracketProgressionService, BracketProgressionService
 builder.Services.AddScoped<IStandingsCalculationService, StandingsCalculationService>();
 builder.Services.AddScoped<IBracketService, BracketService>();
 builder.Services.AddScoped<ILeagueStandingsService, LeagueStandingsService>();
+builder.Services.AddScoped<ITurnirCompletionService, TurnirCompletionService>();
+
+// Antiforgery konfiguracija za AJAX/fetch pozive
+builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
+
+// Policy-based authorization i resource handler
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("OrganizatorIliAdmin", policy =>
+        policy.Requirements.Add(new ePinPong.Authorization.OrganizatorIliAdminRequirement()));
+});
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, ePinPong.Authorization.TurnirOrganizatorHandler>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, ePinPong.Authorization.LigaOrganizatorHandler>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, ePinPong.Authorization.MecOrganizatorHandler>();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages(); // Potrebno za Identity Razor Pages!

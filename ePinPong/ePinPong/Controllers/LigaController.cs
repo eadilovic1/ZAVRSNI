@@ -19,13 +19,20 @@ namespace ePinPong.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IBracketService _bracketService;
         private readonly ILeagueStandingsService _leagueStandingsService;
+        private readonly IAuthorizationService _authorizationService;
 
-        public LigaController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBracketService bracketService, ILeagueStandingsService leagueStandingsService)
+        public LigaController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IBracketService bracketService,
+            ILeagueStandingsService leagueStandingsService,
+            IAuthorizationService authorizationService)
         {
             _context = context;
             _userManager = userManager;
             _bracketService = bracketService;
             _leagueStandingsService = leagueStandingsService;
+            _authorizationService = authorizationService;
         }
 
         // GET: /Liga
@@ -95,8 +102,8 @@ namespace ePinPong.Controllers
                 return NotFound();
             }
 
-            var userId = _userManager.GetUserId(User);
-            if (liga.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, liga, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }
@@ -125,8 +132,8 @@ namespace ePinPong.Controllers
                 return NotFound();
             }
 
-            var userId = _userManager.GetUserId(User);
-            if (existingLiga.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, existingLiga, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }
@@ -268,7 +275,8 @@ namespace ePinPong.Controllers
                 return Challenge();
             }
 
-            if (liga.OrganizatorId != userId && !User.IsInRole("Administrator"))
+            var authResult = await _authorizationService.AuthorizeAsync(User, liga, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
             {
                 return Forbid();
             }
