@@ -1066,43 +1066,14 @@ namespace ePinPong.Controllers
 
             if (sourceType == "Liga")
             {
-                var liga = await _context.Lige
-                    .Include(l => l.Turniri)
-                        .ThenInclude(t => t.Registracije)
-                            .ThenInclude(r => r.Korisnik)
-                    .Include(l => l.Turniri)
-                        .ThenInclude(t => t.Mecevi)
-                            .ThenInclude(m => m.Igrac1)
-                    .Include(l => l.Turniri)
-                        .ThenInclude(t => t.Mecevi)
-                            .ThenInclude(m => m.Igrac2)
-                    .FirstOrDefaultAsync(l => l.ID == sourceId);
+                var liga = await _context.Lige.FirstOrDefaultAsync(l => l.ID == sourceId);
 
                 if (liga != null)
                 {
-                    var finishedTournaments = liga.Turniri.Where(t => t.Status == StatusTurnira.Zavrsen).ToList();
-                    foreach (var turnir in finishedTournaments)
+                    var tabela = await _leagueStandingsService.GetLeagueTableAsync(liga);
+                    foreach (var red in tabela)
                     {
-                        var turnirSaPodacima = await _context.Turniri
-                            .Include(t => t.Registracije)
-                                .ThenInclude(r => r.Korisnik)
-                            .Include(t => t.Mecevi)
-                                .ThenInclude(m => m.Igrac1)
-                            .Include(t => t.Mecevi)
-                                .ThenInclude(m => m.Igrac2)
-                            .FirstOrDefaultAsync(t => t.ID == turnir.ID);
-
-                        if (turnirSaPodacima != null)
-                        {
-                            var plasmani = _bracketService.IzracunajPlasman(turnirSaPodacima);
-                            foreach (var pl in plasmani)
-                            {
-                                if (standings.ContainsKey(pl.KorisnikId))
-                                    standings[pl.KorisnikId] += pl.Bodovi;
-                                else
-                                    standings[pl.KorisnikId] = pl.Bodovi;
-                            }
-                        }
+                        standings[red.Korisnik.Id] = red.UkupnoBodova;
                     }
                 }
             }
