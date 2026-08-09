@@ -1,5 +1,6 @@
 using ePinPong.Data;
 using ePinPong.Models;
+using ePinPong.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,11 +15,16 @@ namespace ePinPong.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly INotificationService _notificationService;
 
-        public PracenjeController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public PracenjeController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            INotificationService notificationService)
         {
             _context = context;
             _userManager = userManager;
+            _notificationService = notificationService;
         }
 
         // POST: /Pracenje/Follow
@@ -55,14 +61,12 @@ namespace ePinPong.Controllers
 
             // In-app notifikacija za pracenog korisnika
             var pratilac = await _userManager.FindByIdAsync(pratilacId);
-            var notifikacija = new Notifikacija
-            {
-                KorisnikId = praceniId,
-                Sadrzaj = $"Igrač <strong><a href='/Korisnik/Index/{pratilacId}'>{pratilac?.Ime} {pratilac?.Prezime}</a></strong> vas je zapratio!",
-                DatumKreiranja = DateTime.Now,
-                Procitana = false
-            };
-            _context.Notifikacije.Add(notifikacija);
+            await _notificationService.ObavijestiKorisnikaAsync(
+                praceniId,
+                "Novi pratilac na ePinPong!",
+                $"Igrač <strong><a href='/Korisnik/Index/{pratilacId}'>{pratilac?.Ime} {pratilac?.Prezime}</a></strong> vas je zapratio!",
+                posaljiEmail: false
+            );
 
             await _context.SaveChangesAsync();
 

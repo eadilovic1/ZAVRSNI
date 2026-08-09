@@ -21,7 +21,7 @@ namespace ePinPong.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IBracketService _bracketService;
         private readonly IBracketProgressionService _bracketProgressionService;
-        private readonly IMailService _mailService;
+        private readonly INotificationService _notificationService;
         private readonly ILeagueStandingsService _leagueStandingsService;
         private readonly ITurnirCompletionService _turnirCompletionService;
         private readonly IAuthorizationService _authorizationService;
@@ -32,7 +32,7 @@ namespace ePinPong.Controllers
             UserManager<ApplicationUser> userManager,
             IBracketService bracketService,
             IBracketProgressionService bracketProgressionService,
-            IMailService mailService,
+            INotificationService notificationService,
             ILeagueStandingsService leagueStandingsService,
             ITurnirCompletionService turnirCompletionService,
             IAuthorizationService authorizationService,
@@ -42,7 +42,7 @@ namespace ePinPong.Controllers
             _userManager = userManager;
             _bracketService = bracketService;
             _bracketProgressionService = bracketProgressionService;
-            _mailService = mailService;
+            _notificationService = notificationService;
             _leagueStandingsService = leagueStandingsService;
             _turnirCompletionService = turnirCompletionService;
             _authorizationService = authorizationService;
@@ -134,24 +134,11 @@ namespace ePinPong.Controllers
             // Slanje obavještenja svim igračima na turniru
             foreach (var registracija in turnir.Registracije)
             {
-                var notifikacija = new Notifikacija
-                {
-                    KorisnikId = registracija.KorisnikID,
-                    Sadrzaj = $"Raspored mečeva za turnir <strong>{turnir.Naziv}</strong> je generisan! Grupna faza je počela.",
-                    DatumKreiranja = DateTime.Now,
-                    Procitana = false
-                };
-                _context.Notifikacije.Add(notifikacija);
-
-                var igrac = await _userManager.FindByIdAsync(registracija.KorisnikID);
-                if (igrac != null && !string.IsNullOrEmpty(igrac.Email))
-                {
-                    await _mailService.SendEmailAsync(
-                        igrac.Email, 
-                        "Počeo turnir na ePinPong!", 
-                        $"Zdravo {igrac.Ime},<br><br>Raspored za turnir <b>{turnir.Naziv}</b> je generisan. Turnir počinje grupnom fazom."
-                    );
-                }
+                await _notificationService.ObavijestiKorisnikaAsync(
+                    registracija.KorisnikID,
+                    "Počeo turnir na ePinPong!",
+                    $"Raspored mečeva za turnir <strong>{turnir.Naziv}</strong> je generisan! Grupna faza je počela."
+                );
             }
 
             await _context.SaveChangesAsync();

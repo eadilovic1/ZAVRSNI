@@ -52,6 +52,7 @@ builder.Services.AddScoped<IBracketService, BracketService>();
 builder.Services.AddScoped<ILeagueStandingsService, LeagueStandingsService>();
 builder.Services.AddScoped<IMastersRegistrationService, MastersRegistrationService>();
 builder.Services.AddScoped<ITurnirCompletionService, TurnirCompletionService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Antiforgery konfiguracija za AJAX/fetch pozive
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
