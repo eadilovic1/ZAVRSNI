@@ -111,7 +111,7 @@ namespace ePinPong.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
 
-            // Kaskadno čišćenje (analogno ePazaru!)
+            // Kaskadno čišćenje
             // 1. Obriši registracije
             var registracije = _context.Registracije.Where(r => r.KorisnikID == id);
             _context.Registracije.RemoveRange(registracije);

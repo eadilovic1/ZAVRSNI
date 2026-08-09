@@ -22,7 +22,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 
-// 2. Konfiguracija ASP.NET Identity (identične uloge i postavke lozinki kao u ePazaru!)
+// 2. Konfiguracija ASP.NET Identity
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;

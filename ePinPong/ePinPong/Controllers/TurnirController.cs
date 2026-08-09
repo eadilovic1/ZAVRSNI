@@ -328,7 +328,7 @@ namespace ePinPong.Controllers
                     await AutoRegistrirajIgraceLigeAsync(liga, turnir.ID);
                 }
 
-                // NAKON KREIRANJA - Posalji notifikacije pratiocima organizatora (analogno ePazaru!)
+                // NAKON KREIRANJA - Posalji notifikacije pratiocima organizatora
                 var pratioci = await _context.Pracenja
                     .Where(p => p.PraceniID == turnir.OrganizatorId)
                     .Select(p => p.PratilacID)

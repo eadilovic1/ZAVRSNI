@@ -1,5 +1,6 @@
 using ePinPong.Data;
 using ePinPong.Models;
+using ePinPong.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -54,16 +55,9 @@ namespace ePinPong.Controllers
                 _ => query.OrderByDescending(t => t.DatumPocetka)
             };
 
-            // Postavljanje ViewBag opcija za filtere (analogno ePazaru!)
+            // Postavljanje ViewBag opcija za filtere
 
-            ViewBag.StatusOptions = Enum.GetValues(typeof(StatusTurnira))
-                .Cast<StatusTurnira>()
-                .Select(s => new SelectListItem
-                {
-                    Value = ((int)s).ToString(),
-                    Text = s.ToString(),
-                    Selected = statusId.HasValue && (int)statusId.Value == (int)s
-                }).ToList();
+            ViewBag.StatusOptions = SelectListExtensions.EnumToSelectList<StatusTurnira>(statusId);
 
             ViewBag.SortOptions = new List<SelectListItem>
             {

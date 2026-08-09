@@ -53,7 +53,7 @@ namespace ePinPong.Controllers
 
             _context.Pracenja.Add(pracenje);
 
-            // In-app notifikacija za pracenog korisnika (analogno ePazaru!)
+            // In-app notifikacija za pracenog korisnika
             var pratilac = await _userManager.FindByIdAsync(pratilacId);
             var notifikacija = new Notifikacija
             {

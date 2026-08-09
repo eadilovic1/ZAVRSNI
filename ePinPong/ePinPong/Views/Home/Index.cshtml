@@ -21,7 +21,7 @@
     </div>
 </div>
 
-<!-- Filter i Pretraga Forma (identičan raspored kao u ePazaru!) -->
+<!-- Filter i Pretraga Forma -->
 <div class="filter-card bg-dark-card border border-dark-glow rounded-4 p-4 mb-5 shadow-lg">
     <h5 class="text-white mb-3"><i class="bi bi-funnel-fill text-orange me-2"></i>Pronađite turnir</h5>
     <form asp-controller="Home" asp-action="Index" method="get">
@@ -55,7 +55,7 @@
     <span class="text-white-50">Ukupno pronađeno: <strong>@Model.Count()</strong></span>
 </div>
 
-<!-- Grid sa karticama turnira (kopira ePazar card grid) -->
+<!-- Grid sa karticama turnira -->
 @if (!Model.Any())
 {
     <div class="text-center py-5 rounded-4 bg-dark-card border border-dark-glow">
