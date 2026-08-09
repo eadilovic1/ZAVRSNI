@@ -21,13 +21,15 @@ namespace ePinPong.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IMailService _mailService;
         private readonly IBracketService _bracketService;
+        private readonly ILeagueStandingsService _leagueStandingsService;
 
-        public TurnirController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IMailService mailService, IBracketService bracketService)
+        public TurnirController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IMailService mailService, IBracketService bracketService, ILeagueStandingsService leagueStandingsService)
         {
             _context = context;
             _userManager = userManager;
             _mailService = mailService;
             _bracketService = bracketService;
+            _leagueStandingsService = leagueStandingsService;
         }
 
         // GET: /Turnir/Details/5
@@ -141,7 +143,7 @@ namespace ePinPong.Controllers
             ViewBag.Ranking = _bracketService.IzracunajPlasman(turnir);
 
             // Učitavanje bodova za seeding
-            ViewBag.PlayerPoints = await GetLeaguePointsForTurnirAsync(turnir);
+            ViewBag.PlayerPoints = await _leagueStandingsService.GetPlayerPointsAsync(turnir);
 
             if (isOrganizator && turnir.Status == StatusTurnira.Planiran)
             {
@@ -1097,68 +1099,6 @@ namespace ePinPong.Controllers
             }
 
             return RedirectToAction(nameof(Details), new { id = turnirId });
-        }
-
-        private async Task<Dictionary<string, int>> GetLeaguePointsForTurnirAsync(Turnir turnir)
-        {
-            var playerPoints = new Dictionary<string, int>();
-            foreach (var reg in turnir.Registracije)
-            {
-                playerPoints[reg.KorisnikID] = 0;
-            }
-
-            if (turnir.LigaID != null)
-            {
-                // Get all completed tournaments in the league
-                var finishedTournaments = await _context.Turniri
-                    .Where(t => t.LigaID == turnir.LigaID && t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID)
-                    .Include(t => t.Registracije)
-                        .ThenInclude(r => r.Korisnik)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac1)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac2)
-                    .ToListAsync();
-
-                foreach (var ft in finishedTournaments)
-                {
-                    var plasmani = _bracketService.IzracunajPlasman(ft);
-                    foreach (var pl in plasmani)
-                    {
-                        if (playerPoints.ContainsKey(pl.KorisnikId))
-                        {
-                            playerPoints[pl.KorisnikId] += pl.Bodovi;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Standalone: global points across all completed tournaments
-                var finishedTournaments = await _context.Turniri
-                    .Where(t => t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID)
-                    .Include(t => t.Registracije)
-                        .ThenInclude(r => r.Korisnik)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac1)
-                    .Include(t => t.Mecevi)
-                        .ThenInclude(m => m.Igrac2)
-                    .ToListAsync();
-
-                foreach (var ft in finishedTournaments)
-                {
-                    var plasmani = _bracketService.IzracunajPlasman(ft);
-                    foreach (var pl in plasmani)
-                    {
-                        if (playerPoints.ContainsKey(pl.KorisnikId))
-                        {
-                            playerPoints[pl.KorisnikId] += pl.Bodovi;
-                        }
-                    }
-                }
-            }
-
-            return playerPoints;
         }
 
         // GET: /Turnir/DohvatiRankinge?sourceType=Liga&sourceId=3
