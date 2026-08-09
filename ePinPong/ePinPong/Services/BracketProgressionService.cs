@@ -1,12 +1,22 @@
 using ePinPong.Models;
+using ePinPong.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace ePinPong.Services
 {
     public class BracketProgressionService : IBracketProgressionService
     {
+        private readonly ApplicationDbContext _context;
+
+        public BracketProgressionService(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
         private const string SLOBODAN = BracketService.SLOBODAN;
 
         public static bool JeSlobodan(string? id) => id == SLOBODAN;
@@ -657,6 +667,167 @@ namespace ePinPong.Services
             PropagirajBye(mecevi);
 
             return mecevi;
+        }
+
+        public async Task PropagirajPobjednikaAsync(Mec mec)
+        {
+            if (mec.TipMeca == TipMeca.Zavrsnica || mec.TipMeca == TipMeca.Razigravanje || mec.TipMeca == TipMeca.Utjesni || mec.TipMeca == TipMeca.TurnirParova)
+            {
+                int poeniIgrac1 = mec.PoeniIgrac1 ?? 0;
+                int poeniIgrac2 = mec.PoeniIgrac2 ?? 0;
+
+                string winnerId = poeniIgrac1 == 3 ? mec.Igrac1ID! : mec.Igrac2ID!;
+                string loserId  = poeniIgrac1 == 3 ? mec.Igrac2ID! : mec.Igrac1ID!;
+                string? winnerPartnerId = poeniIgrac1 == 3 ? mec.Igrac1PartnerID : mec.Igrac2PartnerID;
+                string? loserPartnerId  = poeniIgrac1 == 3 ? mec.Igrac2PartnerID : mec.Igrac1PartnerID;
+
+                // Pobjednik ide u sljedeći meč(eve)
+                if (!string.IsNullOrEmpty(mec.WinnerNextMatchCode))
+                {
+                    var destinations = mec.WinnerNextMatchCode.Split(';');
+                    foreach (var dest in destinations)
+                    {
+                        if (string.IsNullOrEmpty(dest)) continue;
+                        var parts = dest.Split(':');
+                        string targetCode = parts[0];
+                        int slot = (parts.Length > 1 && int.TryParse(parts[1], out int s)) ? s : (mec.WinnerNextMatchSlot ?? 1);
+
+                        var sljedeciMec = await _context.Mecevi.FirstOrDefaultAsync(m => m.TurnirID == mec.TurnirID && m.MatchCode == targetCode);
+                        if (sljedeciMec != null)
+                        {
+                            if (slot == 1)
+                            {
+                                sljedeciMec.Igrac1ID = winnerId;
+                                sljedeciMec.Igrac1PartnerID = winnerPartnerId;
+                            }
+                            else
+                            {
+                                sljedeciMec.Igrac2ID = winnerId;
+                                sljedeciMec.Igrac2PartnerID = winnerPartnerId;
+                            }
+                        }
+                    }
+                }
+
+                // Gubitnik ide u razigravanje / sljedeći meč(eve)
+                if (!string.IsNullOrEmpty(mec.LoserNextMatchCode))
+                {
+                    var destinations = mec.LoserNextMatchCode.Split(';');
+                    foreach (var dest in destinations)
+                    {
+                        if (string.IsNullOrEmpty(dest)) continue;
+                        var parts = dest.Split(':');
+                        string targetCode = parts[0];
+                        int slot = (parts.Length > 1 && int.TryParse(parts[1], out int s)) ? s : (mec.LoserNextMatchSlot ?? 1);
+
+                        var sljedeciMec = await _context.Mecevi.FirstOrDefaultAsync(m => m.TurnirID == mec.TurnirID && m.MatchCode == targetCode);
+                        if (sljedeciMec != null)
+                        {
+                            if (slot == 1)
+                            {
+                                sljedeciMec.Igrac1ID = loserId;
+                                sljedeciMec.Igrac1PartnerID = loserPartnerId;
+                            }
+                            else
+                            {
+                                sljedeciMec.Igrac2ID = loserId;
+                                sljedeciMec.Igrac2PartnerID = loserPartnerId;
+                            }
+                        }
+                    }
+                }
+
+                // Provjeri: ako su svi mečevi neke runde gotovi (glavni ili utješni turnir), generiši odgovarajući plasman/razigravanje
+                if (mec.TipMeca == TipMeca.Zavrsnica || mec.TipMeca == TipMeca.Utjesni || mec.TipMeca == TipMeca.Razigravanje)
+                {
+                    await ProvjeriIGenerirajRazigravanjaAsync(mec.TurnirID);
+                }
+
+                // Propagiraj BYE (Slobodan) prolaze za sve mečeve koji su dobili protivnika
+                var sviMeceviTurnira = await _context.Mecevi.Where(m => m.TurnirID == mec.TurnirID).ToListAsync();
+                PropagirajBye(sviMeceviTurnira);
+            }
+        }
+
+        public async Task ProvjeriIGenerirajRazigravanjaAsync(int turnirId)
+        {
+            var turnir = await _context.Turniri.FindAsync(turnirId);
+            if (turnir == null || turnir.SistemTurnira == SistemTurnira.SingleElimination) return;
+
+            var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
+            
+            // 1. Provjeri i generiši razigravanja za glavnu završnicu (Z_ i PL_)
+            var zMecevi = sviMecevi.Where(m => (m.TipMeca == TipMeca.Zavrsnica || m.TipMeca == TipMeca.Razigravanje) && (m.MatchCode.StartsWith("Z_") || m.MatchCode.StartsWith("PL_"))).ToList();
+            await GenerisiRazigravanjaZaSkupinuAsync(turnir, sviMecevi, zMecevi, isUtjesni: false);
+
+            // 2. Provjeri i generiši razigravanja za utješni turnir (UT_R i UT_PL_)
+            if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni)
+            {
+                var utMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_")))).ToList();
+                await GenerisiRazigravanjaZaSkupinuAsync(turnir, sviMecevi, utMecevi, isUtjesni: true);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task GenerisiRazigravanjaZaSkupinuAsync(Turnir turnir, List<Mec> sviMecevi, List<Mec> meceviSkupine, bool isUtjesni)
+        {
+            var poRangeu = meceviSkupine.GroupBy(m => m.PlacingRange).ToList();
+
+            foreach (var rangeGroup in poRangeu)
+            {
+                int groupL = 1;
+                if (!string.IsNullOrEmpty(rangeGroup.Key))
+                {
+                    var parts = rangeGroup.Key.Split('-');
+                    if (parts.Length == 2 && int.TryParse(parts[0], out int gl))
+                    {
+                        groupL = gl;
+                    }
+                }
+
+                var poRundama = rangeGroup.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+                foreach (var rundaGroup in poRundama)
+                {
+                    var meceviRunde = rundaGroup.ToList();
+                    int M = meceviRunde.Count;
+                    if (M <= 1) continue; // Finale ili meč sa 1 utakmicom
+
+                    int relL = M + 1;
+                    int relR = 2 * M;
+
+                    int L = (groupL - 1) + relL;
+                    int R = (groupL - 1) + relR;
+
+                    if (!meceviRunde.All(m => m.Odigran)) continue;
+
+                    string codePrefix = isUtjesni ? "UT_PL" : "PL";
+                    string searchPrefix = $"{codePrefix}_{L}_{R}_R1_M";
+                    if (sviMecevi.Any(m => m.MatchCode.StartsWith(searchPrefix))) continue;
+
+                    var gubitnici = new List<string?>();
+                    foreach (var zm in meceviRunde)
+                    {
+                        string? loserId = null;
+                        if (zm.Igrac1ID != null && zm.Igrac2ID != null)
+                        {
+                            loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
+                        }
+                        loserId ??= SLOBODAN;
+                        gubitnici.Add(loserId);
+                    }
+
+                    if (gubitnici.Count != M) continue;
+
+                    await DbSeeder.EnsureSlobodanUserExistsAsync(_context);
+                    var noviMecevi = GenerirajPlasmanFazu(turnir, L, R, gubitnici, sviMecevi, isUtjesni);
+                    if (noviMecevi.Any())
+                    {
+                        _context.Mecevi.AddRange(noviMecevi);
+                        sviMecevi.AddRange(noviMecevi);
+                    }
+                }
+            }
         }
 
         private class PlayerRecord
