@@ -40,13 +40,13 @@ namespace ePinPong.Services
                         {
                             osvojeniSetovi += m.PoeniIgrac1 ?? 0;
                             izgubljeniSetovi += m.PoeniIgrac2 ?? 0;
-                            if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) pobjede++;
+                            if (m.PobjednikId == igracId) pobjede++;
                         }
                         else if (m.Igrac2ID == igracId)
                         {
                             osvojeniSetovi += m.PoeniIgrac2 ?? 0;
                             izgubljeniSetovi += m.PoeniIgrac1 ?? 0;
-                            if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) pobjede++;
+                            if (m.PobjednikId == igracId) pobjede++;
                         }
                     }
 
