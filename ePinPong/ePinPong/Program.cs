@@ -59,16 +59,20 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
+
+        // Primijeni sve neprimijenjene EF Core migracije (kreira bazu ako ne postoji)
+        await context.Database.MigrateAsync();
+
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        
-        // Asinhrono sejanje podataka
+
+        // Asinhroni seeding podataka
         await DbSeeder.SeedAsync(context, userManager, roleManager);
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Došlo je do greške prilikom sejanja baze podataka.");
+        logger.LogError(ex, "Došlo je do greške prilikom migracije/seeding-a baze podataka.");
     }
 }
 
