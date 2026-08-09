@@ -50,6 +50,7 @@ builder.Services.AddScoped<IBracketProgressionService, BracketProgressionService
 builder.Services.AddScoped<IStandingsCalculationService, StandingsCalculationService>();
 builder.Services.AddScoped<IBracketService, BracketService>();
 builder.Services.AddScoped<ILeagueStandingsService, LeagueStandingsService>();
+builder.Services.AddScoped<IMastersRegistrationService, MastersRegistrationService>();
 builder.Services.AddScoped<ITurnirCompletionService, TurnirCompletionService>();
 
 // Antiforgery konfiguracija za AJAX/fetch pozive
