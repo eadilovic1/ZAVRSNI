@@ -102,7 +102,7 @@ else
                         
                         <div class="tournament-meta text-white-50 small mb-3">
                             <div class="mb-1"><i class="bi bi-geo-alt-fill text-orange me-2"></i>@turnir.Lokacija</div>
-                            <div class="mb-1"><i class="bi bi-calendar-event-fill text-orange me-2"></i>@turnir.DatumPocetka.ToShortDateString()</div>
+                            <div class="mb-1"><i class="bi bi-calendar-event-fill text-orange me-2"></i>@turnir.DatumPocetka.ToString("dd.MM.yyyy")</div>
                             @if (turnir.Liga != null)
                             {
                                 <div><i class="bi bi-trophy-fill text-orange me-2"></i>Liga: <span class="text-white">@turnir.Liga.Naziv</span></div>

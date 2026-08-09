@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ePinPong")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a2627a7bc54bba890b132233524036a96ec0d56a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+aadf9d7e23b480720cb3638cf8947c620b8922bc")]
 [assembly: System.Reflection.AssemblyProductAttribute("ePinPong")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ePinPong")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

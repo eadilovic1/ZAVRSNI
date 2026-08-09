@@ -4,11 +4,13 @@ using ePinPong.Models;
 using ePinPong.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -79,6 +81,15 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+
+// 7. Postavljanje kulture hr-HR kako bi se datumi prikazivali u formatu dd.MM.yyyy
+var hrCulture = new CultureInfo("hr-HR");
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(hrCulture),
+    SupportedCultures = new[] { hrCulture },
+    SupportedUICultures = new[] { hrCulture }
+});
 
 // 6. Rukovanje 404 i ostalim HTTP greškama (ErrorController!)
 app.UseStatusCodePagesWithReExecute("/Error/{0}");
