@@ -46,6 +46,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 // 4. Registracija Servisa i Interfejsa (SOLID principi!)
 builder.Services.AddScoped<IMailService, MailService>();
 builder.Services.AddScoped<IBracketService, BracketService>();
+builder.Services.AddScoped<ILeagueStandingsService, LeagueStandingsService>();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages(); // Potrebno za Identity Razor Pages!
