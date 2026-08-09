@@ -214,32 +214,12 @@ namespace ePinPong.Controllers
             
             if (mec.Igrac1ID != null)
             {
-                _context.Notifikacije.Add(new Notifikacija
-                {
-                    KorisnikId = mec.Igrac1ID,
-                    Sadrzaj = obavjestenjeTekst,
-                    DatumKreiranja = DateTime.Now
-                });
-
-                if (mec.Igrac1 != null && !string.IsNullOrEmpty(mec.Igrac1.Email))
-                {
-                    await _mailService.SendEmailAsync(mec.Igrac1.Email, "Novi rezultati meča", $"Zdravo {mec.Igrac1.Ime},<br><br>Organizator je unio rezultat vašeg meča: {mec.Igrac1.Ime} {poeniIgrac1} : {poeniIgrac2} {mec.Igrac2?.Ime}.<br>Posjetite ePinPong.");
-                }
+                await _notificationService.ObavijestiKorisnikaAsync(mec.Igrac1ID, "Novi rezultati meča", obavjestenjeTekst);
             }
 
             if (mec.Igrac2ID != null)
             {
-                _context.Notifikacije.Add(new Notifikacija
-                {
-                    KorisnikId = mec.Igrac2ID,
-                    Sadrzaj = obavjestenjeTekst,
-                    DatumKreiranja = DateTime.Now
-                });
-
-                if (mec.Igrac2 != null && !string.IsNullOrEmpty(mec.Igrac2.Email))
-                {
-                    await _mailService.SendEmailAsync(mec.Igrac2.Email, "Novi rezultati meča", $"Zdravo {mec.Igrac2.Ime},<br><br>Organizator je unio rezultat vašeg meča: {mec.Igrac1?.Ime} {poeniIgrac1} : {poeniIgrac2} {mec.Igrac2.Ime}.<br>Posjetite ePinPong.");
-                }
+                await _notificationService.ObavijestiKorisnikaAsync(mec.Igrac2ID, "Novi rezultati meča", obavjestenjeTekst);
             }
 
             await _context.SaveChangesAsync();
