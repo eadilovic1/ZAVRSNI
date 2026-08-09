@@ -55,7 +55,7 @@ namespace ePinPong.Services
         public async Task<List<LigaStandingsViewModel>> GetLeagueTableAsync(Liga liga)
         {
             var tabeleMap = new Dictionary<string, LigaStandingsViewModel>();
-            var sviKorisnici = await _context.Users.Where(u => u.Id != "SLOBODAN").ToListAsync();
+            var sviKorisnici = await _context.Users.Where(u => u.Id != BracketService.SLOBODAN).ToListAsync();
 
             foreach (var user in sviKorisnici)
             {

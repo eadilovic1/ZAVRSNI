@@ -44,7 +44,7 @@ namespace ePinPong.Controllers
 
         // POST: /Mec/GenerirajBracket/5
         [HttpPost]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> GenerirajBracket(int turnirId, string? playerPotsJson)
         {
             var turnir = await _context.Turniri
@@ -153,7 +153,7 @@ namespace ePinPong.Controllers
         }
 
         // GET: /Mec/UnosRezultata/5
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> UnosRezultata(int id)
         {
             var mec = await _context.Mecevi
@@ -178,7 +178,7 @@ namespace ePinPong.Controllers
         // POST: /Mec/UnosRezultata/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> UnosRezultata(int id, int poeniIgrac1, int poeniIgrac2)
         {
             var mec = await _context.Mecevi
@@ -198,7 +198,7 @@ namespace ePinPong.Controllers
             }
 
             // Validacija da meč ide do tačno 3 osvojena seta
-            if (!((poeniIgrac1 == 3 && poeniIgrac2 >= 0 && poeniIgrac2 <= 2) || (poeniIgrac2 == 3 && poeniIgrac1 >= 0 && poeniIgrac1 <= 2)))
+            if (!((poeniIgrac1 == Mec.SETOVA_ZA_POBJEDU && poeniIgrac2 >= 0 && poeniIgrac2 <= Mec.SETOVA_ZA_POBJEDU - 1) || (poeniIgrac2 == Mec.SETOVA_ZA_POBJEDU && poeniIgrac1 >= 0 && poeniIgrac1 <= Mec.SETOVA_ZA_POBJEDU - 1)))
             {
                 TempData["Error"] = "Rezultat meča mora biti do 3 dobijena seta (npr. 3:0, 3:1, 3:2).";
                 // Preusmjeri na detalje turnira umjesto na posebnu stranicu, 
@@ -343,7 +343,7 @@ namespace ePinPong.Controllers
 
         // POST: /Mec/GenerirajPlasman
         [HttpPost]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> GenerirajPlasman(int turnirId, int plL, int plR)
         {
             var turnir = await _context.Turniri
@@ -497,7 +497,7 @@ namespace ePinPong.Controllers
 
         // POST: /Mec/GenerirajZavrsnicu
         [HttpPost]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> GenerirajZavrsnicu(int turnirId)
         {
             var turnir = await _context.Turniri
@@ -601,7 +601,7 @@ namespace ePinPong.Controllers
 
         // POST: /Mec/GenerirajTurnirParova/5
         [HttpPost]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> GenerirajTurnirParova(int turnirId)
         {
             var turnir = await _context.Turniri

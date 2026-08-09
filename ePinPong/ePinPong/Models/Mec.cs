@@ -4,6 +4,9 @@ namespace ePinPong.Models
 {
     public class Mec
     {
+        /// <summary>Broj setova potrebnih za pobjedu u meču (domainsko pravilo).</summary>
+        public const int SETOVA_ZA_POBJEDU = 3;
+
         public int ID { get; set; }
         
         public int TurnirID { get; set; }

@@ -30,7 +30,7 @@ namespace ePinPong.Controllers
         // GET: /Korisnik/Index/some-guid-id
         public async Task<IActionResult> Index(string id)
         {
-            if (id == "SLOBODAN") return NotFound();
+            if (id == BracketService.SLOBODAN) return NotFound();
             var korisnik = await _userManager.FindByIdAsync(id);
             if (korisnik == null) return NotFound();
 

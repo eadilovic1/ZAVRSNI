@@ -1,5 +1,6 @@
 using ePinPong.Data;
 using ePinPong.Models;
+using ePinPong.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +31,7 @@ namespace ePinPong.Controllers
         // GET: /UserManagement
         public async Task<IActionResult> Index()
         {
-            var korisnici = await _userManager.Users.Where(u => u.Id != "SLOBODAN").ToListAsync();
+            var korisnici = await _userManager.Users.Where(u => u.Id != BracketService.SLOBODAN).ToListAsync();
             var korisniciUloge = new List<UserRoleViewModel>();
 
             foreach (var user in korisnici)
@@ -120,8 +121,8 @@ namespace ePinPong.Controllers
                 .ToListAsync();
             foreach (var m in mecevi)
             {
-                if (m.Igrac1ID == id) m.Igrac1ID = "SLOBODAN";
-                if (m.Igrac2ID == id) m.Igrac2ID = "SLOBODAN";
+                if (m.Igrac1ID == id) m.Igrac1ID = BracketService.SLOBODAN;
+                if (m.Igrac2ID == id) m.Igrac2ID = BracketService.SLOBODAN;
                 if (m.Igrac1PartnerID == id) m.Igrac1PartnerID = null;
                 if (m.Igrac2PartnerID == id) m.Igrac2PartnerID = null;
             }
@@ -138,7 +139,7 @@ namespace ePinPong.Controllers
             var currentAdminId = _userManager.GetUserId(User);
             if (string.IsNullOrEmpty(currentAdminId))
             {
-                var adminUsers = await _userManager.GetUsersInRoleAsync("Administrator");
+                var adminUsers = await _userManager.GetUsersInRoleAsync(AppConstants.Roles.Administrator);
                 currentAdminId = adminUsers.FirstOrDefault()?.Id ?? id;
             }
 

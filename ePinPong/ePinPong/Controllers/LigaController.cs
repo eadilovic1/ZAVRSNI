@@ -69,7 +69,7 @@ namespace ePinPong.Controllers
                 .ToList();
 
             var userId = _userManager.GetUserId(User);
-            ViewBag.IsAdminOrOrganizator = User.Identity?.IsAuthenticated == true && (User.IsInRole("Administrator") || (User.IsInRole("Organizator") && liga.OrganizatorId == userId));
+            ViewBag.IsAdminOrOrganizator = User.Identity?.IsAuthenticated == true && (User.IsInRole(AppConstants.Roles.Administrator) || (User.IsInRole(AppConstants.Roles.Organizator) && liga.OrganizatorId == userId));
             ViewBag.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
             ViewBag.MastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
             ViewBag.CanCreateRegular = LigaTurnirHelper.CanCreateRegular(liga);
@@ -80,7 +80,7 @@ namespace ePinPong.Controllers
         }
 
         // GET: /Liga/Create
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public IActionResult Create()
         {
             return View(new Liga
@@ -90,7 +90,7 @@ namespace ePinPong.Controllers
         }
 
         // GET: /Liga/Edit/5
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> Edit(int id)
         {
             var liga = await _context.Lige
@@ -120,7 +120,7 @@ namespace ePinPong.Controllers
         // POST: /Liga/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> Edit(Liga liga)
         {
             var existingLiga = await _context.Lige
@@ -189,7 +189,7 @@ namespace ePinPong.Controllers
         // POST: /Liga/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> Create(Liga liga, bool autoGenerisiTurnire)
         {
             if (liga.DatumPocetka == default)
@@ -234,7 +234,7 @@ namespace ePinPong.Controllers
                             LigaID = liga.ID,
                             Kolo = kolo,
                             OrganizatorId = userId ?? string.Empty,
-                            SlikaUrl = "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=600&auto=format&fit=crop"
+                            SlikaUrl = AppConstants.DefaultTurnirSlikaUrl
                         };
                         _context.Turniri.Add(turnir);
                     }
@@ -251,7 +251,7 @@ namespace ePinPong.Controllers
         // POST: /Liga/CreateMasters/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Organizator")]
+        [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> CreateMasters(int id)
         {
             var liga = await _context.Lige
@@ -298,7 +298,7 @@ namespace ePinPong.Controllers
                 LigaID = liga.ID,
                 Kolo = LigaTurnirHelper.GetMastersKolo(liga),
                 OrganizatorId = userId,
-                SlikaUrl = "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=1200&auto=format&fit=crop"
+                SlikaUrl = AppConstants.DefaultTurnirSlikaUrl,
             };
 
             _context.Turniri.Add(turnir);
@@ -313,7 +313,7 @@ namespace ePinPong.Controllers
         // POST: /Liga/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = AppConstants.Roles.Administrator)]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var liga = await _context.Lige
