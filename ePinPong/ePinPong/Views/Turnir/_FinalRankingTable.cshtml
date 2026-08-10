@@ -1,0 +1,90 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+<!-- Krajnji poredak turnira (za obezbijeđene ne-Masters turnire) -->
+<div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
+    <div class="card-header bg-dark-card-footer border-bottom border-warning p-4 d-flex align-items-center justify-content-between">
+        <h4 class="text-white fw-bold mb-0">
+            <i class="bi bi-trophy-fill text-warning me-2"></i>Krajnji poredak turnira
+        </h4>
+        <button class="btn btn-outline-warning btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" type="button" data-bs-toggle="collapse" data-bs-target="#finalRankingCollapse" aria-expanded="true" aria-controls="finalRankingCollapse">
+            <i class="bi bi-chevron-up toggle-chevron"></i>
+        </button>
+    </div>
+    <div class="collapse show" id="finalRankingCollapse">
+        <div class="card-body p-4">
+        <div class="table-responsive rounded-3 overflow-hidden border border-dark-glow">
+            <table class="table table-dark table-striped align-middle mb-0 text-center">
+                <thead>
+                    <tr class="text-muted small border-bottom border-dark-glow">
+                        <th style="width: 10%;">Pozicija</th>
+                        <th class="text-start" style="width: 40%;">Igrač</th>
+                        <th style="width: 25%;">Ostvareni rezultat</th>
+                        <th style="width: 25%;">Osvojeni bodovi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var plasman in Model.Ranking)
+                    {
+                        var jePobjednik = plasman.Pozicija == 1;
+                        var jeDrugi = plasman.Pozicija == 2;
+                        var jeTreci = plasman.Pozicija == 3;
+
+                        <tr class="@(jePobjednik ? "border-start border-3 border-warning bg-warning-transparent-row" : (jeDrugi ? "border-start border-3 border-secondary" : ""))">
+                            <td class="fw-bold fs-5">
+                                @if (jePobjednik)
+                                {
+                                    <span class="text-warning">🥇 1.</span>
+                                }
+                                else if (jeDrugi)
+                                {
+                                    <span class="text-light">🥈 2.</span>
+                                }
+                                else if (jeTreci)
+                                {
+                                    <span class="text-orange">🥉 @(plasman.Pozicija).</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@(plasman.Pozicija).</span>
+                                }
+                            </td>
+                            <td class="text-start">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar-mini me-3 @(jePobjednik ? "bg-warning text-dark" : "")">
+                                        @if (!string.IsNullOrEmpty(plasman.ImePrezime) && plasman.ImePrezime.Length > 0)
+                                        {
+                                            <span>@plasman.ImePrezime[0]</span>
+                                        }
+                                        else
+                                        {
+                                            <span>I</span>
+                                        }
+                                    </div>
+                                    <div>
+                                        <a href="/Korisnik/Index/@plasman.KorisnikId" class="text-white hover-orange fw-bold">
+                                            @plasman.ImePrezime
+                                            @if (plasman.IsGost)
+                                            {
+                                                <span class="badge bg-secondary text-muted ms-1" style="font-size: 0.75rem;">Gost</span>
+                                            }
+                                        </a>
+                                        <small class="d-block text-muted" style="font-size: 0.75rem;">@plasman.Grad</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-dark-glow border border-dark-glow px-3 py-2 text-white fw-semibold">
+                                    @plasman.DetaljPozicije
+                                </span>
+                            </td>
+                            <td class="fw-bold text-warning fs-5">
+                                +@plasman.Bodovi <span class="small text-muted fs-6">bodova</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div>
+</div>
