@@ -2,764 +2,149 @@
 
 @{
     var isOrganizator = Model.IsOrganizator;
-    var currentUserId = Model.CurrentUserId;
-    var isGroupOnly = Model.IsGroupOnly;
+
+    var paroviMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.TurnirParova).ToList();
+    var rundeParova = paroviMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+    bool isParoviGrupa = paroviMecevi.Any(m => !string.IsNullOrEmpty(m.NazivGrupe));
+
+    var maxRundaParova = rundeParova.Any() ? rundeParova.Max(g => g.Key) : 0;
+    var finalniMecParova = paroviMecevi.FirstOrDefault(m => m.Runda == maxRundaParova);
+
+    bool paroviZavrseni = false;
+
+    var podium = new ePinPong.Models.ViewModels.DoublesPodiumViewModel();
+
+    if (isParoviGrupa)
+    {
+        paroviZavrseni = paroviMecevi.Count > 0 && paroviMecevi.All(m => m.Odigran);
+
+        // Standings po grupama (samo za određivanje pobjednika za postolje)
+        var meceviPoGrupamaParova = paroviMecevi.GroupBy(m => m.NazivGrupe).OrderBy(g => g.Key).ToList();
+        foreach (var grupaGroup in meceviPoGrupamaParova)
+        {
+            string gName = grupaGroup.Key ?? "Grupa A (Parovi)";
+            var meceviGrupe = grupaGroup.ToList();
+
+            var paroviSet = new List<(string I1Id, string I2Id, ePinPong.Models.ApplicationUser? I1, ePinPong.Models.ApplicationUser? I2)>();
+            foreach (var p in Model.TurnirParovi)
+            {
+                if (p.Igrac1ID != null && p.Igrac2ID != null)
+                {
+                    if (!paroviSet.Any(x => (x.I1Id == p.Igrac1ID && x.I2Id == p.Igrac2ID) || (x.I1Id == p.Igrac2ID && x.I2Id == p.Igrac1ID)))
+                        paroviSet.Add((p.Igrac1ID, p.Igrac2ID, p.Igrac1, p.Igrac2));
+                }
+            }
+            foreach (var m in meceviGrupe)
+            {
+                if (m.Igrac1ID != null && m.Igrac1PartnerID != null)
+                {
+                    if (!paroviSet.Any(x => (x.I1Id == m.Igrac1ID && x.I2Id == m.Igrac1PartnerID) || (x.I1Id == m.Igrac1PartnerID && x.I2Id == m.Igrac1ID)))
+                        paroviSet.Add((m.Igrac1ID, m.Igrac1PartnerID, m.Igrac1, m.Igrac1Partner));
+                }
+                if (m.Igrac2ID != null && m.Igrac2PartnerID != null)
+                {
+                    if (!paroviSet.Any(x => (x.I1Id == m.Igrac2ID && x.I2Id == m.Igrac2PartnerID) || (x.I1Id == m.Igrac2PartnerID && x.I2Id == m.Igrac2ID)))
+                        paroviSet.Add((m.Igrac2ID, m.Igrac2PartnerID, m.Igrac2, m.Igrac2Partner));
+                }
+            }
+
+            var records = new List<dynamic>();
+            foreach (var pTuple in paroviSet)
+            {
+                int pobjede = 0, porazi = 0, osvojeniSetovi = 0, izgubljeniSetovi = 0;
+                foreach (var m in meceviGrupe.Where(m => m.Odigran))
+                {
+                    bool isSide1 = (m.Igrac1ID == pTuple.I1Id && m.Igrac1PartnerID == pTuple.I2Id) || (m.Igrac1ID == pTuple.I2Id && m.Igrac1PartnerID == pTuple.I1Id);
+                    bool isSide2 = (m.Igrac2ID == pTuple.I1Id && m.Igrac2PartnerID == pTuple.I2Id) || (m.Igrac2ID == pTuple.I2Id && m.Igrac2PartnerID == pTuple.I1Id);
+                    if (isSide1) { int p1 = m.PoeniIgrac1 ?? 0, p2 = m.PoeniIgrac2 ?? 0; osvojeniSetovi += p1; izgubljeniSetovi += p2; if (p1 > p2) pobjede++; else porazi++; }
+                    else if (isSide2) { int p1 = m.PoeniIgrac1 ?? 0, p2 = m.PoeniIgrac2 ?? 0; osvojeniSetovi += p2; izgubljeniSetovi += p1; if (p2 > p1) pobjede++; else porazi++; }
+                }
+                records.Add(new { Igrac1 = pTuple.I1, Igrac2 = pTuple.I2, Pobjede = pobjede, Porazi = porazi, SetRazlika = osvojeniSetovi - izgubljeniSetovi });
+            }
+
+            var sortirani = records.OrderByDescending(r => r.Pobjede).ThenByDescending(r => r.SetRazlika).ToList();
+            if (paroviZavrseni)
+            {
+                if (sortirani.Count > 0) { podium.Prvo_Igrac1  = sortirani[0].Igrac1; podium.Prvo_Igrac2  = sortirani[0].Igrac2; }
+                if (sortirani.Count > 1) { podium.Drugo_Igrac1 = sortirani[1].Igrac1; podium.Drugo_Igrac2 = sortirani[1].Igrac2; }
+                if (sortirani.Count > 2) podium.TrecaMjesta.Add((sortirani[2].Igrac1, sortirani[2].Igrac2));
+            }
+        }
+    }
+    else
+    {
+        paroviZavrseni = finalniMecParova != null && finalniMecParova.Odigran;
+        if (paroviZavrseni && finalniMecParova != null)
+        {
+            bool isIgrac1Pobjednik = (finalniMecParova.PoeniIgrac1 ?? 0) > (finalniMecParova.PoeniIgrac2 ?? 0);
+            if (isIgrac1Pobjednik)
+            {
+                podium.Prvo_Igrac1  = finalniMecParova.Igrac1;        podium.Prvo_Igrac2  = finalniMecParova.Igrac1Partner;
+                podium.Drugo_Igrac1 = finalniMecParova.Igrac2;        podium.Drugo_Igrac2 = finalniMecParova.Igrac2Partner;
+            }
+            else
+            {
+                podium.Prvo_Igrac1  = finalniMecParova.Igrac2;        podium.Prvo_Igrac2  = finalniMecParova.Igrac2Partner;
+                podium.Drugo_Igrac1 = finalniMecParova.Igrac1;        podium.Drugo_Igrac2 = finalniMecParova.Igrac1Partner;
+            }
+
+            if (maxRundaParova > 1)
+            {
+                var polufinalniMecevi = paroviMecevi.Where(m => m.Runda == maxRundaParova - 1).ToList();
+                foreach (var pfMec in polufinalniMecevi)
+                {
+                    if (pfMec.Odigran)
+                    {
+                        bool pfIgrac1Pobjednik = (pfMec.PoeniIgrac1 ?? 0) > (pfMec.PoeniIgrac2 ?? 0);
+                        if (pfIgrac1Pobjednik) { if (pfMec.Igrac2ID != null) podium.TrecaMjesta.Add((pfMec.Igrac2, pfMec.Igrac2Partner)); }
+                        else                   { if (pfMec.Igrac1ID != null) podium.TrecaMjesta.Add((pfMec.Igrac1, pfMec.Igrac1Partner)); }
+                    }
+                }
+            }
+        }
+    }
 }
 
 <!-- Pane: Turnir Parova -->
 <div class="tab-pane fade" id="doubles-pane" role="tabpanel" aria-labelledby="doubles-tab" tabindex="0">
-    @{
-        var paroviMecevi = Model.Mecevi.Where(m => m.TipMeca == TipMeca.TurnirParova).ToList();
-        var rundeParova = paroviMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
-        bool isParoviGrupa = paroviMecevi.Any(m => !string.IsNullOrEmpty(m.NazivGrupe));
-
-        var maxRundaParova = rundeParova.Any() ? rundeParova.Max(g => g.Key) : 0;
-        var finalniMecParova = paroviMecevi.FirstOrDefault(m => m.Runda == maxRundaParova);
-
-        bool paroviZavrseni = false;
-
-        (ApplicationUser? Igrac1, ApplicationUser? Igrac2)? prvoMjesto = null;
-        (ApplicationUser? Igrac1, ApplicationUser? Igrac2)? drugoMjesto = null;
-        var trecaMjesta = new List<(ApplicationUser? Igrac1, ApplicationUser? Igrac2)>();
-
-        var paroviStandingsMap = new Dictionary<string, List<dynamic>>();
-
-        if (isParoviGrupa)
-        {
-            paroviZavrseni = paroviMecevi.Count > 0 && paroviMecevi.All(m => m.Odigran);
-
-            var meceviPoGrupamaParova = paroviMecevi.GroupBy(m => m.NazivGrupe).OrderBy(g => g.Key).ToList();
-            foreach (var grupaGroup in meceviPoGrupamaParova)
-            {
-                string gName = grupaGroup.Key ?? "Grupa A (Parovi)";
-                var meceviGrupe = grupaGroup.ToList();
-
-                var paroviSet = new List<(string I1Id, string I2Id, ApplicationUser? I1, ApplicationUser? I2)>();
-                foreach (var p in Model.TurnirParovi)
-                {
-                    if (p.Igrac1ID != null && p.Igrac2ID != null)
-                    {
-                        if (!paroviSet.Any(x => (x.I1Id == p.Igrac1ID && x.I2Id == p.Igrac2ID) || (x.I1Id == p.Igrac2ID && x.I2Id == p.Igrac1ID)))
-                        {
-                            paroviSet.Add((p.Igrac1ID, p.Igrac2ID, p.Igrac1, p.Igrac2));
-                        }
-                    }
-                }
-                foreach (var m in meceviGrupe)
-                {
-                    if (m.Igrac1ID != null && m.Igrac1PartnerID != null)
-                    {
-                        if (!paroviSet.Any(x => (x.I1Id == m.Igrac1ID && x.I2Id == m.Igrac1PartnerID) || (x.I1Id == m.Igrac1PartnerID && x.I2Id == m.Igrac1ID)))
-                        {
-                            paroviSet.Add((m.Igrac1ID, m.Igrac1PartnerID, m.Igrac1, m.Igrac1Partner));
-                        }
-                    }
-                    if (m.Igrac2ID != null && m.Igrac2PartnerID != null)
-                    {
-                        if (!paroviSet.Any(x => (x.I1Id == m.Igrac2ID && x.I2Id == m.Igrac2PartnerID) || (x.I1Id == m.Igrac2PartnerID && x.I2Id == m.Igrac2ID)))
-                        {
-                            paroviSet.Add((m.Igrac2ID, m.Igrac2PartnerID, m.Igrac2, m.Igrac2Partner));
-                        }
-                    }
-                }
-
-                var records = new List<dynamic>();
-                foreach (var pTuple in paroviSet)
-                {
-                    int pobjede = 0;
-                    int porazi = 0;
-                    int osvojeniSetovi = 0;
-                    int izgubljeniSetovi = 0;
-
-                    foreach (var m in meceviGrupe.Where(m => m.Odigran))
-                    {
-                        bool isSide1 = (m.Igrac1ID == pTuple.I1Id && m.Igrac1PartnerID == pTuple.I2Id) || (m.Igrac1ID == pTuple.I2Id && m.Igrac1PartnerID == pTuple.I1Id);
-                        bool isSide2 = (m.Igrac2ID == pTuple.I1Id && m.Igrac2PartnerID == pTuple.I2Id) || (m.Igrac2ID == pTuple.I2Id && m.Igrac2PartnerID == pTuple.I1Id);
-
-                        if (isSide1)
-                        {
-                            int p1 = m.PoeniIgrac1 ?? 0;
-                            int p2 = m.PoeniIgrac2 ?? 0;
-                            osvojeniSetovi += p1;
-                            izgubljeniSetovi += p2;
-                            if (p1 > p2) pobjede++; else porazi++;
-                        }
-                        else if (isSide2)
-                        {
-                            int p1 = m.PoeniIgrac1 ?? 0;
-                            int p2 = m.PoeniIgrac2 ?? 0;
-                            osvojeniSetovi += p2;
-                            izgubljeniSetovi += p1;
-                            if (p2 > p1) pobjede++; else porazi++;
-                        }
-                    }
-
-                    records.Add(new {
-                        Igrac1ID = pTuple.I1Id,
-                        Igrac2ID = pTuple.I2Id,
-                        Igrac1 = pTuple.I1,
-                        Igrac2 = pTuple.I2,
-                        Pobjede = pobjede,
-                        Porazi = porazi,
-                        SetRazlika = osvojeniSetovi - izgubljeniSetovi,
-                        OsvojeniSetovi = osvojeniSetovi
-                    });
-                }
-
-                var sortirani = records
-                    .OrderByDescending(r => r.Pobjede)
-                    .ThenByDescending(r => r.SetRazlika)
-                    .ThenByDescending(r => r.OsvojeniSetovi)
-                    .ToList();
-
-                paroviStandingsMap[gName] = sortirani;
-
-                if (paroviZavrseni)
-                {
-                    if (sortirani.Count > 0) prvoMjesto = (sortirani[0].Igrac1, sortirani[0].Igrac2);
-                    if (sortirani.Count > 1) drugoMjesto = (sortirani[1].Igrac1, sortirani[1].Igrac2);
-                    if (sortirani.Count > 2) trecaMjesta.Add((sortirani[2].Igrac1, sortirani[2].Igrac2));
-                }
-            }
-        }
-        else
-        {
-            paroviZavrseni = finalniMecParova != null && finalniMecParova.Odigran;
-            if (paroviZavrseni && finalniMecParova != null)
-            {
-                bool isIgrac1Pobjednik = (finalniMecParova.PoeniIgrac1 ?? 0) > (finalniMecParova.PoeniIgrac2 ?? 0);
-                if (isIgrac1Pobjednik)
-                {
-                    prvoMjesto = (finalniMecParova.Igrac1, finalniMecParova.Igrac1Partner);
-                    drugoMjesto = (finalniMecParova.Igrac2, finalniMecParova.Igrac2Partner);
-                }
-                else
-                {
-                    prvoMjesto = (finalniMecParova.Igrac2, finalniMecParova.Igrac2Partner);
-                    drugoMjesto = (finalniMecParova.Igrac1, finalniMecParova.Igrac1Partner);
-                }
-
-                if (maxRundaParova > 1)
-                {
-                    var polufinalniMecevi = paroviMecevi.Where(m => m.Runda == maxRundaParova - 1).ToList();
-                    foreach (var pfMec in polufinalniMecevi)
-                    {
-                        if (pfMec.Odigran)
-                        {
-                            bool pfIgrac1Pobjednik = (pfMec.PoeniIgrac1 ?? 0) > (pfMec.PoeniIgrac2 ?? 0);
-                            if (pfIgrac1Pobjednik)
-                            {
-                                if (pfMec.Igrac2ID != null)
-                                {
-                                    trecaMjesta.Add((pfMec.Igrac2, pfMec.Igrac2Partner));
-                                }
-                            }
-                            else
-                            {
-                                if (pfMec.Igrac1ID != null)
-                                {
-                                    trecaMjesta.Add((pfMec.Igrac1, pfMec.Igrac1Partner));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     @if (!paroviMecevi.Any())
     {
-        <div class="row">
-            <!-- List of registered pairs -->
-            <div class="col-12 col-md-7 mb-4">
-                <div class="p-4 bg-dark-input border border-dark-glow rounded-4">
-                    <h5 class="text-white fw-bold mb-3"><i class="bi bi-people-fill text-orange me-2"></i>Prijavljeni parovi (@Model.TurnirParovi.Count)</h5>
-                    @if (!Model.TurnirParovi.Any())
-                    {
-                        <p class="text-white-50 small mb-0">Nema registrovanih parova za ovaj turnir.</p>
-                    }
-                    else
-                    {
-                        <div class="row g-2">
-                            @foreach (var par in Model.TurnirParovi)
-                            {
-                                <div class="col-12 col-sm-6">
-                                    <div class="p-3 bg-dark-card border border-dark-glow rounded-3 d-flex justify-content-between align-items-center">
-                                        <div class="text-truncate">
-                                            <span class="text-white fw-semibold">@par.Igrac1?.Ime @par.Igrac1?.Prezime</span>
-                                            <span class="text-muted d-block text-truncate" style="font-size:0.85rem;">/ @par.Igrac2?.Ime @par.Igrac2?.Prezime</span>
-                                        </div>
-                                        @{
-                                            var isUserInThisPair = par.Igrac1ID == currentUserId || par.Igrac2ID == currentUserId;
-                                            var canDeletePair = (isOrganizator || isUserInThisPair) && !Model.Mecevi.Any(m => m.TipMeca == TipMeca.TurnirParova);
-                                        }
-                                        @if (canDeletePair)
-                                        {
-                                            <form asp-controller="TurnirPar" asp-action="UkloniPar" method="post" class="d-inline" onsubmit="sessionStorage.setItem('turnirScrollY', window.scrollY); return confirm('Da li ste sigurni da želite ukloniti ovaj par sa turnira?');">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="turnirId" value="@Model.ID" />
-                                                <input type="hidden" name="parId" value="@par.ID" />
-                                                <button type="submit" class="btn btn-outline-danger btn-sm p-1 rounded-circle ms-2"
-                                                    style="width:28px; height:28px;" title="Ukloni par">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- Forms to add pairs / generator -->
-            <div class="col-12 col-md-5 mb-4">
-                @{
-                    var pairedUserIds = Model.TurnirParovi.SelectMany(p => new[] { p.Igrac1ID, p.Igrac2ID }).Distinct().ToList();
-                    var slobodniIgraciZaPar = Model.Registracije
-                        .Where(r => !pairedUserIds.Contains(r.KorisnikID))
-                        .Select(r => r.Korisnik)
-                        .ToList();
-                    var isUserRegistered = Model.Registracije.Any(r => r.KorisnikID == currentUserId);
-                    var isUserPaired = Model.TurnirParovi.Any(p => p.Igrac1ID == currentUserId || p.Igrac2ID == currentUserId);
-                }
-
-                @if (isUserRegistered && !isUserPaired)
-                {
-                    <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4" id="prijava-par-scroll">
-                        <h5 class="text-white fw-bold mb-3"><i class="bi bi-person-plus-fill text-orange me-2"></i>Prijavi svoj par</h5>
-                        <form asp-controller="TurnirPar" asp-action="PrijaviPar" method="post" id="formPrijaviPar">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="turnirId" value="@Model.ID" />
-                            <div class="mb-3">
-                                <label class="form-label text-white-50 small">Izaberi partnera</label>
-                                <select name="partnerId" class="form-select bg-dark border-dark-glow text-white text-uppercase" required>
-                                    <option value="">-- Izaberi igrača --</option>
-                                    @foreach (var igrac in slobodniIgraciZaPar.Where(u => u != null && u.Id != currentUserId))
-                                    {
-                                        <option value="@igrac!.Id">@igrac.Ime @igrac.Prezime (@igrac.Grad)</option>
-                                    }
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-orange btn-sm text-white fw-bold w-100">Potvrdi prijavu</button>
-                        </form>
-                    </div>
-                }
-                else if (isUserRegistered && isUserPaired)
-                {
-                    var myPair = Model.TurnirParovi.FirstOrDefault(p => p.Igrac1ID == currentUserId || p.Igrac2ID == currentUserId);
-                    var partner = myPair?.Igrac1ID == currentUserId ? myPair?.Igrac2 : myPair?.Igrac1;
-                    var imaMeceveParova = Model.Mecevi.Any(m => m.TipMeca == TipMeca.TurnirParova);
-
-                    <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4" id="prijava-par-scroll">
-                        <h5 class="text-white fw-bold mb-2"><i class="bi bi-people-fill text-orange me-2"></i>Tvoj par</h5>
-                        <p class="text-white-50 small mb-3">Prijavljeni ste sa: <strong class="text-white">@partner?.Ime @partner?.Prezime</strong></p>
-                        @if (!imaMeceveParova && myPair != null)
-                        {
-                            <form asp-controller="TurnirPar" asp-action="UkloniPar" method="post" onsubmit="sessionStorage.setItem('turnirScrollY', window.scrollY); return confirm('Da li ste sigurni da želite odjaviti svoj par sa turnira?');">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="turnirId" value="@Model.ID" />
-                                <input type="hidden" name="parId" value="@myPair.ID" />
-                                <button type="submit" class="btn btn-outline-danger btn-sm text-white fw-bold w-100">
-                                    <i class="bi bi-person-x-fill me-1"></i> Odjavi svoj par
-                                </button>
-                            </form>
-                        }
-                        else
-                        {
-                            <div class="alert alert-secondary mb-0 small text-white-50 py-2">
-                                <i class="bi bi-info-circle me-1"></i> Mečevi parova su generisani. Odjava više nije moguća.
-                            </div>
-                        }
-                    </div>
-                }
-
-                @if (isOrganizator)
-                {
-                    <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4">
-                        <h5 class="text-white fw-bold mb-3"><i class="bi bi-magic text-orange me-2"></i>Formiraj par (Admin)</h5>
-                        <form asp-controller="TurnirPar" asp-action="DodajParAdmin" method="post" id="formDodajParAdmin">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="turnirId" value="@Model.ID" />
-                            <div class="mb-2">
-                                <label class="form-label text-white-50 small">Igrač 1</label>
-                                <select name="igrac1Id" id="adminParIgrac1" class="form-select bg-dark border-dark-glow text-white form-select-sm" required>
-                                    <option value="">-- Izaberi igrača --</option>
-                                    @foreach (var igrac in slobodniIgraciZaPar.Where(u => u != null))
-                                    {
-                                        <option value="@igrac!.Id">@igrac.Ime @igrac.Prezime (@igrac.Grad)</option>
-                                    }
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label text-white-50 small">Igrač 2</label>
-                                <select name="igrac2Id" id="adminParIgrac2" class="form-select bg-dark border-dark-glow text-white form-select-sm" required>
-                                    <option value="">-- Izaberi igrača --</option>
-                                    @foreach (var igrac in slobodniIgraciZaPar.Where(u => u != null))
-                                    {
-                                        <option value="@igrac!.Id">@igrac.Ime @igrac.Prezime (@igrac.Grad)</option>
-                                    }
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-outline-warning btn-sm fw-bold w-100"><i class="bi bi-plus-lg"></i> Formiraj par</button>
-                        </form>
-                    </div>
-
-                    <div class="p-4 bg-dark-input border border-orange rounded-4 text-center">
-                        <h5 class="text-white fw-bold mb-2"><i class="bi bi-lightning-fill text-orange"></i> Generisanje mečeva</h5>
-                        <p class="text-white-50 small mb-3">Za generisanje mečeva parova potrebna su najmanje 2 para, a mečevi se mogu generisati **tek po završetku glavnog turnira**.</p>
-                        
-                        @if (Model.Status == StatusTurnira.Zavrsen)
-                        {
-                            <form asp-controller="Mec" asp-action="GenerirajTurnirParova" method="post">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="turnirId" value="@Model.ID" />
-                                <button type="submit" class="btn btn-orange text-white fw-bold w-100" @(Model.TurnirParovi.Count < 2 ? "disabled" : "")><i class="bi bi-play-fill me-1"></i> Generiši Turnir Parova</button>
-                            </form>
-                        }
-                        else
-                        {
-                            <button class="btn btn-secondary text-white fw-bold w-100" disabled><i class="bi bi-lock-fill me-1"></i> Čeka se kraj glavnog turnira</button>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
+        <!-- Faza registracije: lista parova + forme -->
+        <partial name="Doubles/_DoublesRegistration" model="Model" />
     }
     else
     {
+        <!-- Dugme za ponovnu generaciju (samo za organizatora) -->
         @if (isOrganizator)
         {
             <div class="d-flex justify-content-end mb-4">
-                <form asp-controller="Mec" asp-action="GenerirajTurnirParova" method="post" onsubmit="return confirm('Da li ste sigurni? Ovo će obrisati sve trenutne mečeve parova i njihove rezultate.');">
+                <form asp-controller="Mec" asp-action="GenerirajTurnirParova" method="post"
+                      onsubmit="return confirm('Da li ste sigurni? Ovo će obrisati sve trenutne mečeve parova i njihove rezultate.');">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="turnirId" value="@Model.ID" />
-                    <button type="submit" class="btn btn-outline-danger btn-sm fw-bold"><i class="bi bi-arrow-counterclockwise"></i> Ponovo generiši parove</button>
+                    <button type="submit" class="btn btn-outline-danger btn-sm fw-bold">
+                        <i class="bi bi-arrow-counterclockwise"></i> Ponovo generiši parove
+                    </button>
                 </form>
             </div>
         }
 
-        @if (paroviZavrseni && prvoMjesto.HasValue)
+        <!-- Postolje pobjednika (prikazuje se kada su svi mečevi odigrani) -->
+        @if (paroviZavrseni && podium.Prvo_Igrac1 != null)
         {
-            <div class="podium-section mb-4 p-4 rounded-4 bg-dark-card border border-dark-glow shadow-lg position-relative overflow-hidden">
-                <div class="text-center mb-4">
-                    <h4 class="fw-bold text-orange text-uppercase mb-1">
-                        <i class="bi bi-trophy-fill text-warning me-2"></i>Konačni Plasman - Turnir Parova
-                    </h4>
-                    <p class="text-white-50 small mb-0">Postolje pobjednika turnira parova</p>
-                </div>
-
-                <div class="row g-3 mb-4 justify-content-center align-items-end">
-                    <!-- 2. Mjesto (Srebro) -->
-                    @if (drugoMjesto.HasValue && drugoMjesto.Value.Igrac1 != null)
-                    {
-                        var p2_1 = drugoMjesto.Value.Igrac1;
-                        var p2_2 = drugoMjesto.Value.Igrac2;
-                        <div class="col-12 col-md-4 order-2 order-md-1">
-                            <div class="card bg-dark-card border border-secondary rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
-                                <div class="position-absolute top-0 start-50 translate-middle-x bg-secondary text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
-                                    🥈 2. Mjesto
-                                </div>
-                                <div class="pt-4 mb-2">
-                                    <div class="d-flex justify-content-center gap-1 mb-2">
-                                        <div class="user-avatar-mini border border-secondary" style="width: 46px; height: 46px; font-size: 1.1rem;">
-                                            @if (!string.IsNullOrEmpty(p2_1?.Ime))
-                                            {
-                                                <span>@p2_1.Ime[0]</span>
-                                            }
-                                        </div>
-                                        @if (p2_2 != null)
-                                        {
-                                            <div class="user-avatar-mini border border-secondary" style="width: 46px; height: 46px; font-size: 1.1rem;">
-                                                @if (!string.IsNullOrEmpty(p2_2?.Ime))
-                                                {
-                                                    <span>@p2_2.Ime[0]</span>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                    <a href="/Korisnik/Index/@p2_1?.Id" class="text-white hover-orange fw-bold d-block fs-6 mb-1">@p2_1?.Ime @p2_1?.Prezime</a>
-                                    @if (p2_2 != null)
-                                    {
-                                        <a href="/Korisnik/Index/@p2_2?.Id" class="text-white-50 hover-orange fw-bold d-block small">/ @p2_2?.Ime @p2_2?.Prezime</a>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    <!-- 1. Mjesto (Zlato - Sredina i Više) -->
-                    @if (prvoMjesto.HasValue && prvoMjesto.Value.Igrac1 != null)
-                    {
-                        var p1_1 = prvoMjesto.Value.Igrac1;
-                        var p1_2 = prvoMjesto.Value.Igrac2;
-                        <div class="col-12 col-md-4 order-1 order-md-2">
-                            <div class="card bg-dark-card border border-warning rounded-4 text-center p-3 shadow-lg h-100 d-flex flex-column justify-content-between position-relative overflow-hidden" style="background: linear-gradient(180deg, rgba(255, 193, 7, 0.12) 0%, rgba(20, 20, 20, 0.95) 100%);">
-                                <div class="position-absolute top-0 start-50 translate-middle-x bg-warning text-dark px-4 py-1 rounded-bottom fw-bold text-nowrap shadow-sm">
-                                    👑 1. Mjesto
-                                </div>
-                                <div class="pt-4 mb-2">
-                                    <div class="d-flex justify-content-center gap-2 mb-2">
-                                        <div class="user-avatar-mini bg-warning text-dark border border-warning shadow-sm" style="width: 58px; height: 58px; font-size: 1.4rem;">
-                                            @if (!string.IsNullOrEmpty(p1_1?.Ime))
-                                            {
-                                                <span>@p1_1.Ime[0]</span>
-                                            }
-                                        </div>
-                                        @if (p1_2 != null)
-                                        {
-                                            <div class="user-avatar-mini bg-warning text-dark border border-warning shadow-sm" style="width: 58px; height: 58px; font-size: 1.4rem;">
-                                                @if (!string.IsNullOrEmpty(p1_2?.Ime))
-                                                {
-                                                    <span>@p1_2.Ime[0]</span>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                    <a href="/Korisnik/Index/@p1_1?.Id" class="text-warning hover-orange fw-bold d-block fs-5 mb-1">@p1_1?.Ime @p1_1?.Prezime</a>
-                                    @if (p1_2 != null)
-                                    {
-                                        <a href="/Korisnik/Index/@p1_2?.Id" class="text-white hover-orange fw-bold d-block fs-6">/ @p1_2?.Ime @p1_2?.Prezime</a>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    <!-- 3. Mjesto (Bronza) -->
-                    @if (trecaMjesta.Any())
-                    {
-                        <div class="col-12 col-md-4 order-3">
-                            <div class="card bg-dark-card border border-danger rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
-                                <div class="position-absolute top-0 start-50 translate-middle-x bg-danger text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
-                                    🥉 @(trecaMjesta.Count > 1 ? "3. Mjesta" : "3. Mjesto")
-                                </div>
-                                <div class="pt-4 mb-2">
-                                    @foreach (var par in trecaMjesta)
-                                    {
-                                        var p3_1 = par.Igrac1;
-                                        var p3_2 = par.Igrac2;
-                                        <div class="mb-2 pb-2 @(par != trecaMjesta.Last() ? "border-bottom border-dark-glow" : "")">
-                                            <div class="d-flex justify-content-center gap-1 mb-1">
-                                                <div class="user-avatar-mini border border-danger text-orange" style="width: 40px; height: 40px; font-size: 1rem;">
-                                                    @if (!string.IsNullOrEmpty(p3_1?.Ime))
-                                                    {
-                                                        <span>@p3_1.Ime[0]</span>
-                                                    }
-                                                </div>
-                                                @if (p3_2 != null)
-                                                {
-                                                    <div class="user-avatar-mini border border-danger text-orange" style="width: 40px; height: 40px; font-size: 1rem;">
-                                                        @if (!string.IsNullOrEmpty(p3_2?.Ime))
-                                                        {
-                                                            <span>@p3_2.Ime[0]</span>
-                                                        }
-                                                    </div>
-                                                }
-                                            </div>
-                                            <a href="/Korisnik/Index/@p3_1?.Id" class="text-white hover-orange fw-bold d-block fs-6 mb-1">@p3_1?.Ime @p3_1?.Prezime</a>
-                                            @if (p3_2 != null)
-                                            {
-                                                <a href="/Korisnik/Index/@p3_2?.Id" class="text-white-50 hover-orange fw-bold d-block small">/ @p3_2?.Ime @p3_2?.Prezime</a>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
+            <partial name="Doubles/_DoublesPodium" model="podium" />
         }
 
+        <!-- Grupna tabela i mečevi / Knockout bracket -->
         @if (isParoviGrupa)
         {
-            var meceviPoGrupamaParova = paroviMecevi.GroupBy(m => m.NazivGrupe).OrderBy(g => g.Key).ToList();
-            @foreach (var grupaGroup in meceviPoGrupamaParova)
-            {
-                var nazivGrupe = grupaGroup.Key ?? "Grupa";
-                var meceviGrupe = grupaGroup.ToList();
-                var sortiraniStandings = paroviStandingsMap.ContainsKey(nazivGrupe) ? paroviStandingsMap[nazivGrupe] : new List<dynamic>();
-
-                <div class="mb-5 p-3 rounded-4 bg-dark-card border border-dark-glow shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="text-orange fw-bold mb-0"><i class="bi bi-table text-orange me-2"></i>@nazivGrupe - Tabela i mečevi</h4>
-                        <button class="btn btn-outline-light-glow btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" type="button" data-bs-toggle="collapse" data-bs-target="#groupCollapsePar-@nazivGrupe.Replace(" ", "").Replace("(", "").Replace(")", "")" aria-expanded="true" aria-controls="groupCollapsePar-@nazivGrupe.Replace(" ", "").Replace("(", "").Replace(")", "")">
-                            <i class="bi bi-chevron-up toggle-chevron"></i>
-                        </button>
-                    </div>
-                    <div class="collapse show" id="groupCollapsePar-@nazivGrupe.Replace(" ", "").Replace("(", "").Replace(")", "")">
-                        <div class="table-responsive rounded-3 overflow-hidden border border-dark-glow mb-4">
-                            <table class="table table-dark table-striped align-middle mb-0 text-center">
-                                <thead>
-                                    <tr class="text-muted small border-bottom border-dark-glow">
-                                        <th style="width: 8%;">Poz</th>
-                                        <th class="text-start" style="width: 40%;">Par</th>
-                                        <th style="width: 13%;">Pobjede</th>
-                                        <th style="width: 13%;">Porazi</th>
-                                        <th style="width: 13%;">Set Razlika</th>
-                                        <th style="width: 13%;">@(isGroupOnly ? "Plasman" : "Status")</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @for (int idx = 0; idx < sortiraniStandings.Count; idx++)
-                                    {
-                                        var row = sortiraniStandings[idx];
-                                        var isFirst = idx == 0;
-                                        var isSecond = idx == 1;
-                                        var isThird = idx == 2;
-                                        <tr class="@(paroviZavrseni ? (isFirst ? "border-start border-3 border-warning bg-warning-transparent-row" : (isSecond ? "border-start border-3 border-secondary" : "")) : "")">
-                                            <td class="fw-bold @(idx == 0 ? "text-warning" : (idx == 1 ? "text-light" : "text-muted"))">@(idx + 1).</td>
-                                            <td class="text-start">
-                                                <span class="text-white fw-bold">
-                                                    @row.Igrac1?.Ime @row.Igrac1?.Prezime
-                                                </span>
-                                                <span class="text-muted fw-bold d-block small">
-                                                    / @row.Igrac2?.Ime @row.Igrac2?.Prezime
-                                                </span>
-                                            </td>
-                                            <td class="text-success fw-bold">@row.Pobjede</td>
-                                            <td class="text-danger fw-bold">@row.Porazi</td>
-                                            <td class="@(row.SetRazlika >= 0 ? "text-success" : "text-danger") fw-bold">
-                                                @(row.SetRazlika >= 0 ? "+" : "")@row.SetRazlika
-                                            </td>
-                                            <td>
-                                                @if (paroviZavrseni)
-                                                {
-                                                    if (isFirst)
-                                                    {
-                                                        <span class="badge bg-warning text-dark px-2 py-1 rounded-pill fw-bold">🥇 1. Mjesto</span>
-                                                    }
-                                                    else if (isSecond)
-                                                    {
-                                                        <span class="badge bg-secondary text-white px-2 py-1 rounded-pill fw-bold">🥈 2. Mjesto</span>
-                                                    }
-                                                    else if (isThird)
-                                                    {
-                                                        <span class="badge text-white px-2 py-1 rounded-pill fw-bold" style="background-color: #cd7f32;">🥉 3. Mjesto</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-dark-glow text-muted px-2 py-1 rounded-pill">Kraj</span>
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-dark-glow text-muted px-2 py-1 rounded-pill">U toku</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h6 class="text-white fw-semibold mb-3"><i class="bi bi-controller text-orange me-2"></i>Mečevi u grupi</h6>
-                        <div class="row g-3">
-                            @foreach (var mec in meceviGrupe)
-                            {
-                                <div class="col-12">
-                                    <div class="match-card p-3 bg-dark-input border border-dark-glow rounded-3 d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center flex-grow-1">
-                                            <!-- Side 1 -->
-                                            <div class="text-end flex-grow-1 pe-3">
-                                                <span class="text-white fw-semibold">
-                                                    @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
-                                                    @if (mec.Igrac1PartnerID != null)
-                                                    {
-                                                        <span class="text-muted d-block small">/ @mec.Igrac1Partner?.Ime @mec.Igrac1Partner?.Prezime</span>
-                                                    }
-                                                </span>
-                                            </div>
-
-                                            <!-- Score -->
-                                            <div class="score-display px-3 py-1 rounded bg-dark border border-dark-glow text-center mx-2" style="min-width: 80px;">
-                                                @if (mec.Odigran)
-                                                {
-                                                    <span class="text-orange fw-bold fs-5">@mec.PoeniIgrac1 : @mec.PoeniIgrac2</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted font-monospace small">VS</span>
-                                                }
-                                            </div>
-
-                                            <!-- Side 2 -->
-                                            <div class="text-start flex-grow-1 ps-3">
-                                                <span class="text-white fw-semibold">
-                                                    @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
-                                                    @if (mec.Igrac2PartnerID != null)
-                                                    {
-                                                        <span class="text-muted d-block small">/ @mec.Igrac2Partner?.Ime @mec.Igrac2Partner?.Prezime</span>
-                                                    }
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Action -->
-                                        @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null && mec.Igrac1ID != "SLOBODAN" && mec.Igrac2ID != "SLOBODAN")
-                                        {
-                                            <div class="ps-3 border-start border-secondary ms-3">
-                                                <button type="button" class="btn btn-outline-warning btn-sm fw-bold"
-                                                        data-bs-toggle="modal" data-bs-target="#unosRezultataModal"
-                                                        data-mec-id="@mec.ID"
-                                                        data-igrac1="@(mec.Igrac1?.Ime + " " + mec.Igrac1?.Prezime)"
-                                                        data-igrac1-partner="@(mec.Igrac1Partner != null ? mec.Igrac1Partner.Ime + " " + mec.Igrac1Partner.Prezime : "")"
-                                                        data-igrac2="@(mec.Igrac2?.Ime + " " + mec.Igrac2?.Prezime)"
-                                                        data-igrac2-partner="@(mec.Igrac2Partner != null ? mec.Igrac2Partner.Ime + " " + mec.Igrac2Partner.Prezime : "")"
-                                                        data-poeni1="@(mec.PoeniIgrac1 ?? 0)"
-                                                        data-poeni2="@(mec.PoeniIgrac2 ?? 0)"
-                                                        data-runda="@mec.Runda"
-                                                        data-grupa="@mec.NazivGrupe">
-                                                    <i class="bi bi-trophy-fill"></i> Unos
-                                                </button>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-            }
+            <partial name="Doubles/_DoublesGroupView" model="Model" />
         }
         else
         {
-            <!-- Knockout bracket view -->
-            @foreach (var runda in rundeParova)
-            {
-                var rNo = runda.Key;
-                var rMatches = runda.ToList();
-                var matchesCount = rMatches.Count;
-
-                string rundaNaziv = $"KOLO {rNo}";
-                if (matchesCount == 1) rundaNaziv = "FINALE";
-                else if (matchesCount == 2) rundaNaziv = "POLUFINALE";
-                else if (matchesCount == 4) rundaNaziv = "ČETVRTFINALE";
-                else if (matchesCount == 8) rundaNaziv = "OSMINA FINALA";
-
-                <div class="d-flex justify-content-between align-items-center border-bottom border-dark-glow pb-2 mb-3 mt-4">
-                    <h5 class="text-orange fw-bold mb-0 text-uppercase">@rundaNaziv</h5>
-                    <button class="btn btn-outline-light-glow btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;" type="button" data-bs-toggle="collapse" data-bs-target="#roundCollapsePar-@rNo" aria-expanded="true" aria-controls="roundCollapsePar-@rNo">
-                        <i class="bi bi-chevron-up toggle-chevron" style="font-size: 0.75rem;"></i>
-                    </button>
-                </div>
-
-                <div class="collapse show" id="roundCollapsePar-@rNo">
-                    <div class="row g-3">
-                        @foreach (var mec in rMatches)
-                        {
-                            <div class="col-12">
-                                <div class="match-card p-3 bg-dark-input border border-dark-glow rounded-3 d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center flex-grow-1">
-                                        <!-- Side 1 -->
-                                        <div class="text-end flex-grow-1 pe-3">
-                                            @if (mec.Igrac1ID != null)
-                                            {
-                                                @if (mec.Igrac1ID == "SLOBODAN")
-                                                {
-                                                    <span class="text-white-50 small fst-italic">Slobodan</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-white fw-semibold">
-                                                        @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
-                                                        @if (mec.Igrac1PartnerID != null)
-                                                        {
-                                                            <span class="text-muted d-block small">/ @mec.Igrac1Partner?.Ime @mec.Igrac1Partner?.Prezime</span>
-                                                        }
-                                                    </span>
-                                                }
-                                            }
-                                            else
-                                            {
-                                                if (rNo > 1)
-                                                {
-                                                    var mNo = int.Parse(mec.MatchCode.Split('_').Last().Substring(1));
-                                                    var srcMatchNo = 2 * mNo - 1;
-                                                    <span class="text-white-50 small text-uppercase italic">Pobjednik R@(rNo - 1) M@(srcMatchNo)</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted small italic">Slobodan prolaz (BYE)</span>
-                                                }
-                                            }
-                                        </div>
-
-                                        <!-- Score -->
-                                        <div class="score-display px-3 py-1 rounded bg-dark border border-dark-glow text-center mx-2" style="min-width: 80px;">
-                                            @if (mec.Odigran)
-                                            {
-                                                <span class="text-orange fw-bold fs-5">@mec.PoeniIgrac1 : @mec.PoeniIgrac2</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted font-monospace small">VS</span>
-                                            }
-                                        </div>
-
-                                        <!-- Side 2 -->
-                                        <div class="text-start flex-grow-1 ps-3">
-                                            @if (mec.Igrac2ID != null)
-                                            {
-                                                @if (mec.Igrac2ID == "SLOBODAN")
-                                                {
-                                                    <span class="text-white-50 small fst-italic">Slobodan</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-white fw-semibold">
-                                                        @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
-                                                        @if (mec.Igrac2PartnerID != null)
-                                                        {
-                                                            <span class="text-muted d-block small">/ @mec.Igrac2Partner?.Ime @mec.Igrac2Partner?.Prezime</span>
-                                                        }
-                                                    </span>
-                                                }
-                                            }
-                                            else
-                                            {
-                                                if (rNo > 1)
-                                                {
-                                                    var mNo = int.Parse(mec.MatchCode.Split('_').Last().Substring(1));
-                                                    var srcMatchNo = 2 * mNo;
-                                                    <span class="text-white-50 small text-uppercase italic">Pobjednik R@(rNo - 1) M@(srcMatchNo)</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted small italic">Slobodan prolaz (BYE)</span>
-                                                }
-                                            }
-                                        </div>
-                                    </div>
-
-                                    <!-- Action -->
-                                    @if (isOrganizator && mec.Igrac1ID != null && mec.Igrac2ID != null && mec.Igrac1ID != "SLOBODAN" && mec.Igrac2ID != "SLOBODAN")
-                                    {
-                                        <div class="ps-3 border-start border-secondary ms-3">
-                                            <button type="button" class="btn btn-outline-warning btn-sm fw-bold"
-                                                    data-bs-toggle="modal" data-bs-target="#unosRezultataModal"
-                                                    data-mec-id="@mec.ID"
-                                                    data-igrac1="@(mec.Igrac1?.Ime + " " + mec.Igrac1?.Prezime)"
-                                                    data-igrac1-partner="@(mec.Igrac1Partner != null ? mec.Igrac1Partner.Ime + " " + mec.Igrac1Partner.Prezime : "")"
-                                                    data-igrac2="@(mec.Igrac2?.Ime + " " + mec.Igrac2?.Prezime)"
-                                                    data-igrac2-partner="@(mec.Igrac2Partner != null ? mec.Igrac2Partner.Ime + " " + mec.Igrac2Partner.Prezime : "")"
-                                                    data-poeni1="@(mec.PoeniIgrac1 ?? 0)"
-                                                    data-poeni2="@(mec.PoeniIgrac2 ?? 0)"
-                                                    data-runda="@mec.Runda"
-                                                    data-grupa="@mec.NazivGrupe">
-                                                <i class="bi bi-trophy-fill"></i> Unos
-                                            </button>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
+            <partial name="Doubles/_DoublesKnockoutView" model="Model" />
         }
     }
+
 </div>

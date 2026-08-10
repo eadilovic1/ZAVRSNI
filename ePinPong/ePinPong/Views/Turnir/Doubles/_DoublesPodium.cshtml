@@ -1,0 +1,124 @@
+@model ePinPong.Models.ViewModels.DoublesPodiumViewModel
+
+<div class="podium-section mb-4 p-4 rounded-4 bg-dark-card border border-dark-glow shadow-lg position-relative overflow-hidden">
+    <div class="text-center mb-4">
+        <h4 class="fw-bold text-orange text-uppercase mb-1">
+            <i class="bi bi-trophy-fill text-warning me-2"></i>Konačni Plasman - Turnir Parova
+        </h4>
+        <p class="text-white-50 small mb-0">Postolje pobjednika turnira parova</p>
+    </div>
+
+    <div class="row g-3 mb-4 justify-content-center align-items-end">
+
+        <!-- 2. Mjesto (Srebro) -->
+        @if (Model.Drugo_Igrac1 != null)
+        {
+            <div class="col-12 col-md-4 order-2 order-md-1">
+                <div class="card bg-dark-card border border-secondary rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+                    <div class="position-absolute top-0 start-50 translate-middle-x bg-secondary text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
+                        🥈 2. Mjesto
+                    </div>
+                    <div class="pt-4 mb-2">
+                        <div class="d-flex justify-content-center gap-1 mb-2">
+                            <div class="user-avatar-mini border border-secondary" style="width: 46px; height: 46px; font-size: 1.1rem;">
+                                @if (!string.IsNullOrEmpty(Model.Drugo_Igrac1.Ime)) { <span>@Model.Drugo_Igrac1.Ime[0]</span> }
+                            </div>
+                            @if (Model.Drugo_Igrac2 != null)
+                            {
+                                <div class="user-avatar-mini border border-secondary" style="width: 46px; height: 46px; font-size: 1.1rem;">
+                                    @if (!string.IsNullOrEmpty(Model.Drugo_Igrac2.Ime)) { <span>@Model.Drugo_Igrac2.Ime[0]</span> }
+                                </div>
+                            }
+                        </div>
+                        <a href="/Korisnik/Index/@Model.Drugo_Igrac1.Id" class="text-white hover-orange fw-bold d-block fs-6 mb-1">
+                            @Model.Drugo_Igrac1.Ime @Model.Drugo_Igrac1.Prezime
+                        </a>
+                        @if (Model.Drugo_Igrac2 != null)
+                        {
+                            <a href="/Korisnik/Index/@Model.Drugo_Igrac2.Id" class="text-white-50 hover-orange fw-bold d-block small">
+                                / @Model.Drugo_Igrac2.Ime @Model.Drugo_Igrac2.Prezime
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- 1. Mjesto (Zlato) -->
+        @if (Model.Prvo_Igrac1 != null)
+        {
+            <div class="col-12 col-md-4 order-1 order-md-2">
+                <div class="card bg-dark-card border border-warning rounded-4 text-center p-3 shadow-lg h-100 d-flex flex-column justify-content-between position-relative overflow-hidden"
+                     style="background: linear-gradient(180deg, rgba(255, 193, 7, 0.12) 0%, rgba(20, 20, 20, 0.95) 100%);">
+                    <div class="position-absolute top-0 start-50 translate-middle-x bg-warning text-dark px-4 py-1 rounded-bottom fw-bold text-nowrap shadow-sm">
+                        👑 1. Mjesto
+                    </div>
+                    <div class="pt-4 mb-2">
+                        <div class="d-flex justify-content-center gap-2 mb-2">
+                            <div class="user-avatar-mini bg-warning text-dark border border-warning shadow-sm" style="width: 58px; height: 58px; font-size: 1.4rem;">
+                                @if (!string.IsNullOrEmpty(Model.Prvo_Igrac1.Ime)) { <span>@Model.Prvo_Igrac1.Ime[0]</span> }
+                            </div>
+                            @if (Model.Prvo_Igrac2 != null)
+                            {
+                                <div class="user-avatar-mini bg-warning text-dark border border-warning shadow-sm" style="width: 58px; height: 58px; font-size: 1.4rem;">
+                                    @if (!string.IsNullOrEmpty(Model.Prvo_Igrac2.Ime)) { <span>@Model.Prvo_Igrac2.Ime[0]</span> }
+                                </div>
+                            }
+                        </div>
+                        <a href="/Korisnik/Index/@Model.Prvo_Igrac1.Id" class="text-warning hover-orange fw-bold d-block fs-5 mb-1">
+                            @Model.Prvo_Igrac1.Ime @Model.Prvo_Igrac1.Prezime
+                        </a>
+                        @if (Model.Prvo_Igrac2 != null)
+                        {
+                            <a href="/Korisnik/Index/@Model.Prvo_Igrac2.Id" class="text-white hover-orange fw-bold d-block fs-6">
+                                / @Model.Prvo_Igrac2.Ime @Model.Prvo_Igrac2.Prezime
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- 3. Mjesto (Bronza) -->
+        @if (Model.TrecaMjesta.Any())
+        {
+            <div class="col-12 col-md-4 order-3">
+                <div class="card bg-dark-card border border-danger rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+                    <div class="position-absolute top-0 start-50 translate-middle-x bg-danger text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
+                        🥉 @(Model.TrecaMjesta.Count > 1 ? "3. Mjesta" : "3. Mjesto")
+                    </div>
+                    <div class="pt-4 mb-2">
+                        @foreach (var par in Model.TrecaMjesta)
+                        {
+                            var p3_1 = par.Igrac1;
+                            var p3_2 = par.Igrac2;
+                            <div class="mb-2 pb-2 @(par != Model.TrecaMjesta.Last() ? "border-bottom border-dark-glow" : "")">
+                                <div class="d-flex justify-content-center gap-1 mb-1">
+                                    <div class="user-avatar-mini border border-danger text-orange" style="width: 40px; height: 40px; font-size: 1rem;">
+                                        @if (!string.IsNullOrEmpty(p3_1?.Ime)) { <span>@p3_1.Ime[0]</span> }
+                                    </div>
+                                    @if (p3_2 != null)
+                                    {
+                                        <div class="user-avatar-mini border border-danger text-orange" style="width: 40px; height: 40px; font-size: 1rem;">
+                                            @if (!string.IsNullOrEmpty(p3_2.Ime)) { <span>@p3_2.Ime[0]</span> }
+                                        </div>
+                                    }
+                                </div>
+                                <a href="/Korisnik/Index/@p3_1?.Id" class="text-white hover-orange fw-bold d-block fs-6 mb-1">
+                                    @p3_1?.Ime @p3_1?.Prezime
+                                </a>
+                                @if (p3_2 != null)
+                                {
+                                    <a href="/Korisnik/Index/@p3_2.Id" class="text-white-50 hover-orange fw-bold d-block small">
+                                        / @p3_2.Ime @p3_2.Prezime
+                                    </a>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
