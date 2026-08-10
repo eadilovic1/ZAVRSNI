@@ -1,0 +1,156 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+@if (Model.UtjesniRazigravanjeMecevi.Any())
+{
+    @* ─── Pane: Razigravanje (Utješni) – isti format kao glavni Razigravanje ─── *@
+    <div class="tab-pane fade" id="consolation-placement-pane" role="tabpanel" aria-labelledby="consolation-placement-tab" tabindex="0">
+        @{
+            var utRazigRanges = Model.UtjesniRazigravanjeMecevi
+                .GroupBy(m => m.PlacingRange)
+                .Select(g => {
+                    var parts = g.Key.Split('-');
+                    int plL = parts.Length == 2 && int.TryParse(parts[0], out int pl) ? pl : 0;
+                    int plR = parts.Length == 2 && int.TryParse(parts[1], out int pr) ? pr : 0;
+
+                    int rootR = 2;
+                    while (rootR < plR) {
+                        rootR *= 2;
+                    }
+
+                    int size = plR - plL + 1;
+                    return new { Range = g.Key, PlL = plL, PlR = plR, RootR = rootR, Size = size, Mecevi = g.ToList() };
+                })
+                .OrderByDescending(x => x.RootR)
+                .ThenByDescending(x => x.Size)
+                .ThenByDescending(x => x.PlL)
+                .ToList();
+
+            Func<int, int, string> dajNazivFazeUt = (l, r) => {
+                int raspon = r - l + 1;
+                if (raspon == 2) {
+                    if (l == 3) return "MEČ ZA 3. MJESTO";
+                    return $"MEČ ZA {l}. MJESTO";
+                }
+                return $"RAZIGRAVANJE ZA MJESTA {l}–{r}";
+            };
+
+            Func<int, int, string> dajTekstZnackeUt = (l, r) => {
+                if (r - l == 1) {
+                    return $"{l}. MJESTO";
+                }
+                return $"{l}. – {r}. MJESTA";
+            };
+        }
+        @foreach (var rangeGroup in utRazigRanges)
+        {
+            var pNaziv = dajNazivFazeUt(rangeGroup.PlL, rangeGroup.PlR);
+            var collapseId = $"utPlCollapse-{rangeGroup.Range.Replace("-", "_")}";
+            var isFinalni = (rangeGroup.PlR - rangeGroup.PlL) == 1;
+
+            <div class="mb-2">
+                <div class="d-flex justify-content-between align-items-center border-bottom border-dark-glow pb-2 mb-3 mt-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge @(isFinalni ? "bg-orange text-dark" : "bg-secondary text-white") fw-bold px-2 py-1" style="font-size:0.7rem;">
+                            @dajTekstZnackeUt(rangeGroup.PlL, rangeGroup.PlR)
+                        </span>
+                        <h5 class="@(isFinalni ? "text-orange" : "text-white") fw-bold mb-0 text-uppercase">@pNaziv</h5>
+                    </div>
+                    <button class="btn btn-outline-light-glow btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="true" aria-controls="@collapseId">
+                        <i class="bi bi-chevron-up toggle-chevron" style="font-size: 0.75rem;"></i>
+                    </button>
+                </div>
+
+                <div class="collapse show" id="@collapseId">
+                    <div class="row g-3">
+                    @foreach (var plMec in rangeGroup.Mecevi)
+                    {
+                        <div class="col-12">
+                            <div class="match-card p-3 @(isFinalni ? "bg-dark border border-orange" : "bg-dark-input border border-dark-glow") rounded-3 d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center flex-grow-1">
+                                    <div class="text-end flex-grow-1 pe-3">
+                                        @if (plMec.Igrac1ID != null)
+                                        {
+                                            @if (plMec.Igrac1ID == "SLOBODAN")
+                                            {
+                                                <span class="text-white-50 small fst-italic">Slobodan</span>
+                                            }
+                                            else
+                                            {
+                                                <a href="/Korisnik/Index/@plMec.Igrac1ID" class="text-white hover-orange fw-semibold">
+                                                    @plMec.Igrac1?.Ime @plMec.Igrac1?.Prezime
+                                                    @if (plMec.Igrac1 != null && plMec.Igrac1.IsGost)
+                                                    {
+                                                        <span class="text-muted small">(Gost)</span>
+                                                    }
+                                                </a>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-white-50 small italic">Čeka se protivnik</span>
+                                        }
+                                    </div>
+
+                                    <div class="score-display px-3 py-1 rounded bg-dark border @(isFinalni ? "border-orange" : "border-dark-glow") text-center mx-2" style="min-width: 80px;">
+                                        @if (plMec.Odigran)
+                                        {
+                                            <span class="@(isFinalni ? "text-orange" : "text-white") fw-bold fs-5">@plMec.PoeniIgrac1 : @plMec.PoeniIgrac2</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted font-monospace small">VS</span>
+                                        }
+                                    </div>
+
+                                    <div class="text-start flex-grow-1 ps-3">
+                                        @if (plMec.Igrac2ID != null)
+                                        {
+                                            @if (plMec.Igrac2ID == "SLOBODAN")
+                                            {
+                                                <span class="text-white-50 small fst-italic">Slobodan</span>
+                                            }
+                                            else
+                                            {
+                                                <a href="/Korisnik/Index/@plMec.Igrac2ID" class="text-white hover-orange fw-semibold">
+                                                    @plMec.Igrac2?.Ime @plMec.Igrac2?.Prezime
+                                                    @if (plMec.Igrac2 != null && plMec.Igrac2.IsGost)
+                                                    {
+                                                        <span class="text-muted small">(Gost)</span>
+                                                    }
+                                                </a>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-white-50 small italic">Čeka se protivnik</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (Model.IsOrganizator && plMec.Igrac1ID != null && plMec.Igrac2ID != null && plMec.Igrac1ID != "SLOBODAN" && plMec.Igrac2ID != "SLOBODAN")
+                                {
+                                    <div class="ps-3 border-start border-secondary ms-3">
+                                        <button type="button" class="btn btn-outline-warning btn-sm fw-bold"
+                                                data-bs-toggle="modal" data-bs-target="#unosRezultataModal"
+                                                data-mec-id="@plMec.ID"
+                                                data-igrac1="@(plMec.Igrac1?.Ime + " " + plMec.Igrac1?.Prezime)"
+                                                data-igrac1-partner="@(plMec.Igrac1Partner != null ? plMec.Igrac1Partner.Ime + " " + plMec.Igrac1Partner.Prezime : "")"
+                                                data-igrac2="@(plMec.Igrac2?.Ime + " " + plMec.Igrac2?.Prezime)"
+                                                data-igrac2-partner="@(plMec.Igrac2Partner != null ? plMec.Igrac2Partner.Ime + " " + plMec.Igrac2Partner.Prezime : "")"
+                                                data-poeni1="@(plMec.PoeniIgrac1 ?? 0)"
+                                                data-poeni2="@(plMec.PoeniIgrac2 ?? 0)"
+                                                data-runda="@plMec.Runda"
+                                                data-grupa="@plMec.NazivGrupe">
+                                            <i class="bi bi-trophy-fill"></i> Unos
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
