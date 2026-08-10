@@ -1,0 +1,66 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+<!-- Navigacijski tabovi u jednom redu s dugmadima za skrolanje lijevo / desno -->
+<div class="position-relative d-flex align-items-center mb-4 gap-2">
+    <button type="button" class="btn btn-dark border border-dark-glow text-orange rounded-3 px-3 py-3 shadow-sm d-flex align-items-center justify-content-center" id="scrollTabsLeft" title="Skroluj skroz ulijevo" style="flex-shrink: 0;">
+        <i class="bi bi-chevron-left fs-5"></i>
+    </button>
+
+    <div class="overflow-hidden flex-grow-1 border border-dark-glow rounded-3 p-1 bg-dark-card" id="tournamentTabsScrollContainer" style="scroll-behavior: smooth;">
+        <ul class="nav nav-pills flex-nowrap mb-0 border-0" id="tournamentTabs" role="tablist">
+            @if (Model.TipTakmicenja != ePinPong.Models.TipTakmicenja.Dubl)
+            {
+                <li class="nav-item flex-shrink-0" role="presentation">
+                    <button class="nav-link active text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="groups-tab" data-bs-toggle="pill" data-bs-target="#groups-pane" type="button" role="tab" aria-controls="groups-pane" aria-selected="true">
+                        <i class="bi bi-grid-3x3-gap-fill text-orange me-2"></i>Grupna Faza
+                    </button>
+                </li>
+                @if (!Model.IsGroupOnly)
+                {
+                <li class="nav-item flex-shrink-0" role="presentation">
+                    <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="knockout-tab" data-bs-toggle="pill" data-bs-target="#knockout-pane" type="button" role="tab" aria-controls="knockout-pane" aria-selected="false">
+                        <i class="bi bi-trophy-fill text-orange me-2"></i>Glavni turnir
+                    </button>
+                </li>
+                }
+                @if (Model.RazigravanjeMecevi.Any())
+                {
+                    <li class="nav-item flex-shrink-0" role="presentation">
+                        <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="placement-tab" data-bs-toggle="pill" data-bs-target="#placement-pane" type="button" role="tab" aria-controls="placement-pane" aria-selected="false">
+                            <i class="bi bi-diagram-3-fill text-orange me-2"></i>Razigravanje
+                        </button>
+                    </li>
+                }
+                @if (Model.UtjesniGlavniMecevi.Any())
+                {
+                    <li class="nav-item flex-shrink-0" role="presentation">
+                        <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="consolation-tab" data-bs-toggle="pill" data-bs-target="#consolation-pane" type="button" role="tab" aria-controls="consolation-pane" aria-selected="false">
+                            <i class="bi bi-patch-check-fill text-orange me-2"></i>Utješni turnir
+                        </button>
+                    </li>
+                }
+                @if (Model.UtjesniRazigravanjeMecevi.Any())
+                {
+                    <li class="nav-item flex-shrink-0" role="presentation">
+                        <button class="nav-link text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="consolation-placement-tab" data-bs-toggle="pill" data-bs-target="#consolation-placement-pane" type="button" role="tab" aria-controls="consolation-placement-pane" aria-selected="false">
+                            <i class="bi bi-diagram-3-fill text-orange me-2"></i>Razigravanje (Utješni)
+                        </button>
+                    </li>
+                }
+            }
+            @if ((Model.Status == StatusTurnira.UToku || Model.Status == StatusTurnira.Zavrsen) && Model.TipTakmicenja != ePinPong.Models.TipTakmicenja.Singl)
+            {
+                bool isDublOnly = Model.TipTakmicenja == ePinPong.Models.TipTakmicenja.Dubl;
+                <li class="nav-item flex-shrink-0" role="presentation">
+                    <button class="nav-link @(isDublOnly ? "active" : "") text-white fw-bold py-3 px-4 rounded-3 text-nowrap" id="doubles-tab" data-bs-toggle="pill" data-bs-target="#doubles-pane" type="button" role="tab" aria-controls="doubles-pane" aria-selected="@(isDublOnly ? "true" : "false")">
+                        <i class="bi bi-people-fill text-orange me-2"></i>Turnir Parova
+                    </button>
+                </li>
+            }
+        </ul>
+    </div>
+
+    <button type="button" class="btn btn-dark border border-dark-glow text-orange rounded-3 px-3 py-3 shadow-sm d-flex align-items-center justify-content-center" id="scrollTabsRight" title="Skroluj skroz udesno" style="flex-shrink: 0;">
+        <i class="bi bi-chevron-right fs-5"></i>
+    </button>
+</div>
