@@ -1,0 +1,261 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+@{
+    var meceviPoGrupamaMasters = Model.GrupniMecevi.GroupBy(m => m.NazivGrupe).OrderBy(g => g.Key).ToList();
+}
+
+<!-- Podijumi po grupama za Masters turnir -->
+<div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
+    <div class="card-header bg-dark-card-footer border-bottom border-warning p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <h4 class="text-white fw-bold mb-1">
+                <i class="bi bi-trophy-fill text-warning me-2"></i>Plasman Mastersa - Podijumi po grupama
+            </h4>
+            <p class="text-white-50 small mb-0">Prebacujte se između grupa za prikaz pobjedničkog podijuma i tabele pojedine grupe.</p>
+        </div>
+        <button class="btn btn-outline-warning btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" type="button" data-bs-toggle="collapse" data-bs-target="#mastersPodiumsCollapse" aria-expanded="true" aria-controls="mastersPodiumsCollapse">
+            <i class="bi bi-chevron-up toggle-chevron"></i>
+        </button>
+    </div>
+
+    <div class="collapse show" id="mastersPodiumsCollapse">
+        <div class="card-body p-4">
+            <!-- Izbornik grupa (Tabovi - Po defaultu prva grupa npr. Grupa A je aktivna) -->
+            <ul class="nav nav-pills gap-2 mb-4 border-bottom border-dark-glow pb-3" id="mastersPodiumTabs" role="tablist">
+                @for (int gIdx = 0; gIdx < meceviPoGrupamaMasters.Count; gIdx++)
+                {
+                    var gNaziv = meceviPoGrupamaMasters[gIdx].Key ?? $"Grupa {(char)('A' + gIdx)}";
+                    var gSlug = gNaziv.Replace(" ", "");
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(gIdx == 0 ? "active" : "") text-white fw-bold py-2 px-4 rounded-pill"
+                                id="podium-tab-@gSlug"
+                                data-bs-toggle="pill"
+                                data-bs-target="#podium-pane-@gSlug"
+                                type="button"
+                                role="tab"
+                                aria-controls="podium-pane-@gSlug"
+                                aria-selected="@(gIdx == 0 ? "true" : "false")">
+                            <i class="bi bi-trophy-fill text-warning me-2"></i>@gNaziv @(gIdx == 0 ? "(Top grupa)" : "")
+                        </button>
+                    </li>
+                }
+            </ul>
+
+            <div class="tab-content" id="mastersPodiumTabsContent">
+                @for (int gIdx = 0; gIdx < meceviPoGrupamaMasters.Count; gIdx++)
+                {
+                    var grupaGroup = meceviPoGrupamaMasters[gIdx];
+                    var gNaziv = grupaGroup.Key ?? $"Grupa {(char)('A' + gIdx)}";
+                    var gSlug = gNaziv.Replace(" ", "");
+                    var meceviGrupe = grupaGroup.ToList();
+
+                    var igraciIds = meceviGrupe
+                        .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
+                        .Where(id => id != null && id != ePinPong.Services.BracketService.SLOBODAN)
+                        .Distinct()
+                        .ToList();
+
+                    var groupRecords = new List<dynamic>();
+                    foreach (var pid in igraciIds)
+                    {
+                        var igracName = "";
+                        var isGost = false;
+                        var grad = "";
+                        var mecSaIgracem = meceviGrupe.FirstOrDefault(m => m.Igrac1ID == pid || m.Igrac2ID == pid);
+                        if (mecSaIgracem != null)
+                        {
+                            var igrac = mecSaIgracem.Igrac1ID == pid ? mecSaIgracem.Igrac1 : mecSaIgracem.Igrac2;
+                            if (igrac != null)
+                            {
+                                igracName = $"{igrac.Ime} {igrac.Prezime}";
+                                isGost = igrac.IsGost;
+                                grad = igrac.Grad;
+                            }
+                        }
+
+                        int pobjede = 0, porazi = 0, osvojeniSetovi = 0, izgubljeniSetovi = 0;
+                        foreach (var m in meceviGrupe.Where(m => m.Odigran))
+                        {
+                            if (m.Igrac1ID == pid)
+                            {
+                                osvojeniSetovi += m.PoeniIgrac1 ?? 0;
+                                izgubljeniSetovi += m.PoeniIgrac2 ?? 0;
+                                if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) pobjede++;
+                                else porazi++;
+                            }
+                            else if (m.Igrac2ID == pid)
+                            {
+                                osvojeniSetovi += m.PoeniIgrac2 ?? 0;
+                                izgubljeniSetovi += m.PoeniIgrac1 ?? 0;
+                                if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) pobjede++;
+                                else porazi++;
+                            }
+                        }
+
+                        groupRecords.Add(new {
+                            PlayerID = pid,
+                            ImePrezime = igracName,
+                            IsGost = isGost,
+                            Grad = grad,
+                            Pobjede = pobjede,
+                            Porazi = porazi,
+                            SetRazlika = osvojeniSetovi - izgubljeniSetovi,
+                            OsvojeniSetovi = osvojeniSetovi
+                        });
+                    }
+
+                    var sortedRecords = groupRecords
+                        .OrderByDescending(r => r.Pobjede)
+                        .ThenByDescending(r => r.SetRazlika)
+                        .ThenByDescending(r => r.OsvojeniSetovi)
+                        .ToList();
+
+                    <div class="tab-pane fade @(gIdx == 0 ? "show active" : "")" id="podium-pane-@gSlug" role="tabpanel" aria-labelledby="podium-tab-@gSlug">
+                        <h5 class="text-orange fw-bold mb-3"><i class="bi bi-award-fill me-2"></i>Pobjednički podijum - @gNaziv</h5>
+
+                        <!-- Vizuelni podijum top 3 igrača -->
+                        <div class="row g-3 mb-4 justify-content-center align-items-end">
+                            @if (sortedRecords.Count > 1)
+                            {
+                                var p2 = sortedRecords[1];
+                                <!-- 2. Mjesto (Srebro) -->
+                                <div class="col-12 col-md-4 order-2 order-md-1">
+                                    <div class="card bg-dark-card border border-secondary rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+                                        <div class="position-absolute top-0 start-50 translate-middle-x bg-secondary text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
+                                            🥈 2. Mjesto
+                                        </div>
+                                        <div class="pt-4 mb-2">
+                                            <div class="user-avatar-mini mx-auto mb-2 border border-secondary" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                                @if (!string.IsNullOrEmpty(p2.ImePrezime) && p2.ImePrezime.Length > 0)
+                                                {
+                                                    <span>@p2.ImePrezime[0]</span>
+                                                }
+                                            </div>
+                                            <a href="/Korisnik/Index/@p2.PlayerID" class="text-white hover-orange fw-bold d-block fs-6 mb-1">@p2.ImePrezime</a>
+                                            <small class="text-muted d-block mb-2">@p2.Grad</small>
+                                        </div>
+                                        <div class="p-2 bg-dark-input rounded-3 border border-dark-glow">
+                                            <span class="text-success fw-bold me-2">@p2.Pobjede pobjeda</span>
+                                            <span class="text-white-50 small">(Set razlika: @(p2.SetRazlika >= 0 ? "+" : "")@p2.SetRazlika)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (sortedRecords.Count > 0)
+                            {
+                                var p1 = sortedRecords[0];
+                                <!-- 1. Mjesto (Zlato - Sredina i Više) -->
+                                <div class="col-12 col-md-4 order-1 order-md-2">
+                                    <div class="card bg-dark-card border border-warning rounded-4 text-center p-3 shadow-lg h-100 d-flex flex-column justify-content-between position-relative overflow-hidden" style="background: linear-gradient(180deg, rgba(255, 193, 7, 0.12) 0%, rgba(20, 20, 20, 0.95) 100%);">
+                                        <div class="position-absolute top-0 start-50 translate-middle-x bg-warning text-dark px-4 py-1 rounded-bottom fw-bold text-nowrap shadow-sm">
+                                            👑 1. Mjesto
+                                        </div>
+                                        <div class="pt-4 mb-2">
+                                            <div class="user-avatar-mini mx-auto mb-2 bg-warning text-dark border border-warning shadow-sm" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                                                @if (!string.IsNullOrEmpty(p1.ImePrezime) && p1.ImePrezime.Length > 0)
+                                                {
+                                                    <span>@p1.ImePrezime[0]</span>
+                                                }
+                                            </div>
+                                            <a href="/Korisnik/Index/@p1.PlayerID" class="text-warning hover-orange fw-bold d-block fs-5 mb-1">@p1.ImePrezime</a>
+                                            <small class="text-white-50 d-block mb-2">@p1.Grad</small>
+                                        </div>
+                                        <div class="p-2 bg-dark border border-warning rounded-3 shadow-sm">
+                                            <span class="text-warning fw-bold me-2">🏆 @p1.Pobjede pobjeda</span>
+                                            <span class="text-white-50 small">(Set razlika: @(p1.SetRazlika >= 0 ? "+" : "")@p1.SetRazlika)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (sortedRecords.Count > 2)
+                            {
+                                var p3 = sortedRecords[2];
+                                <!-- 3. Mjesto (Bronza) -->
+                                <div class="col-12 col-md-4 order-3">
+                                    <div class="card bg-dark-card border border-danger rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+                                        <div class="position-absolute top-0 start-50 translate-middle-x bg-danger text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
+                                            🥉 3. Mjesto
+                                        </div>
+                                        <div class="pt-4 mb-2">
+                                            <div class="user-avatar-mini mx-auto mb-2 border border-danger text-orange" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                                @if (!string.IsNullOrEmpty(p3.ImePrezime) && p3.ImePrezime.Length > 0)
+                                                {
+                                                    <span>@p3.ImePrezime[0]</span>
+                                                }
+                                            </div>
+                                            <a href="/Korisnik/Index/@p3.PlayerID" class="text-white hover-orange fw-bold d-block fs-6 mb-1">@p3.ImePrezime</a>
+                                            <small class="text-muted d-block mb-2">@p3.Grad</small>
+                                        </div>
+                                        <div class="p-2 bg-dark-input rounded-3 border border-dark-glow">
+                                            <span class="text-orange fw-bold me-2">@p3.Pobjede pobjeda</span>
+                                            <span class="text-white-50 small">(Set razlika: @(p3.SetRazlika >= 0 ? "+" : "")@p3.SetRazlika)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Tabela poretka u grupi -->
+                        <div class="table-responsive rounded-3 overflow-hidden border border-dark-glow">
+                            <table class="table table-dark table-striped align-middle mb-0 text-center">
+                                <thead>
+                                    <tr class="text-muted small border-bottom border-dark-glow">
+                                        <th style="width: 10%;">Pozicija</th>
+                                        <th class="text-start" style="width: 35%;">Igrač</th>
+                                        <th style="width: 15%;">Pobjede</th>
+                                        <th style="width: 15%;">Porazi</th>
+                                        <th style="width: 25%;">Set razlika</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int idx = 0; idx < sortedRecords.Count; idx++)
+                                    {
+                                        var rec = sortedRecords[idx];
+                                        var isPob = idx == 0;
+                                        var isDrugi = idx == 1;
+                                        var isTreci = idx == 2;
+                                        <tr class="@(isPob ? "border-start border-3 border-warning bg-warning-transparent-row" : (isDrugi ? "border-start border-3 border-secondary" : (isTreci ? "border-start border-3 border-danger" : "")))">
+                                            <td class="fw-bold fs-5">
+                                                @if (isPob) { <span class="text-warning">🥇 1.</span> }
+                                                else if (isDrugi) { <span class="text-light">🥈 2.</span> }
+                                                else if (isTreci) { <span class="text-orange">🥉 3.</span> }
+                                                else { <span class="text-muted">@(idx + 1).</span> }
+                                            </td>
+                                            <td class="text-start">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="user-avatar-mini me-3 @(isPob ? "bg-warning text-dark" : "")">
+                                                        @if (!string.IsNullOrEmpty(rec.ImePrezime) && rec.ImePrezime.Length > 0)
+                                                        {
+                                                            <span>@rec.ImePrezime[0]</span>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <a href="/Korisnik/Index/@rec.PlayerID" class="text-white hover-orange fw-bold">
+                                                            @rec.ImePrezime
+                                                            @if (rec.IsGost)
+                                                            {
+                                                                <span class="badge bg-secondary text-muted ms-1" style="font-size: 0.75rem;">Gost</span>
+                                                            }
+                                                        </a>
+                                                        <small class="d-block text-muted" style="font-size: 0.75rem;">@rec.Grad</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-success fw-bold">@rec.Pobjede</td>
+                                            <td class="text-danger fw-bold">@rec.Porazi</td>
+                                            <td class="@(rec.SetRazlika >= 0 ? "text-success" : "text-danger") fw-bold">
+                                                @(rec.SetRazlika >= 0 ? "+" : "")@rec.SetRazlika
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
