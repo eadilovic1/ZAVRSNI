@@ -88,7 +88,7 @@ namespace ePinPong.Controllers
         {
             return View(new Liga
             {
-                DatumPocetka = GetDefaultLigaStartDate()
+                DatumPocetka = LigaTurnirHelper.GetDefaultStandaloneTurnirDatum()
             });
         }
 
@@ -197,7 +197,7 @@ namespace ePinPong.Controllers
         {
             if (liga.DatumPocetka == default)
             {
-                liga.DatumPocetka = GetDefaultLigaStartDate();
+                liga.DatumPocetka = LigaTurnirHelper.GetDefaultStandaloneTurnirDatum();
             }
 
             if (liga.DatumPocetka.Date < DateTime.Today)
@@ -334,34 +334,5 @@ namespace ePinPong.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
-
-
-        #region Pomoćne Metode
-
-        private DateTime GetDefaultLigaStartDate()
-        {
-            var today = DateTime.Today;
-            var currentMonthLastSunday = GetLastSundayOfMonth(today.Year, today.Month);
-
-            if (currentMonthLastSunday < today)
-            {
-                var nextMonth = new DateTime(today.Year, today.Month, 1).AddMonths(1);
-                return GetLastSundayOfMonth(nextMonth.Year, nextMonth.Month);
-            }
-
-            return currentMonthLastSunday;
-        }
-
-        private static DateTime GetLastSundayOfMonth(int year, int month)
-        {
-            var normalizedMonth = month <= 0 ? 1 : month > 12 ? 12 : month;
-            var normalizedYear = month <= 0 ? year - 1 : month > 12 ? year + 1 : year;
-            var lastDay = new DateTime(normalizedYear, normalizedMonth, DateTime.DaysInMonth(normalizedYear, normalizedMonth));
-            int diff = (7 + (int)lastDay.DayOfWeek - (int)DayOfWeek.Sunday) % 7;
-            return lastDay.AddDays(-diff).Date;
-        }
-
-        #endregion
     }
-
 }

@@ -150,10 +150,7 @@ namespace ePinPong.Controllers
             var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
 
             var lige = _context.Lige.Include(l => l.Turniri).ToList();
-            var dostupneLige = lige
-                .Where(l => (isAdmin || l.OrganizatorId == userId) &&
-                            ((ligaId.HasValue && l.ID == ligaId.Value) || LigaTurnirHelper.CanCreateRegular(l)))
-                .ToList();
+            var dostupneLige = GetDostupneLige(lige, isAdmin, userId, ligaId);
 
             ViewBag.Lige = dostupneLige.ToSelectList(
                 l => l.ID.ToString(),
@@ -371,9 +368,7 @@ namespace ePinPong.Controllers
 
             var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
             var sveLige = _context.Lige.Include(l => l.Turniri).ToList();
-            var dostupneLige = sveLige
-                .Where(l => (isAdmin || l.OrganizatorId == userId) && ((turnir.LigaID.HasValue && l.ID == turnir.LigaID.Value) || LigaTurnirHelper.CanCreateRegular(l)))
-                .ToList();
+            var dostupneLige = GetDostupneLige(sveLige, isAdmin, userId, turnir.LigaID);
             ViewBag.Lige = dostupneLige.ToSelectList(
                 l => l.ID.ToString(),
                 l => l.Naziv,
@@ -421,20 +416,7 @@ namespace ePinPong.Controllers
                 .Include(l => l.Turniri)
                 .ToListAsync();
 
-            List<Liga> dostupneLige;
-            if (isAdmin)
-            {
-                dostupneLige = sveLige
-                    .Where(l => l.ID == turnir.LigaID || LigaTurnirHelper.CanCreateRegular(l))
-                    .ToList();
-            }
-            else
-            {
-                // Organizator može izabrati samo ligu koju je sam organizovao i čiji broj regularnih turnira nije popunjen (ili trenutnu ligu turnira)
-                dostupneLige = sveLige
-                    .Where(l => l.ID == turnir.LigaID || ((l.OrganizatorId == userId || !l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
-                    .ToList();
-            }
+            var dostupneLige = GetDostupneLige(sveLige, isAdmin, userId, turnir.LigaID);
 
             ViewBag.Lige = dostupneLige.ToSelectList(
                 l => l.ID.ToString(),
@@ -556,19 +538,7 @@ namespace ePinPong.Controllers
                 .Include(l => l.Turniri)
                 .ToListAsync();
 
-            List<Liga> dostupneLige;
-            if (isAdmin)
-            {
-                dostupneLige = sveLige
-                    .Where(l => l.ID == turnir.LigaID || LigaTurnirHelper.CanCreateRegular(l))
-                    .ToList();
-            }
-            else
-            {
-                dostupneLige = sveLige
-                    .Where(l => l.ID == turnir.LigaID || ((l.OrganizatorId == userId || !l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId)) && LigaTurnirHelper.CanCreateRegular(l)))
-                    .ToList();
-            }
+            var dostupneLige = GetDostupneLige(sveLige, isAdmin, userId, turnir.LigaID);
 
             ViewBag.Lige = dostupneLige.ToSelectList(
                 l => l.ID.ToString(),
@@ -685,6 +655,21 @@ namespace ePinPong.Controllers
             return Json(standings);
         }
 
+
+        private static List<Liga> GetDostupneLige(List<Liga> sveLige, bool isAdmin, string? userId, int? trenutnaLigaId = null)
+        {
+            if (isAdmin)
+            {
+                return sveLige
+                    .Where(l => l.ID == trenutnaLigaId || LigaTurnirHelper.CanCreateRegular(l))
+                    .ToList();
+            }
+            return sveLige
+                .Where(l => l.ID == trenutnaLigaId ||
+                    ((l.OrganizatorId == userId || !l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId))
+                     && LigaTurnirHelper.CanCreateRegular(l)))
+                .ToList();
+        }
 
         private bool TurnirExists(int id)
         {
