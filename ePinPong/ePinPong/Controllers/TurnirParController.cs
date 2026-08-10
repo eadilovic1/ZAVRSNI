@@ -42,46 +42,18 @@ namespace ePinPong.Controllers
             var currentUserId = _userManager.GetUserId(User);
             if (currentUserId == null) return Unauthorized();
 
-            if (turnir.Status != StatusTurnira.UToku && turnir.Status != StatusTurnira.Zavrsen)
-            {
-                TempData["Error"] = "Prijava parova je moguća samo tokom ili nakon završetka glavnog turnira.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            var isUserRegistered = turnir.Registracije.Any(r => r.KorisnikID == currentUserId);
-            var isPartnerRegistered = turnir.Registracije.Any(r => r.KorisnikID == partnerId);
-
-            if (!isUserRegistered || !isPartnerRegistered)
-            {
-                TempData["Error"] = "Oba igrača moraju biti prijavljena na glavni turnir.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
             if (currentUserId == partnerId)
             {
                 TempData["Error"] = "Ne možete izabrati sebe za partnera.";
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
 
-            var isUserPaired = turnir.TurnirParovi.Any(p => p.Igrac1ID == currentUserId || p.Igrac2ID == currentUserId || p.Igrac1ID == partnerId || p.Igrac2ID == partnerId);
-            var isPartnerPaired = turnir.TurnirParovi.Any(p => p.Igrac1ID == partnerId || p.Igrac2ID == partnerId || p.Igrac1ID == currentUserId || p.Igrac2ID == currentUserId);
-
-            if (isUserPaired || isPartnerPaired)
+            var (uspjeh, greska) = await ValidirajIKreirajPar(turnir, currentUserId, partnerId);
+            if (!uspjeh)
             {
-                TempData["Error"] = "Jedan od igrača je već prijavljen u nekom paru.";
+                TempData["Error"] = greska;
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
-
-            var noviPar = new TurnirPar
-            {
-                TurnirID = turnirId,
-                Igrac1ID = currentUserId,
-                Igrac2ID = partnerId,
-                DatumPrijave = DateTime.Now
-            };
-
-            _context.TurnirParovi.Add(noviPar);
-            await _context.SaveChangesAsync();
 
             TempData["Success"] = "Uspješno ste prijavili par za turnir parova!";
             return RedirectToAction("Details", "Turnir", new { id = turnirId });
@@ -103,46 +75,18 @@ namespace ePinPong.Controllers
             var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
             if (!authResult.Succeeded) return Forbid();
 
-            if (turnir.Status != StatusTurnira.UToku && turnir.Status != StatusTurnira.Zavrsen)
-            {
-                TempData["Error"] = "Prijava parova je moguća samo tokom ili nakon završetka glavnog turnira.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            var isIgrac1Registered = turnir.Registracije.Any(r => r.KorisnikID == igrac1Id);
-            var isIgrac2Registered = turnir.Registracije.Any(r => r.KorisnikID == igrac2Id);
-
-            if (!isIgrac1Registered || !isIgrac2Registered)
-            {
-                TempData["Error"] = "Oba igrača moraju biti prijavljena na glavni turnir.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
             if (igrac1Id == igrac2Id)
             {
                 TempData["Error"] = "Morate izabrati dva različita igrača.";
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
 
-            var isIgrac1Paired = turnir.TurnirParovi.Any(p => p.Igrac1ID == igrac1Id || p.Igrac2ID == igrac1Id || p.Igrac1ID == igrac2Id || p.Igrac2ID == igrac2Id);
-            var isIgrac2Paired = turnir.TurnirParovi.Any(p => p.Igrac1ID == igrac2Id || p.Igrac2ID == igrac2Id || p.Igrac1ID == igrac1Id || p.Igrac2ID == igrac1Id);
-
-            if (isIgrac1Paired || isIgrac2Paired)
+            var (uspjeh, greska) = await ValidirajIKreirajPar(turnir, igrac1Id, igrac2Id);
+            if (!uspjeh)
             {
-                TempData["Error"] = "Jedan od igrača je već prijavljen u nekom paru.";
+                TempData["Error"] = greska;
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
-
-            var noviPar = new TurnirPar
-            {
-                TurnirID = turnirId,
-                Igrac1ID = igrac1Id,
-                Igrac2ID = igrac2Id,
-                DatumPrijave = DateTime.Now
-            };
-
-            _context.TurnirParovi.Add(noviPar);
-            await _context.SaveChangesAsync();
 
             return RedirectToAction("Details", "Turnir", new { id = turnirId });
         }
@@ -191,6 +135,34 @@ namespace ePinPong.Controllers
             }
 
             return RedirectToAction("Details", "Turnir", new { id = turnirId });
+        }
+
+        private async Task<(bool Uspjeh, string? Greska)> ValidirajIKreirajPar(Turnir turnir, string igrac1Id, string igrac2Id)
+        {
+            if (turnir.Status != StatusTurnira.UToku && turnir.Status != StatusTurnira.Zavrsen)
+                return (false, "Prijava parova je moguća samo tokom ili nakon završetka glavnog turnira.");
+
+            var isIgrac1Registered = turnir.Registracije.Any(r => r.KorisnikID == igrac1Id);
+            var isIgrac2Registered = turnir.Registracije.Any(r => r.KorisnikID == igrac2Id);
+            if (!isIgrac1Registered || !isIgrac2Registered)
+                return (false, "Oba igrača moraju biti prijavljena na glavni turnir.");
+
+            var isIgrac1Paired = turnir.TurnirParovi.Any(p => p.Igrac1ID == igrac1Id || p.Igrac2ID == igrac1Id || p.Igrac1ID == igrac2Id || p.Igrac2ID == igrac2Id);
+            var isIgrac2Paired = turnir.TurnirParovi.Any(p => p.Igrac1ID == igrac2Id || p.Igrac2ID == igrac2Id || p.Igrac1ID == igrac1Id || p.Igrac2ID == igrac1Id);
+            if (isIgrac1Paired || isIgrac2Paired)
+                return (false, "Jedan od igrača je već prijavljen u nekom paru.");
+
+            var noviPar = new TurnirPar
+            {
+                TurnirID = turnir.ID,
+                Igrac1ID = igrac1Id,
+                Igrac2ID = igrac2Id,
+                DatumPrijave = DateTime.Now
+            };
+            _context.TurnirParovi.Add(noviPar);
+            await _context.SaveChangesAsync();
+
+            return (true, null);
         }
     }
 }
