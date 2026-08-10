@@ -131,22 +131,11 @@ namespace ePinPong.Controllers
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> DodajPostojecegIgraca(int turnirId, string korisnikId)
         {
-            var turnir = await _context.Turniri
-                .Include(t => t.Registracije)
-                .FirstOrDefaultAsync(t => t.ID == turnirId);
+            var (turnir, errorResult) = await UcitajIProveriTurnirZaUpravljanjeIgracima(
+                turnirId, false, "Igrači se mogu dodavati samo na turnire koji su u fazi planiranja.");
+            if (errorResult != null) return errorResult;
 
-            if (turnir == null) return NotFound();
-
-            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
-            if (!authResult.Succeeded) return Forbid();
-
-            if (turnir.Status != StatusTurnira.Planiran)
-            {
-                TempData["Error"] = "Igrači se mogu dodavati samo na turnire koji su u fazi planiranja.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            if (turnir.Registracije.Count >= turnir.MaxIgraca)
+            if (turnir!.Registracije.Count >= turnir.MaxIgraca)
             {
                 TempData["Error"] = "Turnir je već popunjen.";
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
@@ -178,20 +167,9 @@ namespace ePinPong.Controllers
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> DodajViseIgraca(int turnirId, List<string> korisnikIds)
         {
-            var turnir = await _context.Turniri
-                .Include(t => t.Registracije)
-                .FirstOrDefaultAsync(t => t.ID == turnirId);
-
-            if (turnir == null) return NotFound();
-
-            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
-            if (!authResult.Succeeded) return Forbid();
-
-            if (turnir.Status != StatusTurnira.Planiran)
-            {
-                TempData["Error"] = "Igrači se mogu dodavati samo na turnire koji su u fazi planiranja.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
+            var (turnir, errorResult) = await UcitajIProveriTurnirZaUpravljanjeIgracima(
+                turnirId, false, "Igrači se mogu dodavati samo na turnire koji su u fazi planiranja.");
+            if (errorResult != null) return errorResult;
 
             if (korisnikIds == null || !korisnikIds.Any())
             {
@@ -253,22 +231,11 @@ namespace ePinPong.Controllers
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> DodajNovogGosta(int turnirId, string ime, string prezime, string grad)
         {
-            var turnir = await _context.Turniri
-                .Include(t => t.Registracije)
-                .FirstOrDefaultAsync(t => t.ID == turnirId);
+            var (turnir, errorResult) = await UcitajIProveriTurnirZaUpravljanjeIgracima(
+                turnirId, false, "Igrači se mogu dodavati samo na turnire koji su u fazi planiranja.");
+            if (errorResult != null) return errorResult;
 
-            if (turnir == null) return NotFound();
-
-            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
-            if (!authResult.Succeeded) return Forbid();
-
-            if (turnir.Status != StatusTurnira.Planiran)
-            {
-                TempData["Error"] = "Igrači se mogu dodavati samo na turnire koji su u fazi planiranja.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            if (turnir.Registracije.Count >= turnir.MaxIgraca)
+            if (turnir!.Registracije.Count >= turnir.MaxIgraca)
             {
                 TempData["Error"] = "Turnir je već popunjen.";
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
@@ -323,22 +290,11 @@ namespace ePinPong.Controllers
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> UkloniIgraca(int turnirId, string korisnikId)
         {
-            var turnir = await _context.Turniri
-                .Include(t => t.Registracije)
-                .FirstOrDefaultAsync(t => t.ID == turnirId);
+            var (turnir, errorResult) = await UcitajIProveriTurnirZaUpravljanjeIgracima(
+                turnirId, false, "Igrači se mogu uklanjati samo sa turnira koji su u fazi planiranja.");
+            if (errorResult != null) return errorResult;
 
-            if (turnir == null) return NotFound();
-
-            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
-            if (!authResult.Succeeded) return Forbid();
-
-            if (turnir.Status != StatusTurnira.Planiran)
-            {
-                TempData["Error"] = "Igrači se mogu uklanjati samo sa turnira koji su u fazi planiranja.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            var registracija = turnir.Registracije.FirstOrDefault(r => r.KorisnikID == korisnikId);
+            var registracija = turnir!.Registracije.FirstOrDefault(r => r.KorisnikID == korisnikId);
             if (registracija != null)
             {
                 _context.Registracije.Remove(registracija);
@@ -358,21 +314,9 @@ namespace ePinPong.Controllers
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> UkloniViseIgraca(int turnirId, List<string> korisnikIds)
         {
-            var turnir = await _context.Turniri
-                .Include(t => t.Registracije)
-                .Include(t => t.Mecevi)
-                .FirstOrDefaultAsync(t => t.ID == turnirId);
-
-            if (turnir == null) return NotFound();
-
-            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
-            if (!authResult.Succeeded) return Forbid();
-
-            if (turnir.Status != StatusTurnira.Planiran || turnir.Mecevi.Any())
-            {
-                TempData["Error"] = "Igrači se mogu uklanjati samo sa turnira koji su u fazi planiranja.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
+            var (turnir, errorResult) = await UcitajIProveriTurnirZaUpravljanjeIgracima(
+                turnirId, true, "Igrači se mogu uklanjati samo sa turnira koji su u fazi planiranja.");
+            if (errorResult != null) return errorResult;
 
             if (korisnikIds == null || !korisnikIds.Any())
             {
@@ -440,6 +384,31 @@ namespace ePinPong.Controllers
             }
 
             return Ok();
+        }
+
+        private async Task<(Turnir? Turnir, IActionResult? ErrorResult)> UcitajIProveriTurnirZaUpravljanjeIgracima(
+            int turnirId, bool provjeriMeceve, string porukaAkoNijeDozvoljeno)
+        {
+            var query = _context.Turniri.Include(t => t.Registracije).AsQueryable();
+            if (provjeriMeceve)
+                query = query.Include(t => t.Mecevi);
+
+            var turnir = await query.FirstOrDefaultAsync(t => t.ID == turnirId);
+            if (turnir == null)
+                return (null, NotFound());
+
+            var authResult = await _authorizationService.AuthorizeAsync(User, turnir, "OrganizatorIliAdmin");
+            if (!authResult.Succeeded)
+                return (null, Forbid());
+
+            bool nijeDozvoljeno = turnir.Status != StatusTurnira.Planiran || (provjeriMeceve && turnir.Mecevi.Any());
+            if (nijeDozvoljeno)
+            {
+                TempData["Error"] = porukaAkoNijeDozvoljeno;
+                return (null, RedirectToAction("Details", "Turnir", new { id = turnirId }));
+            }
+
+            return (turnir, null);
         }
     }
 }
