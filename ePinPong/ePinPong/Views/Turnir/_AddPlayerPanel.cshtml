@@ -1,0 +1,79 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+@{
+    var slobodniKorisniciList = Model.SlobodniKorisnici;
+}
+
+<!-- Panel za dodavanje igrača (Organizator / Admin) -->
+<div class="card bg-dark-card border border-warning rounded-4 overflow-hidden shadow-lg mb-4">
+    <div class="card-header bg-dark-card-footer border-bottom border-warning p-4">
+        <h5 class="text-warning fw-bold mb-0"><i class="bi bi-person-plus-fill me-2"></i>Dodaj igrača</h5>
+    </div>
+    <div class="card-body p-4">
+        @if (slobodniKorisniciList != null && slobodniKorisniciList.Any())
+        {
+            <!-- Kontrole za grupnu prijavu -->
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="form-check mb-0 d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input me-1" id="selectAllFreePlayers" style="cursor: pointer;" />
+                    <label class="form-check-label text-white-50 small" for="selectAllFreePlayers" style="cursor: pointer; user-select: none;">Označi sve</label>
+                </div>
+                <button type="submit" form="bulkRegisterForm" id="btnBulkRegister"
+                        class="btn btn-warning btn-sm px-3 fw-bold d-none">
+                    <i class="bi bi-person-check-fill me-1"></i> Prijavi označene (<span id="selectedFreePlayersCount">0</span>)
+                </button>
+                <span id="bulkRegisterFullMsg" class="d-none text-danger small fw-semibold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Turnir je popunjen!</span>
+            </div>
+
+            <form asp-action="DodajViseIgraca" method="post" id="bulkRegisterForm" class="mb-4 pb-4 border-bottom border-dark-glow">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="turnirId" value="@Model.ID" />
+
+                <!-- Filter pretraga -->
+                <div class="mb-2">
+                    <input type="text" id="filterFreePlayersInput" class="form-control form-control-sm bg-dark-input border-dark-glow text-white placeholder-muted"
+                           placeholder="🔍 Pretraži igrače..." autocomplete="off" />
+                </div>
+
+                <!-- Lista slobodnih igrača sa checkboxima -->
+                <div id="freePlayers-list" style="max-height: 280px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 4px 0;">
+                    @foreach (var item in slobodniKorisniciList)
+                    {
+                        <div class="free-player-row d-flex align-items-center px-3 py-2" style="border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;">
+                            <input type="checkbox" name="korisnikIds" value="@item.Value"
+                                   class="form-check-input free-player-checkbox me-3"
+                                   id="freePlayer_@item.Value"
+                                   style="cursor: pointer; width: 1.15em; height: 1.15em;" />
+                            <label for="freePlayer_@item.Value" class="text-white small mb-0 flex-grow-1"
+                                   style="cursor: pointer; user-select: none;"
+                                   data-search="@item.Text.ToLower()">
+                                <i class="bi bi-person text-orange me-1" style="font-size:0.85rem;"></i>
+                                @item.Text
+                            </label>
+                        </div>
+                    }
+                    <div id="noMatchingFreePlayersMsg" class="d-none text-center text-muted p-3 small">
+                        <i class="bi bi-search me-1"></i> Nema igrača koji odgovaraju pretrazi.
+                    </div>
+                </div>
+            </form>
+        }
+
+        <!-- Kreiraj novog gosta -->
+        <form asp-action="DodajNovogGosta" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="turnirId" value="@Model.ID" />
+            <label class="form-label text-white fw-semibold small d-block mb-3">Kreiraj novog gosta:</label>
+            <div class="mb-3">
+                <input type="text" name="ime" placeholder="Ime igrača..." class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" required />
+            </div>
+            <div class="mb-3">
+                <input type="text" name="prezime" placeholder="Prezime igrača..." class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" required />
+            </div>
+            <div class="mb-3">
+                <input type="text" name="grad" placeholder="Grad..." class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" />
+            </div>
+            <button type="submit" class="btn btn-outline-warning w-100 fw-bold"><i class="bi bi-person-plus"></i> Kreiraj i dodaj gosta</button>
+        </form>
+    </div>
+</div>

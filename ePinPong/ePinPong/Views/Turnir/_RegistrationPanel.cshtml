@@ -1,0 +1,51 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+<!-- Prijava na turnir -->
+<div class="card bg-dark-card border border-dark-glow rounded-4 p-4 mb-4 shadow-lg text-center">
+    <h4 class="text-white fw-bold mb-3">Registracija učešća</h4>
+    <div class="mb-4">
+        <span class="fs-1 text-orange">🏆</span>
+        <div class="mt-2 text-white-50">Popunjeno: <strong class="text-white">@Model.Registracije.Count / @Model.MaxIgraca</strong> igrača</div>
+    </div>
+
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        @if (Model.IsRegistered)
+        {
+            <div class="alert alert-success border border-success bg-success-transparent py-2 mb-3">
+                <i class="bi bi-check-circle-fill me-2"></i>Prijavljeni ste na ovaj turnir!
+            </div>
+            @if (Model.Status != StatusTurnira.Planiran || Model.Mecevi.Any())
+            {
+                <button class="btn btn-secondary w-100 py-2 fw-bold cursor-not-allowed" disabled>Odjave su zatvorene</button>
+            }
+            else
+            {
+                <form asp-action="Odjava" asp-route-id="@Model.ID" method="post" id="formOdjavaSingle">
+                    <button type="submit" class="btn btn-danger w-100 py-2 fw-bold"><i class="bi bi-x-circle me-2"></i>Odjavi se sa turnira</button>
+                </form>
+            }
+        }
+        else
+        {
+            @if (Model.Registracije.Count >= Model.MaxIgraca)
+            {
+                <button class="btn btn-secondary w-100 py-2 fw-bold cursor-not-allowed" disabled>Turnir je popunjen</button>
+            }
+            else if (Model.Status != StatusTurnira.Planiran || Model.Mecevi.Any())
+            {
+                <button class="btn btn-secondary w-100 py-2 fw-bold cursor-not-allowed" disabled>Prijave su zatvorene</button>
+            }
+            else
+            {
+                <form asp-action="Registracija" asp-route-id="@Model.ID" method="post" id="formRegistracijaSingle">
+                    <button type="submit" class="btn btn-orange w-100 py-2 text-white fw-bold shadow-glow"><i class="bi bi-clipboard-check me-2"></i>Prijavi se na turnir</button>
+                </form>
+            }
+        }
+    }
+    else
+    {
+        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-light-glow text-white w-100 py-2 fw-bold">Prijavite se za učešće</a>
+    }
+</div>

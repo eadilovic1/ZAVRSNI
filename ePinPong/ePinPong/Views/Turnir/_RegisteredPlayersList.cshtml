@@ -1,0 +1,93 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+<!-- Spisak registrovanih igrača -->
+<div class="card bg-dark-card border border-dark-glow rounded-4 overflow-hidden shadow-lg">
+    <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4">
+        <h5 class="text-white fw-bold mb-0"><i class="bi bi-people-fill text-orange me-2"></i>Prijavljeni igrači (@Model.Registracije.Count)</h5>
+    </div>
+    <div class="card-body p-4">
+        @if (!Model.Registracije.Any())
+        {
+            <div class="text-center py-4 text-white-50 small">
+                <i class="bi bi-emoji-frown fs-3 mb-2 d-block"></i>Još uvijek nema prijavljenih igrača.
+            </div>
+        }
+        else
+        {
+            @if (Model.IsOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any() && Model.Registracije.Any())
+            {
+                <!-- Kontrole za grupnu odjavu - ispod naslova -->
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="form-check mb-0 d-flex align-items-center">
+                        <input type="checkbox" class="form-check-input me-1" id="selectAllPlayers" style="cursor: pointer;" />
+                        <label class="form-check-label text-white-50 small" for="selectAllPlayers" style="cursor: pointer; user-select: none;">Označi sve</label>
+                    </div>
+                    <button type="submit" form="bulkUnregisterForm" id="btnBulkUnregister" class="btn btn-danger btn-sm px-3 fw-bold d-none" onclick="return confirm('Da li ste sigurni da želite odjaviti označene igrače sa turnira?');">
+                        <i class="bi bi-trash-fill me-1"></i> Odjavi označene (<span id="selectedPlayersCount">0</span>)
+                    </button>
+                </div>
+            }
+            <form asp-controller="Turnir" asp-action="UkloniViseIgraca" method="post" id="bulkUnregisterForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="turnirId" value="@Model.ID" />
+                <ul class="list-group list-group-flush bg-transparent">
+                    @foreach (var reg in Model.Registracije)
+                    {
+                        <li class="list-group-item bg-transparent border-bottom border-dark-glow px-0 py-3 d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                @if (Model.IsOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
+                                {
+                                    <input type="checkbox" name="korisnikIds" value="@reg.KorisnikID" class="form-check-input player-select-checkbox me-3" style="cursor: pointer; width: 1.15em; height: 1.15em;" />
+                                }
+                                <div class="user-avatar-mini me-3">
+                                    @if (reg.Korisnik != null && reg.Korisnik.Ime.Length > 0)
+                                    {
+                                        <span>@reg.Korisnik.Ime[0]</span>
+                                    }
+                                    else
+                                    {
+                                        <span>I</span>
+                                    }
+                                </div>
+                                <div>
+                                    <a href="/Korisnik/Index/@reg.KorisnikID" class="text-white hover-orange fw-bold">
+                                        @reg.Korisnik?.Ime @reg.Korisnik?.Prezime
+                                        @if (reg.Korisnik != null && reg.Korisnik.IsGost)
+                                        {
+                                            <span class="badge bg-secondary text-muted ms-1" style="font-size: 0.75rem; vertical-align: middle;">Gost</span>
+                                        }
+                                    </a>
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <small class="text-muted">@reg.Korisnik?.Grad</small>
+                                        <span class="badge bg-dark-glow border border-dark-glow text-orange rounded-pill pot-badge-sidebar" id="sidebar-pot-badge-@reg.KorisnikID" style="font-size: 0.7rem; padding: 2px 6px;">Šešir @reg.Sesir</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-dark-glow border border-dark-glow text-orange rounded-pill small px-2 py-1">Registriran</span>
+                                @if (Model.IsOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
+                                {
+                                    <button type="submit" form="singleDeleteForm_@reg.KorisnikID" class="btn btn-outline-danger btn-sm p-1" style="line-height:1;" title="Ukloni igrača">
+                                        <i class="bi bi-trash-fill" style="font-size: 0.85rem;"></i>
+                                    </button>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </form>
+
+            @if (Model.IsOrganizator && Model.Status == StatusTurnira.Planiran && !Model.Mecevi.Any())
+            {
+                foreach (var reg in Model.Registracije)
+                {
+                    <form id="singleDeleteForm_@reg.KorisnikID" asp-controller="Turnir" asp-action="UkloniIgraca" method="post" style="display:none;" onsubmit="return confirm('Da li ste sigurni da želite ukloniti ovog igrača sa turnira?');">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="turnirId" value="@Model.ID" />
+                        <input type="hidden" name="korisnikId" value="@reg.KorisnikID" />
+                    </form>
+                }
+            }
+        }
+    </div>
+</div>
