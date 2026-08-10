@@ -129,57 +129,7 @@
                     {
                         @if (isMasters)
                         {
-                            <div class="p-4 bg-dark-input border border-dark-glow rounded-4 mb-4">
-                                <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-                                    <div>
-                                        <h4 class="text-white fw-bold mb-1"><i class="bi bi-bar-chart-line-fill text-orange me-2"></i>Prijavljeni igrači po kvalitetu</h4>
-                                        <p class="text-white-50 small mb-0">Igrači su prikazani po kvalitetu iz lige. Najbolji rangirani igrači idu u prve grupe, dok ostali idu u zadnje grupe.</p>
-                                    </div>
-                                </div>
-
-                                <div class="row g-3">
-                                    @{
-                                        var sortedRegistrations = Model.Registracije
-                                            .OrderByDescending(r => playerPoints.ContainsKey(r.KorisnikID) ? playerPoints[r.KorisnikID] : 0)
-                                            .ThenBy(r => playerPoints.ContainsKey(r.KorisnikID) ? 0 : 1)
-                                            .ThenBy(r => r.DatumRegistracije)
-                                            .ToList();
-                                    }
-
-                                    @foreach (var reg in sortedRegistrations)
-                                    {
-                                        var bodovi = playerPoints.ContainsKey(reg.KorisnikID) ? playerPoints[reg.KorisnikID] : 0;
-                                        <div class="col-12 col-md-6">
-                                            <div class="card bg-dark-card border border-dark-glow rounded-3 p-3">
-                                                <div class="d-flex align-items-center justify-content-between gap-3">
-                                                    <div>
-                                                        <strong class="text-white">@reg.Korisnik?.Ime @reg.Korisnik?.Prezime</strong>
-                                                        <div class="text-white-50 small mt-1">@reg.Korisnik?.Grad</div>
-                                                    </div>
-                                                    <span class="badge bg-warning text-dark">Bodovi: @bodovi</span>
-                                                </div>
-                                                <div class="d-flex align-items-center justify-content-between mt-3">
-                                                    <span class="badge bg-secondary text-muted">Prijavljeno: @reg.DatumRegistracije.ToString("dd.MM.yyyy")</span>
-                                                    @if (reg.Korisnik != null && reg.Korisnik.IsGost)
-                                                    {
-                                                        <span class="badge bg-secondary text-muted">Gost</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-
-                                @if (isOrganizator)
-                                {
-                                    <div class="mt-4 border-top border-dark-glow pt-3 d-flex justify-content-end">
-                                        <form asp-controller="Mec" asp-action="GenerirajBracket" method="post" id="formGenerisiGrupe">
-                                            <input type="hidden" name="turnirId" value="@Model.ID" />
-                                            <button type="submit" class="btn btn-orange text-white fw-bold px-4 py-2"><i class="bi bi-lightning-fill me-2"></i>Generiši grupe i započni Masters</button>
-                                        </form>
-                                    </div>
-                                }
-                            </div>
+                            <partial name="_MastersSeedingPanel" model="Model" />
                         }
                         else
                         {
