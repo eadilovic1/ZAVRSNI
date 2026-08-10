@@ -1,0 +1,215 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Logika za masovno odjavljivanje igrača
+        const selectAllCb = document.getElementById("selectAllPlayers");
+        const playerCbs = document.querySelectorAll(".player-select-checkbox");
+        const btnBulk = document.getElementById("btnBulkUnregister");
+        const countSpan = document.getElementById("selectedPlayersCount");
+
+        function updateBulkUnregisterState() {
+            if (!playerCbs || playerCbs.length === 0) return;
+            const checkedCount = document.querySelectorAll(".player-select-checkbox:checked").length;
+            if (countSpan) countSpan.textContent = checkedCount;
+
+            if (checkedCount > 0) {
+                if (btnBulk) btnBulk.classList.remove("d-none");
+            } else {
+                if (btnBulk) btnBulk.classList.add("d-none");
+            }
+
+            if (selectAllCb) {
+                selectAllCb.checked = checkedCount === playerCbs.length && playerCbs.length > 0;
+                selectAllCb.indeterminate = checkedCount > 0 && checkedCount < playerCbs.length;
+            }
+        }
+
+        if (selectAllCb) {
+            selectAllCb.addEventListener("change", function () {
+                const isChecked = this.checked;
+                playerCbs.forEach(cb => {
+                    cb.checked = isChecked;
+                });
+                updateBulkUnregisterState();
+            });
+        }
+
+        playerCbs.forEach(cb => {
+            cb.addEventListener("change", updateBulkUnregisterState);
+        });
+
+        // Logika za masovnu prijavu igrača
+        const selectAllFreeCb = document.getElementById("selectAllFreePlayers");
+        const freeCbs = document.querySelectorAll(".free-player-checkbox");
+        const btnBulkReg = document.getElementById("btnBulkRegister");
+        const countSpanReg = document.getElementById("selectedFreePlayersCount");
+
+        function getVisibleFreeCbs() {
+            return Array.from(document.querySelectorAll(".free-player-checkbox")).filter(cb => {
+                const row = cb.closest(".free-player-row");
+                return row && !row.classList.contains("d-none") && row.style.display !== "none";
+            });
+        }
+
+        const maxIgraca = @Model.MaxIgraca;
+        const brRegistrovanih = @Model.Registracije.Count;
+        const slobodnaMjesta = maxIgraca - brRegistrovanih;
+        const turnirPopunjen = slobodnaMjesta <= 0;
+        const bulkFullMsg = document.getElementById("bulkRegisterFullMsg");
+
+        // Toast funkcija - prikazuje poruku kao alert na vrhu stranice
+        function showJsToast(message, type) {
+            const alertClass = type === "warning" ? "alert-warning" : "alert-danger";
+            const iconClass  = type === "warning" ? "bi-exclamation-circle-fill" : "bi-exclamation-triangle-fill";
+            const toast = document.createElement("div");
+            toast.className = `alert ${alertClass} alert-dismissible fade show custom-alert shadow-lg`;
+            toast.setAttribute("role", "alert");
+            toast.innerHTML = `<i class="bi ${iconClass} me-2"></i>${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+            const main = document.querySelector("main");
+            if (main) main.insertBefore(toast, main.firstChild);
+            setTimeout(() => {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(toast);
+                if (bsAlert) bsAlert.close();
+            }, 6000);
+        }
+
+        function updateBulkRegisterState() {
+            const checkedCount = Array.from(document.querySelectorAll(".free-player-checkbox:checked")).length;
+            if (countSpanReg) countSpanReg.textContent = checkedCount;
+
+            if (bulkFullMsg) bulkFullMsg.classList.add("d-none");
+            if (btnBulkReg) btnBulkReg.classList.add("d-none");
+
+            if (checkedCount > 0) {
+                if (turnirPopunjen) {
+                    if (bulkFullMsg) bulkFullMsg.classList.remove("d-none");
+                } else {
+                    if (btnBulkReg) btnBulkReg.classList.remove("d-none");
+                }
+            }
+
+            if (selectAllFreeCb) {
+                const visibleCbs = getVisibleFreeCbs();
+                const visibleChecked = visibleCbs.filter(cb => cb.checked).length;
+                selectAllFreeCb.checked = visibleChecked === visibleCbs.length && visibleCbs.length > 0;
+                selectAllFreeCb.indeterminate = visibleChecked > 0 && visibleChecked < visibleCbs.length;
+            }
+        }
+
+        const bulkRegForm = document.getElementById("bulkRegisterForm");
+        if (bulkRegForm) {
+            bulkRegForm.addEventListener("submit", function (e) {
+                const checkedCount = Array.from(document.querySelectorAll(".free-player-checkbox:checked")).length;
+                if (checkedCount > slobodnaMjesta) {
+                    const poruka = `Pokušavate prijaviti ${checkedCount} igrača, ali na turniru ima samo ${slobodnaMjesta} slobodnih mjesta (maksimalan kapacitet: ${maxIgraca}). Prijavit će se samo prvih ${slobodnaMjesta} označenih igrača.`;
+                    if (!confirm(poruka)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
+        }
+
+        if (selectAllFreeCb) {
+            selectAllFreeCb.addEventListener("change", function () {
+                const isChecked = this.checked;
+                getVisibleFreeCbs().forEach(cb => { cb.checked = isChecked; });
+                updateBulkRegisterState();
+            });
+        }
+
+        freeCbs.forEach(cb => {
+            cb.addEventListener("change", updateBulkRegisterState);
+        });
+
+        // Filter / pretraga slobodnih igrača
+        const filterInput = document.getElementById("filterFreePlayersInput");
+        if (filterInput) {
+            filterInput.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            filterInput.addEventListener("input", function () {
+                const query = this.value.toLowerCase().trim();
+                let matchCount = 0;
+                document.querySelectorAll(".free-player-row").forEach(row => {
+                    const label = row.querySelector("label[data-search]");
+                    const searchVal = label ? (label.getAttribute("data-search") || label.textContent).toLowerCase() : row.textContent.toLowerCase();
+                    const isMatch = !query || searchVal.includes(query);
+                    
+                    if (isMatch) {
+                        row.classList.remove("d-none");
+                        matchCount++;
+                    } else {
+                        row.classList.add("d-none");
+                        const cb = row.querySelector(".free-player-checkbox");
+                        if (cb) cb.checked = false;
+                    }
+                });
+
+                const noMatchMsg = document.getElementById("noMatchingFreePlayersMsg");
+                if (noMatchMsg) {
+                    if (matchCount === 0) {
+                        noMatchMsg.classList.remove("d-none");
+                    } else {
+                        noMatchMsg.classList.add("d-none");
+                    }
+                }
+
+                updateBulkRegisterState();
+            });
+        }
+
+        // Tab recovery code
+        var tabTriggers = document.querySelectorAll('#tournamentTabs button[data-bs-toggle="pill"]');
+        var storageKey = 'activeTab_Turnir_' + '@Model.ID';
+
+        var urlParams = new URLSearchParams(window.location.search);
+        var urlTab = urlParams.get('tab');
+        if (urlTab) {
+            var urlTabEl = document.getElementById(urlTab);
+            if (urlTabEl) {
+                localStorage.setItem(storageKey, urlTab);
+                var tab = new bootstrap.Tab(urlTabEl);
+                tab.show();
+            }
+            var cleanUrl = window.location.pathname + window.location.hash;
+            history.replaceState(null, '', cleanUrl);
+        } else {
+            var savedTabId = localStorage.getItem(storageKey);
+            if (savedTabId) {
+                var savedTabEl = document.getElementById(savedTabId);
+                if (savedTabEl) {
+                    var savedTab = new bootstrap.Tab(savedTabEl);
+                    savedTab.show();
+                } else {
+                    localStorage.removeItem(storageKey);
+                }
+            }
+        }
+        tabTriggers.forEach(function (tabEl) {
+            tabEl.addEventListener('shown.bs.tab', function (event) {
+                localStorage.setItem(storageKey, event.target.id);
+            });
+        });
+
+        // Scroll tabova ulijevo / udesno
+        const scrollContainer = document.getElementById("tournamentTabsScrollContainer");
+        const btnLeft = document.getElementById("scrollTabsLeft");
+        const btnRight = document.getElementById("scrollTabsRight");
+
+        if (scrollContainer && btnLeft && btnRight) {
+            btnLeft.addEventListener("click", function () {
+                scrollContainer.scrollTo({ left: 0, behavior: "smooth" });
+            });
+
+            btnRight.addEventListener("click", function () {
+                scrollContainer.scrollTo({ left: scrollContainer.scrollWidth, behavior: "smooth" });
+            });
+        }
+    });
+</script>

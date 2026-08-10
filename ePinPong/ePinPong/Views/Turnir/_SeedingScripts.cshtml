@@ -1,0 +1,322 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // --- SEEDING LOGIKA ---
+        const seedingContainer = document.querySelector('.seeding-container');
+        if (seedingContainer) {
+            const isOrg = @(Model.IsOrganizator ? "true" : "false");
+
+            // 1. Izračunaj kapacitete šešira
+            function calculatePotCapacities(N) {
+                if (N === 5) {
+                    return { pot1: 1, pot2: 1, pot3: 1, pot4: 2, G: 1, x: 1 };
+                }
+                let x = 0;
+                let y = 0;
+                for (let candX = Math.floor(N / 4); candX >= 0; candX--) {
+                    let ostalo = N - (candX * 4);
+                    if (ostalo % 3 === 0) {
+                        x = candX;
+                        y = ostalo / 3;
+                        break;
+                    }
+                }
+                let G = x + y;
+                let pot4Cap = Math.max(0, N - (3 * G));
+                return { pot1: G, pot2: G, pot3: G, pot4: pot4Cap, G: G, x: x };
+            }
+
+            // 2. Validacija šešira
+            function validatePots() {
+                const cards = document.querySelectorAll('.player-draggable-card');
+                const N = cards.length;
+                const caps = calculatePotCapacities(N);
+
+                let potCount = [0, 0, 0, 0, 0];
+                for (let s = 1; s <= 4; s++) {
+                    potCount[s] = document.querySelectorAll('#pot-zone-' + s + ' .player-draggable-card').length;
+                    document.getElementById('pot-counter-' + s).innerText = potCount[s] + ' / ' + (s === 4 ? caps.pot4 : caps.pot1);
+                }
+
+                let errors = [];
+                if (potCount[1] !== caps.pot1) errors.push('Šešir 1 ima ' + potCount[1] + '/' + caps.pot1);
+                if (potCount[2] !== caps.pot2) errors.push('Šešir 2 ima ' + potCount[2] + '/' + caps.pot2);
+                if (potCount[3] !== caps.pot3) errors.push('Šešir 3 ima ' + potCount[3] + '/' + caps.pot3);
+                if (potCount[4] !== caps.pot4) errors.push('Šešir 4 ima ' + potCount[4] + '/' + caps.pot4);
+
+                const validationAlert = document.getElementById('validationAlert');
+                const validationText = document.getElementById('validationText');
+                const validationStatusBadge = document.getElementById('validationStatusBadge');
+                const submitBtn = document.getElementById('btnGenerisiGrupeSubmit');
+
+                if (errors.length === 0) {
+                    validationAlert.className = "alert alert-success border border-success bg-success-transparent d-flex align-items-center justify-content-between py-2 px-3 mb-4 rounded-3 small";
+                    let groupText = N === 5 ? "1 grupa sa 5 igrača" : ("Grupe: " + caps.G + ", od čega " + caps.x + " sa 4 igrača");
+                    validationText.innerHTML = "<i class='bi bi-check-circle-fill text-success me-2'></i><strong>Šeširi su balansirani!</strong> Raspodjela je ispravna za " + N + " igrača (" + groupText + ").";
+                    validationStatusBadge.className = "badge bg-success text-dark";
+                    validationStatusBadge.innerText = "Ispravno";
+                    if (submitBtn) submitBtn.disabled = false;
+                    return true;
+                } else {
+                    validationAlert.className = "alert alert-danger border border-danger bg-danger-transparent d-flex align-items-center justify-content-between py-2 px-3 mb-4 rounded-3 small";
+                    const actionInstruction = isOrg ? "Prevucite igrače da izbalansirate šešire." : "Čeka se da organizator izbalansira šešire.";
+                    validationText.innerHTML = "<i class='bi bi-exclamation-triangle-fill text-danger me-2'></i><strong>Nevalidna raspodjela šešira!</strong> " + actionInstruction;
+                    validationStatusBadge.className = "badge bg-danger";
+                    validationStatusBadge.innerText = "Neispravno";
+                    if (submitBtn) submitBtn.disabled = true;
+                    return false;
+                }
+            }
+
+            // Inicijalna validacija
+            validatePots();
+
+            if (isOrg) {
+                // Autosave funkcija
+                async function autosavePots() {
+                    let mapping = [];
+                    for (let s = 1; s <= 4; s++) {
+                        const cardsInPot = document.querySelectorAll('#pot-zone-' + s + ' .player-draggable-card');
+                        cardsInPot.forEach(card => {
+                            mapping.push({
+                                KorisnikId: card.dataset.playerId,
+                                Sesir: s
+                            });
+                        });
+                    }
+                    try {
+                        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                        const token = tokenInput ? tokenInput.value : '';
+                        const response = await fetch('/Turnir/SacuvajSesire', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRF-TOKEN': token
+                            },
+                            body: 'turnirId=' + @Model.ID + '&playerPotsJson=' + encodeURIComponent(JSON.stringify(mapping))
+                        });
+                    } catch (err) {
+                        console.error("Autosave error:", err);
+                    }
+                }
+
+                // 3. Drag and Drop handlers
+                const draggableCards = document.querySelectorAll('.player-draggable-card');
+                const dropZones = document.querySelectorAll('.pot-drop-zone');
+
+                draggableCards.forEach(card => {
+                    card.addEventListener('dragstart', () => {
+                        card.classList.add('dragging');
+                    });
+
+                    card.addEventListener('dragend', () => {
+                        card.classList.remove('dragging');
+                    });
+                });
+
+                dropZones.forEach(zone => {
+                    zone.addEventListener('dragover', e => {
+                        e.preventDefault();
+                        zone.classList.add('dragover');
+                    });
+
+                    zone.addEventListener('dragleave', () => {
+                        zone.classList.remove('dragover');
+                    });
+
+                    zone.addEventListener('drop', async e => {
+                        e.preventDefault();
+                        zone.classList.remove('dragover');
+                        const card = document.querySelector('.player-draggable-card.dragging');
+                        if (card) {
+                            zone.appendChild(card);
+                            
+                            // Ažuriraj sporedni bedž na sidebar listi
+                            const pId = card.dataset.playerId;
+                            const targetPot = zone.dataset.pot;
+                            const sidebarBadge = document.getElementById('sidebar-pot-badge-' + pId);
+                            if (sidebarBadge) {
+                                sidebarBadge.innerText = 'Šešir ' + targetPot;
+                            }
+                            validatePots();
+                            await autosavePots();
+                        }
+                    });
+                });
+
+                // 4. Seeding Source dropdown promjena
+                const sourceTypeSelect = document.getElementById('seedingSourceType');
+                const sourceLigaContainer = document.getElementById('seedingSourceLigaContainer');
+                const sourceTurnirContainer = document.getElementById('seedingSourceTurnirContainer');
+
+                if (sourceTypeSelect && sourceLigaContainer && sourceTurnirContainer) {
+                    sourceTypeSelect.addEventListener('change', function () {
+                        const val = this.value;
+                        sourceLigaContainer.classList.add('d-none');
+                        sourceTurnirContainer.classList.add('d-none');
+
+                        if (val === 'DrugaLiga') {
+                            sourceLigaContainer.classList.remove('d-none');
+                        } else if (val === 'DrugiTurnir') {
+                            sourceTurnirContainer.classList.remove('d-none');
+                        }
+                    });
+                }
+
+                // 5. Klik na "Auto-raspodjela"
+                const btnAutoSeeding = document.getElementById('btnAutoSeeding');
+                if (btnAutoSeeding) {
+                    btnAutoSeeding.addEventListener('click', async function () {
+                        const type = sourceTypeSelect.value;
+                        const cards = Array.from(document.querySelectorAll('.player-draggable-card'));
+                        const N = cards.length;
+                        const caps = calculatePotCapacities(N);
+
+                        if (type === 'Random') {
+                            for (let i = cards.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [cards[i], cards[j]] = [cards[j], cards[i]];
+                            }
+                            cards.forEach(card => {
+                                card.dataset.points = 0;
+                                card.querySelector('.player-points-text').innerText = '0';
+                            });
+                            
+                            await distributeSortedCards(cards, caps);
+                            return;
+                        }
+
+                        if (type === 'TrenutnaLiga') {
+                            await distributeSortedCardsByRules(cards, caps);
+                            return;
+                        }
+
+                        let sourceId = 0;
+                        if (type === 'DrugaLiga') {
+                            sourceId = document.getElementById('seedingSourceLiga').value;
+                            if (!sourceId) { alert("Molimo odaberite ligu!"); return; }
+                        } else if (type === 'DrugiTurnir') {
+                            sourceId = document.getElementById('seedingSourceTurnir').value;
+                            if (!sourceId) { alert("Molimo odaberite turnir!"); return; }
+                        }
+
+                        btnAutoSeeding.disabled = true;
+                        btnAutoSeeding.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Učitavanje...';
+
+                        try {
+                            const response = await fetch(`/Turnir/DohvatiRankinge?sourceType=${type === 'DrugaLiga' ? 'Liga' : 'Turnir'}&sourceId=${sourceId}`);
+                            if (!response.ok) throw new Error("Došlo je do greške pri učitavanju.");
+                            const rankings = await response.json();
+
+                            cards.forEach(card => {
+                                const pId = card.dataset.playerId;
+                                const points = rankings[pId] !== undefined ? rankings[pId] : 0;
+                                card.dataset.points = points;
+                                card.querySelector('.player-points-text').innerText = points;
+                            });
+
+                            await distributeSortedCardsByRules(cards, caps);
+                        } catch (err) {
+                            alert("Greška: " + err.message);
+                        } finally {
+                            btnAutoSeeding.disabled = false;
+                            btnAutoSeeding.innerHTML = '<i class="bi bi-magic me-1"></i> Auto-raspodjela';
+                        }
+                    });
+                }
+
+                // Pomoćna metoda za raspodjelu uz poštovanje pravila "novi igrači idu u najslabiji šešir"
+                async function distributeSortedCardsByRules(cards, caps) {
+                    cards.sort((a, b) => {
+                        let ptsA = parseInt(a.dataset.points) || 0;
+                        let ptsB = parseInt(b.dataset.points) || 0;
+
+                        if (ptsA > 0 && ptsB === 0) return -1;
+                        if (ptsA === 0 && ptsB > 0) return 1;
+
+                        if (ptsA !== ptsB) return ptsB - ptsA;
+
+                        let dateA = new Date(a.dataset.regDate);
+                        let dateB = new Date(b.dataset.regDate);
+                        return dateA - dateB;
+                    });
+
+                    await distributeSortedCards(cards, caps);
+                }
+
+                // Fizički raspodijeli kartice u DOM-u u odgovarajuće šešire
+                async function distributeSortedCards(sortedCards, caps) {
+                    let idx = 0;
+                    const N = sortedCards.length;
+
+                    const z1 = document.getElementById('pot-zone-1');
+                    z1.innerHTML = '';
+                    for (let i = 0; i < caps.pot1 && idx < N; i++) {
+                        z1.appendChild(sortedCards[idx]);
+                        updateSidebarBadge(sortedCards[idx].dataset.playerId, 1);
+                        idx++;
+                    }
+
+                    const z2 = document.getElementById('pot-zone-2');
+                    z2.innerHTML = '';
+                    for (let i = 0; i < caps.pot2 && idx < N; i++) {
+                        z2.appendChild(sortedCards[idx]);
+                        updateSidebarBadge(sortedCards[idx].dataset.playerId, 2);
+                        idx++;
+                    }
+
+                    const z3 = document.getElementById('pot-zone-3');
+                    z3.innerHTML = '';
+                    for (let i = 0; i < caps.pot3 && idx < N; i++) {
+                        z3.appendChild(sortedCards[idx]);
+                        updateSidebarBadge(sortedCards[idx].dataset.playerId, 3);
+                        idx++;
+                    }
+
+                    const z4 = document.getElementById('pot-zone-4');
+                    z4.innerHTML = '';
+                    for (let i = 0; i < caps.pot4 && idx < N; i++) {
+                        z4.appendChild(sortedCards[idx]);
+                        updateSidebarBadge(sortedCards[idx].dataset.playerId, 4);
+                        idx++;
+                    }
+
+                    validatePots();
+                    await autosavePots();
+                }
+
+                function updateSidebarBadge(pId, pot) {
+                    const badge = document.getElementById('sidebar-pot-badge-' + pId);
+                    if (badge) {
+                        badge.innerText = 'Šešir ' + pot;
+                    }
+                }
+
+                // 6. Submit forme za generisanje grupa - snimi šešire u JSON
+                const formGenerisiGrupe = document.getElementById('formGenerisiGrupe');
+                if (formGenerisiGrupe) {
+                    formGenerisiGrupe.addEventListener('submit', function (e) {
+                        if (!validatePots()) {
+                            e.preventDefault();
+                            alert("Nevalidni šeširi! Molimo uravnotežite šešire prije generisanja grupa.");
+                            return;
+                        }
+
+                        let mapping = [];
+                        for (let s = 1; s <= 4; s++) {
+                            const cardsInPot = document.querySelectorAll('#pot-zone-' + s + ' .player-draggable-card');
+                            cardsInPot.forEach(card => {
+                                mapping.push({
+                                    KorisnikId: card.dataset.playerId,
+                                    Sesir: s
+                                });
+                            });
+                        }
+                        document.getElementById('playerPotsJson').value = JSON.stringify(mapping);
+                    });
+                }
+            }
+        }
+    });
+</script>

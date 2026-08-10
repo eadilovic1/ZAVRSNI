@@ -1,0 +1,174 @@
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const modalEl = document.getElementById("unosRezultataModal");
+        if (modalEl) {
+            let modalP1FullName = "";
+            let modalP2FullName = "";
+
+            const modalMecId = document.getElementById("modalMecId");
+            const modalP1Init = document.getElementById("modalP1Init");
+            const modalP2Init = document.getElementById("modalP2Init");
+            const modalP1Name = document.getElementById("modalP1Name");
+            const modalP2Name = document.getElementById("modalP2Name");
+            const modalGrupaBadge = document.getElementById("modalGrupaBadge");
+            const modalRundaBadge = document.getElementById("modalRundaBadge");
+
+            const poeni1 = document.getElementById("modalPoeniIgrac1");
+            const poeni2 = document.getElementById("modalPoeniIgrac2");
+            const btnDec1 = document.getElementById("modalBtnDecP1");
+            const btnInc1 = document.getElementById("modalBtnIncP1");
+            const btnDec2 = document.getElementById("modalBtnDecP2");
+            const btnInc2 = document.getElementById("modalBtnIncP2");
+
+            const btnSpremi = document.getElementById("modalBtnSpremi");
+            const pobjednikAlert = document.getElementById("modalPobjednikObavjest");
+            const imePobjednika = document.getElementById("modalImePobjednika");
+            const statusPoruka = document.getElementById("modalStatusPoruka");
+
+            function updateModalUI() {
+                const v1 = parseInt(poeni1.value, 10) || 0;
+                const v2 = parseInt(poeni2.value, 10) || 0;
+
+                btnDec1.disabled = (v1 <= 0);
+                btnDec2.disabled = (v2 <= 0);
+
+                const finished = (v1 === 3 || v2 === 3);
+
+                btnInc1.disabled = finished || (v1 >= 3);
+                btnInc2.disabled = finished || (v2 >= 3);
+
+                if (finished) {
+                    btnSpremi.disabled = false;
+                    pobjednikAlert.classList.remove("d-none");
+                    imePobjednika.textContent = (v1 === 3) ? modalP1FullName : modalP2FullName;
+
+                    statusPoruka.className = "alert alert-success border border-success bg-success-transparent py-2 px-3 fw-bold small mb-0";
+                    statusPoruka.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Rezultat je spreman za potvrdu! Kliknite na "Spremi rezultat".';
+                } else {
+                    btnSpremi.disabled = true;
+                    pobjednikAlert.classList.add("d-none");
+
+                    statusPoruka.className = "alert bg-dark border border-dark-glow text-white-50 py-2 px-3 small mb-0";
+                    statusPoruka.textContent = "Unesite konačni rezultat meča. Jedan igrač mora osvojiti tačno 3 seta (npr. 3:0, 3:1, 3:2).";
+                }
+            }
+
+            modalEl.addEventListener("show.bs.modal", function (event) {
+                const button = event.relatedTarget;
+                if (!button) return;
+
+                const mecId = button.getAttribute("data-mec-id");
+                const igrac1 = button.getAttribute("data-igrac1") || "Igrač 1";
+                const partner1 = button.getAttribute("data-igrac1-partner");
+                const igrac2 = button.getAttribute("data-igrac2") || "Igrač 2";
+                const partner2 = button.getAttribute("data-igrac2-partner");
+                const p1Val = parseInt(button.getAttribute("data-poeni1") || "0", 10);
+                const p2Val = parseInt(button.getAttribute("data-poeni2") || "0", 10);
+                const runda = button.getAttribute("data-runda") || "1";
+                const grupa = button.getAttribute("data-grupa") || "";
+
+                modalMecId.value = mecId;
+
+                modalP1FullName = (partner1 && partner1.trim() !== "") ? (igrac1 + " / " + partner1) : igrac1;
+                modalP2FullName = (partner2 && partner2.trim() !== "") ? (igrac2 + " / " + partner2) : igrac2;
+
+                modalP1Name.textContent = modalP1FullName;
+                modalP2Name.textContent = modalP2FullName;
+
+                modalP1Init.textContent = igrac1 ? igrac1.trim().charAt(0).toUpperCase() : "P1";
+                modalP2Init.textContent = igrac2 ? igrac2.trim().charAt(0).toUpperCase() : "P2";
+
+                modalRundaBadge.textContent = "Runda " + runda;
+                if (grupa && grupa.trim() !== "") {
+                    modalGrupaBadge.textContent = grupa;
+                    modalGrupaBadge.classList.remove("d-none");
+                } else {
+                    modalGrupaBadge.classList.add("d-none");
+                }
+
+                poeni1.value = p1Val;
+                poeni2.value = p2Val;
+
+                updateModalUI();
+            });
+
+            btnInc1.addEventListener("click", function () {
+                let v = parseInt(poeni1.value, 10) || 0;
+                if (v < 3) { poeni1.value = v + 1; updateModalUI(); }
+            });
+            btnDec1.addEventListener("click", function () {
+                let v = parseInt(poeni1.value, 10) || 0;
+                if (v > 0) { poeni1.value = v - 1; updateModalUI(); }
+            });
+            btnInc2.addEventListener("click", function () {
+                let v = parseInt(poeni2.value, 10) || 0;
+                if (v < 3) { poeni2.value = v + 1; updateModalUI(); }
+            });
+            btnDec2.addEventListener("click", function () {
+                let v = parseInt(poeni2.value, 10) || 0;
+                if (v > 0) { poeni2.value = v - 1; updateModalUI(); }
+            });
+
+            // Sačuvaj scroll poziciju prije submita forme
+            const modalForm = document.getElementById("modalUnosRezultataForm");
+            if (modalForm) {
+                modalForm.addEventListener("submit", function () {
+                    sessionStorage.setItem("turnirScrollY", window.scrollY);
+                });
+            }
+        }
+
+        // Vrati scroll poziciju na istu tačku nakon što se stranica ponovo učita
+        const savedScroll = sessionStorage.getItem("turnirScrollY");
+        if (savedScroll !== null) {
+            window.scrollTo({ top: parseInt(savedScroll, 10), behavior: "instant" });
+            sessionStorage.removeItem("turnirScrollY");
+        }
+
+        // ---- Scroll preservation za sve forme ----
+        function attachScrollSave(formId) {
+            const frm = document.getElementById(formId);
+            if (frm) {
+                frm.addEventListener("submit", function () {
+                    sessionStorage.setItem("turnirScrollY", window.scrollY);
+                });
+            }
+        }
+        attachScrollSave("formPrijaviPar");
+        attachScrollSave("formDodajParAdmin");
+        attachScrollSave("formOdjavaSingle");
+        attachScrollSave("formRegistracijaSingle");
+        attachScrollSave("bulkRegisterForm");
+        attachScrollSave("bulkUnregisterForm");
+        document.querySelectorAll("form[action*='DodajNovogGosta'], form[action*='DodajViseIgraca']").forEach(function(frm) {
+            frm.addEventListener("submit", function () {
+                sessionStorage.setItem("turnirScrollY", window.scrollY);
+            });
+        });
+        document.querySelectorAll("[id^='singleDeleteForm_']").forEach(function(frm) {
+            frm.addEventListener("submit", function () {
+                sessionStorage.setItem("turnirScrollY", window.scrollY);
+            });
+        });
+
+        // ---- Dropdown filtriranje za Admin par formu (Igrač1 / Igrač2) ----
+        const sel1 = document.getElementById("adminParIgrac1");
+        const sel2 = document.getElementById("adminParIgrac2");
+        if (sel1 && sel2) {
+            function syncParDropdowns(changedSel, otherSel) {
+                const selectedVal = changedSel.value;
+                Array.from(otherSel.options).forEach(function(opt) {
+                    if (opt.value === "") return;
+                    opt.hidden = (opt.value === selectedVal);
+                });
+                if (otherSel.value !== "" && otherSel.value === selectedVal) {
+                    otherSel.value = "";
+                }
+            }
+            sel1.addEventListener("change", function() { syncParDropdowns(sel1, sel2); });
+            sel2.addEventListener("change", function() { syncParDropdowns(sel2, sel1); });
+        }
+    });
+</script>
