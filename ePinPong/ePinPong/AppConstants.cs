@@ -23,5 +23,17 @@ namespace ePinPong
         /// </summary>
         public const string DefaultTurnirSlikaUrl =
             "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=1200&auto=format&fit=crop";
+
+        /// <summary>
+        /// Prefiksi za MatchCode mečeva.
+        /// </summary>
+        public static class MatchCodePrefixes
+        {
+            public const string Zavrsnica = "Z_";
+            public const string Placement = "PL_";
+            public const string Utjesni = "UT_";
+            public const string UtjesniRoundRobin = "UT_RR_";
+            public const string UtjesniPlacement = "UT_PL_";
+        }
     }
 }

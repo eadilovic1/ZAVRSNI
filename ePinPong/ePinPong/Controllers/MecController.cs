@@ -272,7 +272,7 @@ namespace ePinPong.Controllers
             // Prikupi gubitnike iz odgovarajuće runde Z_ mečeva
             int ukupnoIgraca = plR - plL + 1; // koliko treba gubitnika
 
-            var zMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith("Z_")).ToList();
+            var zMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
             var zPoRundama = zMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
 
             // Nađi rundu koja ima točno ukupnoIgraca mečeva

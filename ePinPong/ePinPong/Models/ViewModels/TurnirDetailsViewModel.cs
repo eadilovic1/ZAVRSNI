@@ -45,24 +45,24 @@ namespace ePinPong.Models.ViewModels
             Mecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
 
         public List<Mec> ZavrsniMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith("Z_")).ToList();
+            Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
 
         public List<Mec> RazigravanjeMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje && m.MatchCode.StartsWith("PL_")).ToList();
+            Mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Placement)).ToList();
 
         public List<Mec> SviZavrsniMecevi =>
             Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
 
         public List<Mec> UtjesniMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith("UT_")).ToList();
+            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni)).ToList();
 
         public List<Mec> UtjesniGlavniMecevi =>
             Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
-                && m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_")).ToList();
+                && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni + "R") && !m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniRoundRobin)).ToList();
 
         public List<Mec> UtjesniRazigravanjeMecevi =>
             Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
-                && (m.MatchCode.StartsWith("UT_PL_") || m.MatchCode.StartsWith("UT_RR_"))).ToList();
+                && (m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniPlacement) || m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniRoundRobin))).ToList();
 
         public int BrojGrupaUTurniru =>
             GrupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();

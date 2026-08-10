@@ -251,7 +251,7 @@ namespace ePinPong.Services
             if (n < 2) return;
 
             int half = n / 2;
-            string codePrefix = isUtjesni ? "UT_PL" : "PL";
+            string codePrefix = isUtjesni ? AppConstants.MatchCodePrefixes.UtjesniPlacement.TrimEnd('_') : AppConstants.MatchCodePrefixes.Placement.TrimEnd('_');
             TipMeca tip = isUtjesni ? TipMeca.Utjesni : TipMeca.Razigravanje;
 
             for (int m = 1; m <= half; m++)
@@ -757,13 +757,13 @@ namespace ePinPong.Services
             var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
             
             // 1. Provjeri i generiši razigravanja za glavnu završnicu (Z_ i PL_)
-            var zMecevi = sviMecevi.Where(m => (m.TipMeca == TipMeca.Zavrsnica || m.TipMeca == TipMeca.Razigravanje) && (m.MatchCode.StartsWith("Z_") || m.MatchCode.StartsWith("PL_"))).ToList();
+            var zMecevi = sviMecevi.Where(m => (m.TipMeca == TipMeca.Zavrsnica || m.TipMeca == TipMeca.Razigravanje) && (m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica) || m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Placement))).ToList();
             await GenerisiRazigravanjaZaSkupinuAsync(turnir, sviMecevi, zMecevi, isUtjesni: false);
 
             // 2. Provjeri i generiši razigravanja za utješni turnir (UT_R i UT_PL_)
             if (turnir.SistemTurnira == SistemTurnira.DoubleEliminationUtjesni)
             {
-                var utMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith("UT_PL_") || (m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_")))).ToList();
+                var utMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Utjesni && (m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniPlacement) || (m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni + "R") && !m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniRoundRobin)))).ToList();
                 await GenerisiRazigravanjaZaSkupinuAsync(turnir, sviMecevi, utMecevi, isUtjesni: true);
             }
 
@@ -801,7 +801,7 @@ namespace ePinPong.Services
 
                     if (!meceviRunde.All(m => m.Odigran)) continue;
 
-                    string codePrefix = isUtjesni ? "UT_PL" : "PL";
+                    string codePrefix = isUtjesni ? AppConstants.MatchCodePrefixes.UtjesniPlacement.TrimEnd('_') : AppConstants.MatchCodePrefixes.Placement.TrimEnd('_');
                     string searchPrefix = $"{codePrefix}_{L}_{R}_R1_M";
                     if (sviMecevi.Any(m => m.MatchCode.StartsWith(searchPrefix))) continue;
 

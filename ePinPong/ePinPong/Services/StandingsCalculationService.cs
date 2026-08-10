@@ -74,7 +74,7 @@ namespace ePinPong.Services
             int offsetUtjesni = brojGrupa > 0 ? (brojGrupa * 2) : 0;
             if (offsetUtjesni == 0 && zavrsniMecevi.Any())
             {
-                var zMatches = zavrsniMecevi.Where(m => m.MatchCode.StartsWith("Z_")).ToList();
+                var zMatches = zavrsniMecevi.Where(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
                 offsetUtjesni = zMatches
                     .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
                     .Where(id => id != null && !JeSlobodan(id))
@@ -87,7 +87,7 @@ namespace ePinPong.Services
         private void OdrediFinale(Turnir turnir, Dictionary<string, (int Pozicija, int Bodovi, string Detalj)> playerRanks)
         {
             var zavrsniMecevi = turnir.Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
-            var zMatchesList = zavrsniMecevi.Where(m => m.MatchCode.StartsWith("Z_")).ToList();
+            var zMatchesList = zavrsniMecevi.Where(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
             var zFinale = zMatchesList.FirstOrDefault(m => string.IsNullOrEmpty(m.WinnerNextMatchCode));
 
             if (zFinale != null)
@@ -116,10 +116,10 @@ namespace ePinPong.Services
         {
             var mecevi = turnir.Mecevi.ToList();
             var zavrsniMecevi = mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
-            var zMatchesList = zavrsniMecevi.Where(m => m.MatchCode.StartsWith("Z_")).ToList();
+            var zMatchesList = zavrsniMecevi.Where(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
             var razigravanjeMecevi = mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje).ToList();
 
-            bool imaPlMeceve = razigravanjeMecevi.Any(m => m.MatchCode.StartsWith("PL_"));
+            bool imaPlMeceve = razigravanjeMecevi.Any(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Placement));
             if (turnir.SistemTurnira == SistemTurnira.SingleElimination && !imaPlMeceve)
             {
                 var zPoRundama = zMatchesList.GroupBy(m => m.Runda).OrderByDescending(g => g.Key).ToList();
@@ -146,7 +146,7 @@ namespace ePinPong.Services
             else
             {
                 var plMatchesList = razigravanjeMecevi
-                    .Where(m => m.MatchCode.StartsWith("PL_"))
+                    .Where(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Placement))
                     .Select(m => {
                         var (l, r) = ParsirajRange(m.PlacingRange);
                         return new { Match = m, L = l, R = r };
@@ -290,7 +290,7 @@ namespace ePinPong.Services
             int utjesniCurrentPos = grupnaFazaPos;
             var utMatches = utjesniMecevi.ToList();
 
-            var rrMatches = utMatches.Where(m => m.MatchCode.StartsWith("UT_RR_")).ToList();
+            var rrMatches = utMatches.Where(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniRoundRobin)).ToList();
             if (rrMatches.Any())
             {
                 var groupList = rrMatches.ToList();
@@ -340,7 +340,7 @@ namespace ePinPong.Services
             }
             else
             {
-                var utFinale = utMatches.FirstOrDefault(m => m.MatchCode.StartsWith("UT_R") && string.IsNullOrEmpty(m.WinnerNextMatchCode));
+                var utFinale = utMatches.FirstOrDefault(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni + "R") && string.IsNullOrEmpty(m.WinnerNextMatchCode));
                 if (utFinale != null)
                 {
                     var orderedUtFinalists = UredjeniIgraciMeca(utFinale);
@@ -359,7 +359,7 @@ namespace ePinPong.Services
                 }
 
                 var utPlMatches = utMatches
-                    .Where(m => m.MatchCode.StartsWith("UT_PL_"))
+                    .Where(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniPlacement))
                     .Select(m => {
                         var (l, r) = ParsirajRange(m.PlacingRange);
                         return new { Match = m, L = l, R = r };
