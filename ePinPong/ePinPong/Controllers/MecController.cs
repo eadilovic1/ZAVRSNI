@@ -462,14 +462,12 @@ namespace ePinPong.Controllers
             var registrovaniKorisnikIdsInPairs = turnir.TurnirParovi.SelectMany(p => new[] { p.Igrac1ID, p.Igrac2ID }).Distinct().ToList();
             foreach (var igracId in registrovaniKorisnikIdsInPairs)
             {
-                var notifikacija = new Notifikacija
-                {
-                    KorisnikId = igracId,
-                    Sadrzaj = $"Raspored za <strong>Turnir Parova</strong> u sklopu turnira <strong>{turnir.Naziv}</strong> je generisan!",
-                    DatumKreiranja = DateTime.Now,
-                    Procitana = false
-                };
-                _context.Notifikacije.Add(notifikacija);
+                await _notificationService.ObavijestiKorisnikaAsync(
+                    igracId,
+                    "Turnir parova",
+                    $"Raspored za <strong>Turnir Parova</strong> u sklopu turnira <strong>{turnir.Naziv}</strong> je generisan!",
+                    posaljiEmail: false
+                );
             }
 
             await _context.SaveChangesAsync();

@@ -29,6 +29,7 @@ namespace ePinPong.Controllers
         private readonly ILogger<TurnirController> _logger;
         private readonly IMastersRegistrationService _mastersRegistrationService;
         private readonly IStandingsCalculationService _standingsCalculationService;
+        private readonly INotificationService _notificationService;
 
 
         public TurnirController(
@@ -41,7 +42,8 @@ namespace ePinPong.Controllers
             IAuthorizationService authorizationService,
             ILogger<TurnirController> logger,
             IMastersRegistrationService mastersRegistrationService,
-            IStandingsCalculationService standingsCalculationService)
+            IStandingsCalculationService standingsCalculationService,
+            INotificationService notificationService)
         {
             _context = context;
             _userManager = userManager;
@@ -53,6 +55,7 @@ namespace ePinPong.Controllers
             _logger = logger;
             _mastersRegistrationService = mastersRegistrationService;
             _standingsCalculationService = standingsCalculationService;
+            _notificationService = notificationService;
         }
 
         // GET: /Turnir/Details/5
@@ -347,26 +350,18 @@ namespace ePinPong.Controllers
 
                 foreach (var pratilacId in pratioci)
                 {
-                    // 1. In-app notifikacija
-                    var notifikacija = new Notifikacija
-                    {
-                        KorisnikId = pratilacId,
-                        Sadrzaj = $"Organizator <strong>{organizatorName}</strong> je objavio novi turnir: <strong><a href='/Turnir/Details/{turnir.ID}'>{turnir.Naziv}</a></strong>!",
-                        DatumKreiranja = DateTime.Now,
-                        Procitana = false
-                    };
-                    _context.Notifikacije.Add(notifikacija);
-
-                    // 2. Email notifikacija (putem IMailService)
                     var korisnik = await _userManager.FindByIdAsync(pratilacId);
-                    if (korisnik != null && !string.IsNullOrEmpty(korisnik.Email))
-                    {
-                        await _mailService.SendEmailAsync(
-                            korisnik.Email, 
-                            "Novi turnir na ePinPong!", 
-                            $"Zdravo {korisnik.Ime},<br><br>Organizator <b>{organizatorName}</b> je objavio novi turnir: <b>{turnir.Naziv}</b>.<br>Datum pocetka: {turnir.DatumPocetka.ToShortDateString()}<br><br>Prijavite se odmah na ePinPong!"
-                        );
-                    }
+                    string? emailBody = korisnik != null && !string.IsNullOrEmpty(korisnik.Email)
+                        ? $"Zdravo {korisnik.Ime},<br><br>Organizator <b>{organizatorName}</b> je objavio novi turnir: <b>{turnir.Naziv}</b>.<br>Datum pocetka: {turnir.DatumPocetka.ToShortDateString()}<br><br>Prijavite se odmah na ePinPong!"
+                        : null;
+
+                    await _notificationService.ObavijestiKorisnikaAsync(
+                        pratilacId,
+                        "Novi turnir na ePinPong!",
+                        $"Organizator <strong>{organizatorName}</strong> je objavio novi turnir: <strong><a href='/Turnir/Details/{turnir.ID}'>{turnir.Naziv}</a></strong>!",
+                        emailBody,
+                        posaljiEmail: true
+                    );
                 }
 
                 await _context.SaveChangesAsync();

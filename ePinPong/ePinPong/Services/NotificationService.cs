@@ -18,7 +18,7 @@ namespace ePinPong.Services
             _mailService = mailService;
         }
 
-        public async Task ObavijestiKorisnikaAsync(string userId, string naslov, string poruka, bool posaljiEmail = true)
+        public async Task ObavijestiKorisnikaAsync(string userId, string naslov, string poruka, string? emailPoruka = null, bool posaljiEmail = true)
         {
             if (string.IsNullOrEmpty(userId)) return;
 
@@ -38,7 +38,8 @@ namespace ePinPong.Services
                 var korisnik = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 if (korisnik != null && !string.IsNullOrEmpty(korisnik.Email))
                 {
-                    await _mailService.SendEmailAsync(korisnik.Email, naslov, poruka);
+                    var mailText = emailPoruka ?? poruka;
+                    await _mailService.SendEmailAsync(korisnik.Email, naslov, mailText);
                 }
             }
         }

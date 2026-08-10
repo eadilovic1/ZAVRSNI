@@ -4,6 +4,6 @@ namespace ePinPong.Services
 {
     public interface INotificationService
     {
-        Task ObavijestiKorisnikaAsync(string userId, string naslov, string poruka, bool posaljiEmail = true);
+        Task ObavijestiKorisnikaAsync(string userId, string naslov, string poruka, string? emailPoruka = null, bool posaljiEmail = true);
     }
 }

@@ -1,6 +1,7 @@
 using ePinPong.Data;
 using ePinPong.Models;
 using ePinPong.Models.ViewModels;
+using ePinPong.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,17 +20,20 @@ namespace ePinPong.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAuthorizationService _authorizationService;
         private readonly ILogger<RegistracijaController> _logger;
+        private readonly INotificationService _notificationService;
 
         public RegistracijaController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IAuthorizationService authorizationService,
-            ILogger<RegistracijaController> logger)
+            ILogger<RegistracijaController> logger,
+            INotificationService notificationService)
         {
             _context = context;
             _userManager = userManager;
             _authorizationService = authorizationService;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         // POST: /Registracija/Registracija/5
@@ -76,14 +80,12 @@ namespace ePinPong.Controllers
             _context.Registracije.Add(registracija);
 
             var igrac = await _userManager.FindByIdAsync(userId);
-            var notifikacija = new Notifikacija
-            {
-                KorisnikId = turnir.OrganizatorId,
-                Sadrzaj = $"Igrač <strong>{igrac?.Ime} {igrac?.Prezime}</strong> se prijavio na vaš turnir <strong>{turnir.Naziv}</strong>.",
-                DatumKreiranja = DateTime.Now,
-                Procitana = false
-            };
-            _context.Notifikacije.Add(notifikacija);
+            await _notificationService.ObavijestiKorisnikaAsync(
+                turnir.OrganizatorId,
+                "Nova prijava na turnir",
+                $"Igrač <strong>{igrac?.Ime} {igrac?.Prezime}</strong> se prijavio na vaš turnir <strong>{turnir.Naziv}</strong>.",
+                posaljiEmail: false
+            );
 
             await _context.SaveChangesAsync();
 
