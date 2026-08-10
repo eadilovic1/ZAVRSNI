@@ -2,6 +2,7 @@ using ePinPong.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ePinPong.Models.ViewModels
 {
@@ -37,5 +38,36 @@ namespace ePinPong.Models.ViewModels
         public ICollection<Mec> Mecevi => Turnir.Mecevi;
         public ICollection<Registracija> Registracije => Turnir.Registracije;
         public ICollection<TurnirPar> TurnirParovi => Turnir.TurnirParovi;
+
+        // ===== Izvedene liste za Details.cshtml =====
+        public List<Mec> GrupniMecevi =>
+            Mecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
+
+        public List<Mec> ZavrsniMecevi =>
+            Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith("Z_")).ToList();
+
+        public List<Mec> RazigravanjeMecevi =>
+            Mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje && m.MatchCode.StartsWith("PL_")).ToList();
+
+        public List<Mec> SviZavrsniMecevi =>
+            Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
+
+        public List<Mec> UtjesniMecevi =>
+            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith("UT_")).ToList();
+
+        public List<Mec> UtjesniGlavniMecevi =>
+            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
+                && m.MatchCode.StartsWith("UT_R") && !m.MatchCode.StartsWith("UT_RR_")).ToList();
+
+        public List<Mec> UtjesniRazigravanjeMecevi =>
+            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
+                && (m.MatchCode.StartsWith("UT_PL_") || m.MatchCode.StartsWith("UT_RR_"))).ToList();
+
+        public int BrojGrupaUTurniru =>
+            GrupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+
+        public bool IsGroupOnly =>
+            GrupniMecevi.Any() && !SviZavrsniMecevi.Any() && !UtjesniMecevi.Any()
+            && (BrojGrupaUTurniru == 1 || IsMasters);
     }
 }
