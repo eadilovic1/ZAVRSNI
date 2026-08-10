@@ -88,7 +88,7 @@
                     try {
                         const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
                         const token = tokenInput ? tokenInput.value : '';
-                        const response = await fetch('/Turnir/SacuvajSesire', {
+                        const response = await fetch('/Registracija/SacuvajSesire', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',

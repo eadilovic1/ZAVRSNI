@@ -27,7 +27,7 @@
                     </button>
                 </div>
             }
-            <form asp-controller="Turnir" asp-action="UkloniViseIgraca" method="post" id="bulkUnregisterForm">
+            <form asp-controller="Registracija" asp-action="UkloniViseIgraca" method="post" id="bulkUnregisterForm">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="turnirId" value="@Model.ID" />
                 <ul class="list-group list-group-flush bg-transparent">
@@ -81,7 +81,7 @@
             {
                 foreach (var reg in Model.Registracije)
                 {
-                    <form id="singleDeleteForm_@reg.KorisnikID" asp-controller="Turnir" asp-action="UkloniIgraca" method="post" style="display:none;" onsubmit="return confirm('Da li ste sigurni da želite ukloniti ovog igrača sa turnira?');">
+                    <form id="singleDeleteForm_@reg.KorisnikID" asp-controller="Registracija" asp-action="UkloniIgraca" method="post" style="display:none;" onsubmit="return confirm('Da li ste sigurni da želite ukloniti ovog igrača sa turnira?');">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="turnirId" value="@Model.ID" />
                         <input type="hidden" name="korisnikId" value="@reg.KorisnikID" />

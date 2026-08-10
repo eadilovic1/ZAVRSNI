@@ -25,7 +25,7 @@
                 <span id="bulkRegisterFullMsg" class="d-none text-danger small fw-semibold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Turnir je popunjen!</span>
             </div>
 
-            <form asp-action="DodajViseIgraca" method="post" id="bulkRegisterForm" class="mb-4 pb-4 border-bottom border-dark-glow">
+            <form asp-controller="Registracija" asp-action="DodajViseIgraca" method="post" id="bulkRegisterForm" class="mb-4 pb-4 border-bottom border-dark-glow">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="turnirId" value="@Model.ID" />
 
@@ -60,7 +60,7 @@
         }
 
         <!-- Kreiraj novog gosta -->
-        <form asp-action="DodajNovogGosta" method="post">
+        <form asp-controller="Registracija" asp-action="DodajNovogGosta" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" name="turnirId" value="@Model.ID" />
             <label class="form-label text-white fw-semibold small d-block mb-3">Kreiraj novog gosta:</label>

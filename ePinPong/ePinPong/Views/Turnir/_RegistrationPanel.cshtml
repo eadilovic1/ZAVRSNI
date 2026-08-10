@@ -21,7 +21,7 @@
             }
             else
             {
-                <form asp-action="Odjava" asp-route-id="@Model.ID" method="post" id="formOdjavaSingle">
+                <form asp-controller="Registracija" asp-action="Odjava" asp-route-id="@Model.ID" method="post" id="formOdjavaSingle">
                     <button type="submit" class="btn btn-danger w-100 py-2 fw-bold"><i class="bi bi-x-circle me-2"></i>Odjavi se sa turnira</button>
                 </form>
             }
@@ -38,7 +38,7 @@
             }
             else
             {
-                <form asp-action="Registracija" asp-route-id="@Model.ID" method="post" id="formRegistracijaSingle">
+                <form asp-controller="Registracija" asp-action="Registracija" asp-route-id="@Model.ID" method="post" id="formRegistracijaSingle">
                     <button type="submit" class="btn btn-orange w-100 py-2 text-white fw-bold shadow-glow"><i class="bi bi-clipboard-check me-2"></i>Prijavi se na turnir</button>
                 </form>
             }
