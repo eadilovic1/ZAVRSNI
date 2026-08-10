@@ -40,35 +40,44 @@ namespace ePinPong.Models.ViewModels
         public ICollection<Registracija> Registracije => Turnir.Registracije;
         public ICollection<TurnirPar> TurnirParovi => Turnir.TurnirParovi;
 
-        // ===== Izvedene liste za Details.cshtml =====
+        // ===== Izvedene liste za Details.cshtml (lazy-cached) =====
+        private List<Mec>? _grupniMecevi;
         public List<Mec> GrupniMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
+            _grupniMecevi ??= Mecevi.Where(m => m.TipMeca == TipMeca.GrupnaFaza).ToList();
 
+        private List<Mec>? _zavrsniMecevi;
         public List<Mec> ZavrsniMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
+            _zavrsniMecevi ??= Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
 
+        private List<Mec>? _razigravanjeMecevi;
         public List<Mec> RazigravanjeMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Placement)).ToList();
+            _razigravanjeMecevi ??= Mecevi.Where(m => m.TipMeca == TipMeca.Razigravanje && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Placement)).ToList();
 
+        private List<Mec>? _sviZavrsniMecevi;
         public List<Mec> SviZavrsniMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
+            _sviZavrsniMecevi ??= Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
 
+        private List<Mec>? _utjesniMecevi;
         public List<Mec> UtjesniMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni)).ToList();
+            _utjesniMecevi ??= Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni)).ToList();
 
+        private List<Mec>? _utjesniGlavniMecevi;
         public List<Mec> UtjesniGlavniMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
+            _utjesniGlavniMecevi ??= Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
                 && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni + "R") && !m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniRoundRobin)).ToList();
 
+        private List<Mec>? _utjesniRazigravanjeMecevi;
         public List<Mec> UtjesniRazigravanjeMecevi =>
-            Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
+            _utjesniRazigravanjeMecevi ??= Mecevi.Where(m => m.TipMeca == TipMeca.Utjesni
                 && (m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniPlacement) || m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.UtjesniRoundRobin))).ToList();
 
+        private int? _brojGrupaUTurniru;
         public int BrojGrupaUTurniru =>
-            GrupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+            _brojGrupaUTurniru ??= GrupniMecevi.Select(m => m.NazivGrupe).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
 
+        private bool? _isGroupOnly;
         public bool IsGroupOnly =>
-            GrupniMecevi.Any() && !SviZavrsniMecevi.Any() && !UtjesniMecevi.Any()
+            _isGroupOnly ??= GrupniMecevi.Any() && !SviZavrsniMecevi.Any() && !UtjesniMecevi.Any()
             && (BrojGrupaUTurniru == 1 || IsMasters);
     }
 }
