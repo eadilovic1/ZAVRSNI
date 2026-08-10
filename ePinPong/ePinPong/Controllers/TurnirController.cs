@@ -28,6 +28,7 @@ namespace ePinPong.Controllers
         private readonly IAuthorizationService _authorizationService;
         private readonly ILogger<TurnirController> _logger;
         private readonly IMastersRegistrationService _mastersRegistrationService;
+        private readonly IStandingsCalculationService _standingsCalculationService;
 
 
         public TurnirController(
@@ -39,7 +40,8 @@ namespace ePinPong.Controllers
             ITurnirCompletionService turnirCompletionService,
             IAuthorizationService authorizationService,
             ILogger<TurnirController> logger,
-            IMastersRegistrationService mastersRegistrationService)
+            IMastersRegistrationService mastersRegistrationService,
+            IStandingsCalculationService standingsCalculationService)
         {
             _context = context;
             _userManager = userManager;
@@ -50,6 +52,7 @@ namespace ePinPong.Controllers
             _authorizationService = authorizationService;
             _logger = logger;
             _mastersRegistrationService = mastersRegistrationService;
+            _standingsCalculationService = standingsCalculationService;
         }
 
         // GET: /Turnir/Details/5
@@ -97,6 +100,7 @@ namespace ePinPong.Controllers
 
             var ranking = _bracketService.IzracunajPlasman(turnir);
             var playerPoints = await _leagueStandingsService.GetPlayerPointsAsync(turnir);
+            var groupStandings = _standingsCalculationService.IzracunajTabeleGrupa(turnir);
 
             var viewModel = new TurnirDetailsViewModel
             {
@@ -107,7 +111,8 @@ namespace ePinPong.Controllers
                 IsMasters = isMasters,
                 CurrentUserId = userId,
                 Ranking = ranking,
-                PlayerPoints = playerPoints
+                PlayerPoints = playerPoints,
+                GroupStandings = groupStandings
             };
 
             if (isOrganizator && turnir.Status == StatusTurnira.Planiran)

@@ -8,5 +8,6 @@ namespace ePinPong.Services
     {
         List<TurnirPlasmanViewModel> IzracunajPlasman(Turnir turnir);
         (int L, int R) ParsirajRange(string? range);
+        Dictionary<string, List<GroupStandingRow>> IzracunajTabeleGrupa(Turnir turnir);
     }
 }

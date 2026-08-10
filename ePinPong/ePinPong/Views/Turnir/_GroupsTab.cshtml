@@ -19,72 +19,9 @@
         {
             var nazivGrupe = grupaGroup.Key ?? "Grupa";
             var meceviGrupe = grupaGroup.ToList();
-
-            var igraciGrupeIds = meceviGrupe
-                .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
-                .Where(id => id != null)
-                .Distinct()
-                .ToList();
-
-            var records = new List<dynamic>();
-            foreach (var igracId in igraciGrupeIds)
-            {
-                var igracName = "";
-                var isGost = false;
-                var grad = "";
-
-                var mecSaIgracem = meceviGrupe.FirstOrDefault(m => m.Igrac1ID == igracId || m.Igrac2ID == igracId);
-                if (mecSaIgracem != null)
-                {
-                    var igrac = mecSaIgracem.Igrac1ID == igracId ? mecSaIgracem.Igrac1 : mecSaIgracem.Igrac2;
-                    if (igrac != null)
-                    {
-                        igracName = $"{igrac.Ime} {igrac.Prezime}";
-                        isGost = igrac.IsGost;
-                        grad = igrac.Grad;
-                    }
-                }
-
-                int pobjede = 0;
-                int porazi = 0;
-                int osvojeniSetovi = 0;
-                int izgubljeniSetovi = 0;
-
-                foreach (var m in meceviGrupe.Where(m => m.Odigran))
-                {
-                    if (m.Igrac1ID == igracId)
-                    {
-                        osvojeniSetovi += m.PoeniIgrac1 ?? 0;
-                        izgubljeniSetovi += m.PoeniIgrac2 ?? 0;
-                        if ((m.PoeniIgrac1 ?? 0) > (m.PoeniIgrac2 ?? 0)) pobjede++;
-                        else porazi++;
-                    }
-                    else if (m.Igrac2ID == igracId)
-                    {
-                        osvojeniSetovi += m.PoeniIgrac2 ?? 0;
-                        izgubljeniSetovi += m.PoeniIgrac1 ?? 0;
-                        if ((m.PoeniIgrac2 ?? 0) > (m.PoeniIgrac1 ?? 0)) pobjede++;
-                        else porazi++;
-                    }
-                }
-
-                records.Add(new {
-                    PlayerID = igracId,
-                    ImePrezime = igracName,
-                    IsGost = isGost,
-                    Grad = grad,
-                    Pobjede = pobjede,
-                    Porazi = porazi,
-                    SetRazlika = osvojeniSetovi - izgubljeniSetovi,
-                    OsvojeniSetovi = osvojeniSetovi
-                });
-            }
-
-            var sortiraniStandings = records
-                .OrderByDescending(r => r.Pobjede)
-                .ThenByDescending(r => r.SetRazlika)
-                .ThenByDescending(r => r.OsvojeniSetovi)
-                .ToList();
+            var sortiraniStandings = Model.GroupStandings.TryGetValue(nazivGrupe, out var standings)
+                ? standings
+                : new List<ePinPong.Models.ViewModels.GroupStandingRow>();
 
             <div class="mb-5 p-3 rounded-4 bg-dark-card border border-dark-glow shadow-sm">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -114,7 +51,7 @@
                                 <tr class="@(prolaz ? "border-start border-3 border-success bg-success-transparent-row" : "")">
                                     <td class="fw-bold @(idx == 0 ? "text-warning" : (idx == 1 ? "text-light" : "text-muted"))">@(idx + 1).</td>
                                     <td class="text-start">
-                                        <a href="/Korisnik/Index/@row.PlayerID" class="text-white hover-orange fw-bold">
+                                        <a href="/Korisnik/Index/@row.PlayerId" class="text-white hover-orange fw-bold">
                                             @row.ImePrezime
                                             @if (row.IsGost)
                                             {
