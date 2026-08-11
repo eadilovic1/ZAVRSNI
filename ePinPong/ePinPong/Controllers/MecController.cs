@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ePinPong.Controllers
@@ -25,6 +24,7 @@ namespace ePinPong.Controllers
         private readonly ILeagueStandingsService _leagueStandingsService;
         private readonly ITurnirCompletionService _turnirCompletionService;
         private readonly IAuthorizationService _authorizationService;
+        private readonly ISesiranjeService _sesiranjeService;
         private readonly ILogger<MecController> _logger;
 
         public MecController(
@@ -36,6 +36,7 @@ namespace ePinPong.Controllers
             ILeagueStandingsService leagueStandingsService,
             ITurnirCompletionService turnirCompletionService,
             IAuthorizationService authorizationService,
+            ISesiranjeService sesiranjeService,
             ILogger<MecController> logger)
         {
             _context = context;
@@ -46,6 +47,7 @@ namespace ePinPong.Controllers
             _leagueStandingsService = leagueStandingsService;
             _turnirCompletionService = turnirCompletionService;
             _authorizationService = authorizationService;
+            _sesiranjeService = sesiranjeService;
             _logger = logger;
         }
 
@@ -78,25 +80,10 @@ namespace ePinPong.Controllers
             // Snimi ili auto-generiši šešire
             if (!string.IsNullOrEmpty(playerPotsJson))
             {
-                try
+                bool uspjelo = await _sesiranjeService.PrimijeniSesireAsync(turnir, playerPotsJson);
+                if (!uspjelo)
                 {
-                    var playerPots = JsonSerializer.Deserialize<List<PlayerPotDto>>(playerPotsJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    if (playerPots != null)
-                    {
-                        foreach (var pp in playerPots)
-                        {
-                            var reg = turnir.Registracije.FirstOrDefault(r => r.KorisnikID == pp.KorisnikId);
-                            if (reg != null)
-                            {
-                                reg.Sesir = pp.Sesir;
-                            }
-                        }
-                        await _context.SaveChangesAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Neuspješno parsiranje/snimanje šešira (playerPotsJson) za turnir {TurnirId}, prelazim na automatski raspored.", turnirId);
+                    _logger.LogWarning("Parsiranje šešira nije uspjelo za turnir {TurnirId}, prelazim na automatski raspored.", turnirId);
                     if (!isMasters)
                     {
                         await AutoRasporediSesire(turnir);

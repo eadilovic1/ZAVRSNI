@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ePinPong.Controllers
@@ -21,19 +20,22 @@ namespace ePinPong.Controllers
         private readonly IAuthorizationService _authorizationService;
         private readonly ILogger<RegistracijaController> _logger;
         private readonly INotificationService _notificationService;
+        private readonly ISesiranjeService _sesiranjeService;
 
         public RegistracijaController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IAuthorizationService authorizationService,
             ILogger<RegistracijaController> logger,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ISesiranjeService sesiranjeService)
         {
             _context = context;
             _userManager = userManager;
             _authorizationService = authorizationService;
             _logger = logger;
             _notificationService = notificationService;
+            _sesiranjeService = sesiranjeService;
         }
 
         // POST: /Registracija/Registracija/5
@@ -362,25 +364,10 @@ namespace ePinPong.Controllers
 
             if (!string.IsNullOrEmpty(playerPotsJson))
             {
-                try
+                bool uspjelo = await _sesiranjeService.PrimijeniSesireAsync(turnir, playerPotsJson);
+                if (!uspjelo)
                 {
-                    var playerPots = JsonSerializer.Deserialize<List<PlayerPotDto>>(playerPotsJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    if (playerPots != null)
-                    {
-                        foreach (var pp in playerPots)
-                        {
-                            var reg = turnir.Registracije.FirstOrDefault(r => r.KorisnikID == pp.KorisnikId);
-                            if (reg != null)
-                            {
-                                reg.Sesir = pp.Sesir;
-                            }
-                        }
-                        await _context.SaveChangesAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Neuspješno parsiranje/snimanje šešira (playerPotsJson) za turnir {TurnirId}.", turnirId);
+                    _logger.LogWarning("Parsiranje šešira nije uspjelo za turnir {TurnirId}.", turnirId);
                     return BadRequest();
                 }
             }
