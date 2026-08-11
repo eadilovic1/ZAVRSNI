@@ -42,8 +42,8 @@ namespace ePinPong.Services
                     var finalMec = meceviList.FirstOrDefault(m => m.TipMeca == TipMeca.Zavrsnica && string.IsNullOrEmpty(m.WinnerNextMatchCode));
                     if (finalMec != null && finalMec.Odigran)
                     {
-                        turnir.PobjednikID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac1ID : finalMec.Igrac2ID;
-                        turnir.DrugoplasiraniID = finalMec.PoeniIgrac1 == 3 ? finalMec.Igrac2ID : finalMec.Igrac1ID;
+                        turnir.PobjednikID = finalMec.PobjednikId;
+                        turnir.DrugoplasiraniID = finalMec.PobjednikId == finalMec.Igrac1ID ? finalMec.Igrac2ID : finalMec.Igrac1ID;
                     }
                 }
                 else if (grupniMecevi.Any())
