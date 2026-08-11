@@ -54,6 +54,7 @@ builder.Services.AddScoped<IMastersRegistrationService, MastersRegistrationServi
 builder.Services.AddScoped<ITurnirCompletionService, TurnirCompletionService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISesiranjeService, SesiranjeService>();
+builder.Services.AddScoped<ITurnirCreatedNotifier, TurnirCreatedNotifier>();
 
 // Antiforgery konfiguracija za AJAX/fetch pozive
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
