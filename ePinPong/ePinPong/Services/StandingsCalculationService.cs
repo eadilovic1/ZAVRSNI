@@ -591,5 +591,133 @@ namespace ePinPong.Services
 
             return result;
         }
+        /// <summary>
+        /// Za svaku grupu u turniru parova vraća sortiranu listu <see cref="PairStandingRow"/>
+        /// (po pobjede desc, set-razlika desc, osvojeni setovi desc).
+        /// Analogno <see cref="IzracunajTabeleGrupa"/> koji radi za singl grupe.
+        /// </summary>
+        public Dictionary<string, List<PairStandingRow>> IzracunajTabeleGrupaParova(Turnir turnir)
+        {
+            var result = new Dictionary<string, List<PairStandingRow>>();
+
+            var paroviMecevi = turnir.Mecevi
+                .Where(m => m.TipMeca == TipMeca.TurnirParova)
+                .ToList();
+
+            var meceviPoGrupama = paroviMecevi
+                .GroupBy(m => m.NazivGrupe ?? "Grupa A (Parovi)")
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            foreach (var grupaGroup in meceviPoGrupama)
+            {
+                var nazivGrupe = grupaGroup.Key;
+                var meceviGrupe = grupaGroup.ToList();
+
+                // Gradi skup unikatnih parova:
+                // 1. Iz TurnirParovi (registrovani parovi)
+                // 2. Iz ID-ova igrača na mečevima (fallback ako par nije u TurnirParovi)
+                var paroviSet = new List<(string I1Id, string I2Id, ApplicationUser? I1, ApplicationUser? I2)>();
+
+                foreach (var p in turnir.TurnirParovi)
+                {
+                    if (p.Igrac1ID != null && p.Igrac2ID != null)
+                    {
+                        if (!paroviSet.Any(x => (x.I1Id == p.Igrac1ID && x.I2Id == p.Igrac2ID)
+                                             || (x.I1Id == p.Igrac2ID && x.I2Id == p.Igrac1ID)))
+                            paroviSet.Add((p.Igrac1ID, p.Igrac2ID, p.Igrac1, p.Igrac2));
+                    }
+                }
+
+                foreach (var m in meceviGrupe)
+                {
+                    if (m.Igrac1ID != null && m.Igrac1PartnerID != null)
+                    {
+                        if (!paroviSet.Any(x => (x.I1Id == m.Igrac1ID && x.I2Id == m.Igrac1PartnerID)
+                                             || (x.I1Id == m.Igrac1PartnerID && x.I2Id == m.Igrac1ID)))
+                            paroviSet.Add((m.Igrac1ID, m.Igrac1PartnerID, m.Igrac1, m.Igrac1Partner));
+                    }
+                    if (m.Igrac2ID != null && m.Igrac2PartnerID != null)
+                    {
+                        if (!paroviSet.Any(x => (x.I1Id == m.Igrac2ID && x.I2Id == m.Igrac2PartnerID)
+                                             || (x.I1Id == m.Igrac2PartnerID && x.I2Id == m.Igrac2ID)))
+                            paroviSet.Add((m.Igrac2ID, m.Igrac2PartnerID, m.Igrac2, m.Igrac2Partner));
+                    }
+                }
+
+                var stats = IzracunajStatistikuParova(meceviGrupe, paroviSet);
+
+                var rows = stats
+                    .OrderByDescending(x => x.Pobjede)
+                    .ThenByDescending(x => x.SetRazlika)
+                    .ThenByDescending(x => x.OsvojeniSetovi)
+                    .Select(x => new PairStandingRow
+                    {
+                        Igrac1Id       = x.I1Id,
+                        Igrac2Id       = x.I2Id,
+                        Igrac1         = x.I1,
+                        Igrac2         = x.I2,
+                        Pobjede        = x.Pobjede,
+                        Porazi         = x.Porazi,
+                        SetRazlika     = x.SetRazlika,
+                        OsvojeniSetovi = x.OsvojeniSetovi
+                    })
+                    .ToList();
+
+                result[nazivGrupe] = rows;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Privatni helper koji za svaki par iz <paramref name="paroviSet"/> računa
+        /// pobjede, poraze, set-razliku i osvojene setove na osnovu odigranih mečeva grupe.
+        /// </summary>
+        private static List<(string I1Id, string I2Id, ApplicationUser? I1, ApplicationUser? I2,
+                              int Pobjede, int Porazi, int SetRazlika, int OsvojeniSetovi)>
+            IzracunajStatistikuParova(
+                List<Mec> meceviGrupe,
+                List<(string I1Id, string I2Id, ApplicationUser? I1, ApplicationUser? I2)> paroviSet)
+        {
+            var result = new List<(string, string, ApplicationUser?, ApplicationUser?,
+                                   int, int, int, int)>();
+
+            foreach (var par in paroviSet)
+            {
+                int pobjede = 0, porazi = 0, osvojeniSetovi = 0, izgubljeniSetovi = 0;
+
+                foreach (var m in meceviGrupe.Where(m => m.Odigran))
+                {
+                    // Da li je ovaj par na strani 1 meča (igrač1+partner1)
+                    bool isSide1 = (m.Igrac1ID == par.I1Id && m.Igrac1PartnerID == par.I2Id)
+                                || (m.Igrac1ID == par.I2Id && m.Igrac1PartnerID == par.I1Id);
+
+                    // Da li je ovaj par na strani 2 meča (igrač2+partner2)
+                    bool isSide2 = (m.Igrac2ID == par.I1Id && m.Igrac2PartnerID == par.I2Id)
+                                || (m.Igrac2ID == par.I2Id && m.Igrac2PartnerID == par.I1Id);
+
+                    if (isSide1)
+                    {
+                        int p1 = m.PoeniIgrac1 ?? 0, p2 = m.PoeniIgrac2 ?? 0;
+                        osvojeniSetovi  += p1;
+                        izgubljeniSetovi += p2;
+                        if (p1 > p2) pobjede++; else porazi++;
+                    }
+                    else if (isSide2)
+                    {
+                        int p1 = m.PoeniIgrac1 ?? 0, p2 = m.PoeniIgrac2 ?? 0;
+                        osvojeniSetovi  += p2;
+                        izgubljeniSetovi += p1;
+                        if (p2 > p1) pobjede++; else porazi++;
+                    }
+                }
+
+                result.Add((par.I1Id, par.I2Id, par.I1, par.I2,
+                            pobjede, porazi, osvojeniSetovi - izgubljeniSetovi, osvojeniSetovi));
+            }
+
+            return result;
+        }
     }
 }

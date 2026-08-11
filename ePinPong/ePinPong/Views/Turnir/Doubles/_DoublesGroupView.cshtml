@@ -8,79 +8,15 @@
     var meceviPoGrupamaParova = paroviMecevi.GroupBy(m => m.NazivGrupe).OrderBy(g => g.Key).ToList();
     bool paroviZavrseni = paroviMecevi.Count > 0 && paroviMecevi.All(m => m.Odigran);
 
-    // Izračun standings za svaku grupu
-    var paroviStandingsMap = new Dictionary<string, List<dynamic>>();
-    foreach (var grupaGroup in meceviPoGrupamaParova)
-    {
-        string gName = grupaGroup.Key ?? "Grupa A (Parovi)";
-        var meceviGrupe = grupaGroup.ToList();
-
-        var paroviSet = new List<(string I1Id, string I2Id, ePinPong.Models.ApplicationUser? I1, ePinPong.Models.ApplicationUser? I2)>();
-        foreach (var p in Model.TurnirParovi)
-        {
-            if (p.Igrac1ID != null && p.Igrac2ID != null)
-            {
-                if (!paroviSet.Any(x => (x.I1Id == p.Igrac1ID && x.I2Id == p.Igrac2ID) || (x.I1Id == p.Igrac2ID && x.I2Id == p.Igrac1ID)))
-                    paroviSet.Add((p.Igrac1ID, p.Igrac2ID, p.Igrac1, p.Igrac2));
-            }
-        }
-        foreach (var m in meceviGrupe)
-        {
-            if (m.Igrac1ID != null && m.Igrac1PartnerID != null)
-            {
-                if (!paroviSet.Any(x => (x.I1Id == m.Igrac1ID && x.I2Id == m.Igrac1PartnerID) || (x.I1Id == m.Igrac1PartnerID && x.I2Id == m.Igrac1ID)))
-                    paroviSet.Add((m.Igrac1ID, m.Igrac1PartnerID, m.Igrac1, m.Igrac1Partner));
-            }
-            if (m.Igrac2ID != null && m.Igrac2PartnerID != null)
-            {
-                if (!paroviSet.Any(x => (x.I1Id == m.Igrac2ID && x.I2Id == m.Igrac2PartnerID) || (x.I1Id == m.Igrac2PartnerID && x.I2Id == m.Igrac2ID)))
-                    paroviSet.Add((m.Igrac2ID, m.Igrac2PartnerID, m.Igrac2, m.Igrac2Partner));
-            }
-        }
-
-        var records = new List<dynamic>();
-        foreach (var pTuple in paroviSet)
-        {
-            int pobjede = 0, porazi = 0, osvojeniSetovi = 0, izgubljeniSetovi = 0;
-            foreach (var m in meceviGrupe.Where(m => m.Odigran))
-            {
-                bool isSide1 = (m.Igrac1ID == pTuple.I1Id && m.Igrac1PartnerID == pTuple.I2Id) || (m.Igrac1ID == pTuple.I2Id && m.Igrac1PartnerID == pTuple.I1Id);
-                bool isSide2 = (m.Igrac2ID == pTuple.I1Id && m.Igrac2PartnerID == pTuple.I2Id) || (m.Igrac2ID == pTuple.I2Id && m.Igrac2PartnerID == pTuple.I1Id);
-                if (isSide1)
-                {
-                    int p1 = m.PoeniIgrac1 ?? 0, p2 = m.PoeniIgrac2 ?? 0;
-                    osvojeniSetovi += p1; izgubljeniSetovi += p2;
-                    if (p1 > p2) pobjede++; else porazi++;
-                }
-                else if (isSide2)
-                {
-                    int p1 = m.PoeniIgrac1 ?? 0, p2 = m.PoeniIgrac2 ?? 0;
-                    osvojeniSetovi += p2; izgubljeniSetovi += p1;
-                    if (p2 > p1) pobjede++; else porazi++;
-                }
-            }
-            records.Add(new
-            {
-                Igrac1 = pTuple.I1, Igrac2 = pTuple.I2,
-                Pobjede = pobjede, Porazi = porazi,
-                SetRazlika = osvojeniSetovi - izgubljeniSetovi,
-                OsvojeniSetovi = osvojeniSetovi
-            });
-        }
-
-        paroviStandingsMap[gName] = records
-            .OrderByDescending(r => r.Pobjede)
-            .ThenByDescending(r => r.SetRazlika)
-            .ThenByDescending(r => r.OsvojeniSetovi)
-            .ToList();
-    }
+    // Standings za svaku grupu parova — izračunato u servisu, čitamo gotove podatke.
+    var paroviStandingsMap = Model.PairGroupStandings;
 }
 
 @foreach (var grupaGroup in meceviPoGrupamaParova)
 {
     var nazivGrupe = grupaGroup.Key ?? "Grupa";
     var meceviGrupe = grupaGroup.ToList();
-    var sortiraniStandings = paroviStandingsMap.ContainsKey(nazivGrupe) ? paroviStandingsMap[nazivGrupe] : new List<dynamic>();
+    var sortiraniStandings = paroviStandingsMap.TryGetValue(nazivGrupe, out var sl) ? sl : new List<ePinPong.Models.ViewModels.PairStandingRow>();
     var collapseId = "groupCollapsePar-" + nazivGrupe.Replace(" ", "").Replace("(", "").Replace(")", "");
 
     <div class="mb-5 p-3 rounded-4 bg-dark-card border border-dark-glow shadow-sm">

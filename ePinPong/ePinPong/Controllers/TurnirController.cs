@@ -103,7 +103,8 @@ namespace ePinPong.Controllers
 
             var ranking = _bracketService.IzracunajPlasman(turnir);
             var playerPoints = await _leagueStandingsService.GetPlayerPointsAsync(turnir);
-            var groupStandings = _standingsCalculationService.IzracunajTabeleGrupa(turnir);
+            var groupStandings     = _standingsCalculationService.IzracunajTabeleGrupa(turnir);
+            var pairGroupStandings = _standingsCalculationService.IzracunajTabeleGrupaParova(turnir);
 
             var viewModel = new TurnirDetailsViewModel
             {
@@ -115,7 +116,8 @@ namespace ePinPong.Controllers
                 CurrentUserId = userId,
                 Ranking = ranking,
                 PlayerPoints = playerPoints,
-                GroupStandings = groupStandings
+                GroupStandings     = groupStandings,
+                PairGroupStandings = pairGroupStandings
             };
 
             if (isOrganizator && turnir.Status == StatusTurnira.Planiran)
