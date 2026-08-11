@@ -15,43 +15,7 @@ namespace ePinPong.Services
             if (bracketService == null) throw new System.ArgumentNullException(nameof(bracketService));
             if (liga == null) throw new System.ArgumentNullException(nameof(liga));
 
-            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
-            var finishedRegularTurniri = await context.Turniri
-                .Include(t => t.Registracije)
-                    .ThenInclude(r => r.Korisnik)
-                .Include(t => t.Mecevi)
-                    .ThenInclude(m => m.Igrac1)
-                .Include(t => t.Mecevi)
-                    .ThenInclude(m => m.Igrac2)
-                .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo && t.Status == StatusTurnira.Zavrsen)
-                .ToListAsync();
-
-            if (!finishedRegularTurniri.Any())
-            {
-                return new List<string>();
-            }
-
-            var standings = new Dictionary<string, int>();
-            foreach (var finishedTurnir in finishedRegularTurniri)
-            {
-                var plasmani = bracketService.IzracunajPlasman(finishedTurnir);
-                foreach (var plasman in plasmani)
-                {
-                    if (string.IsNullOrEmpty(plasman.KorisnikId))
-                    {
-                        continue;
-                    }
-
-                    if (standings.ContainsKey(plasman.KorisnikId))
-                    {
-                        standings[plasman.KorisnikId] += plasman.Bodovi;
-                    }
-                    else
-                    {
-                        standings[plasman.KorisnikId] = plasman.Bodovi;
-                    }
-                }
-            }
+            var standings = await GetPointsPerPlayerAsync(context, bracketService, liga);
 
             return standings.Keys
                 .OrderByDescending(id => standings[id])
@@ -105,14 +69,35 @@ namespace ePinPong.Services
                     .ToList();
             }
 
+            var points = await GetPointsPerPlayerAsync(context, bracketService, liga);
+
+            var registrations = mastersTurnir.Registracije
+                .Where(r => !string.IsNullOrEmpty(r.KorisnikID) && r.KorisnikID != BracketService.SLOBODAN)
+                .Select(r => new
+                {
+                    r.KorisnikID,
+                    r.DatumRegistracije
+                })
+                .ToList();
+
+            return registrations
+                .OrderByDescending(r => points.TryGetValue(r.KorisnikID, out var pts) ? pts : 0)
+                .ThenBy(r => points.ContainsKey(r.KorisnikID) ? 0 : 1)
+                .ThenBy(r => r.DatumRegistracije)
+                .Select(r => r.KorisnikID!)                
+                .ToList();
+        }
+
+        private static async Task<Dictionary<string, int>> GetPointsPerPlayerAsync(ApplicationDbContext context, IBracketService bracketService, Liga liga)
+        {
             var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
             var finishedRegularTurniri = await context.Turniri
                 .Include(t => t.Registracije)
-                .ThenInclude(r => r.Korisnik)
+                    .ThenInclude(r => r.Korisnik)
                 .Include(t => t.Mecevi)
-                .ThenInclude(m => m.Igrac1)
+                    .ThenInclude(m => m.Igrac1)
                 .Include(t => t.Mecevi)
-                .ThenInclude(m => m.Igrac2)
+                    .ThenInclude(m => m.Igrac2)
                 .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo && t.Status == StatusTurnira.Zavrsen)
                 .ToListAsync();
 
@@ -138,21 +123,7 @@ namespace ePinPong.Services
                 }
             }
 
-            var registrations = mastersTurnir.Registracije
-                .Where(r => !string.IsNullOrEmpty(r.KorisnikID) && r.KorisnikID != BracketService.SLOBODAN)
-                .Select(r => new
-                {
-                    r.KorisnikID,
-                    r.DatumRegistracije
-                })
-                .ToList();
-
-            return registrations
-                .OrderByDescending(r => points.TryGetValue(r.KorisnikID, out var pts) ? pts : 0)
-                .ThenBy(r => points.ContainsKey(r.KorisnikID) ? 0 : 1)
-                .ThenBy(r => r.DatumRegistracije)
-                .Select(r => r.KorisnikID!)                
-                .ToList();
+            return points;
         }
     }
 }

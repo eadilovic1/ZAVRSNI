@@ -502,7 +502,7 @@ namespace ePinPong.Services
         /// Zajednički helper koji za listu mečeva i listu ID-ova igrača računa
         /// (wins, set-razlika, osvojeni setovi). Koristi se i u OdrediGrupnuFazu i u IzracunajTabeleGrupa.
         /// </summary>
-        private static List<(string PlayerId, int Wins, int SetDiff, int SetsWon)> IzracunajStatistikuIgraca(
+        public static List<(string PlayerId, int Wins, int SetDiff, int SetsWon)> IzracunajStatistikuIgraca(
             List<Mec> meceviGrupe, List<string> igraciIds)
         {
             var result = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();

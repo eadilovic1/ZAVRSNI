@@ -36,40 +36,21 @@ namespace ePinPong.Services
 
                 var igraciGrupe = meceviGrupe
                     .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
-                    .Where(id => id != null).Distinct().ToList();
+                    .Where(id => id != null)
+                    .Distinct()
+                    .Select(id => id!)
+                    .ToList();
 
-                var records = new List<PlayerRecord>();
-                foreach (var igracId in igraciGrupe)
+                var stats = StandingsCalculationService.IzracunajStatistikuIgraca(meceviGrupe, igraciGrupe);
+                var records = stats.Select(x => new PlayerRecord
                 {
-                    if (igracId == null) continue;
-                    int pobjede = 0, osvojeniSetovi = 0, izgubljeniSetovi = 0;
-
-                    foreach (var m in meceviGrupe.Where(m => m.Odigran))
-                    {
-                        if (m.Igrac1ID == igracId)
-                        {
-                            osvojeniSetovi += m.PoeniIgrac1 ?? 0;
-                            izgubljeniSetovi += m.PoeniIgrac2 ?? 0;
-                            if (m.PobjednikId == igracId) pobjede++;
-                        }
-                        else if (m.Igrac2ID == igracId)
-                        {
-                            osvojeniSetovi += m.PoeniIgrac2 ?? 0;
-                            izgubljeniSetovi += m.PoeniIgrac1 ?? 0;
-                            if (m.PobjednikId == igracId) pobjede++;
-                        }
-                    }
-
-                    records.Add(new PlayerRecord
-                    {
-                        PlayerID = igracId,
-                        NazivGrupe = nazivGrupe,
-                        GroupIndex = gIdx,
-                        Pobjede = pobjede,
-                        SetRazlika = osvojeniSetovi - izgubljeniSetovi,
-                        OsvojeniSetovi = osvojeniSetovi
-                    });
-                }
+                    PlayerID = x.PlayerId,
+                    NazivGrupe = nazivGrupe,
+                    GroupIndex = gIdx,
+                    Pobjede = x.Wins,
+                    SetRazlika = x.SetDiff,
+                    OsvojeniSetovi = x.SetsWon
+                }).ToList();
 
                 var sorted = records
                     .OrderByDescending(r => r.Pobjede)

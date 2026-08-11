@@ -1,10 +1,19 @@
 using ePinPong.Models;
+using ePinPong.Models.ViewModels;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ePinPong.Services
 {
     public class TurnirCompletionService : ITurnirCompletionService
     {
+        private readonly IStandingsCalculationService _standingsCalculationService;
+
+        public TurnirCompletionService(IStandingsCalculationService standingsCalculationService)
+        {
+            _standingsCalculationService = standingsCalculationService;
+        }
+
         public bool EvaluateAndCloseIfFinished(Turnir turnir)
         {
             if (turnir == null || turnir.Status == StatusTurnira.Zavrsen || turnir.Mecevi == null || !turnir.Mecevi.Any())
@@ -39,39 +48,13 @@ namespace ePinPong.Services
                 }
                 else if (grupniMecevi.Any())
                 {
-                    var igraciGrupe = grupniMecevi
-                        .SelectMany(m => new[] { m.Igrac1ID, m.Igrac2ID })
-                        .Where(id => id != null && id != BracketService.SLOBODAN)
-                        .Distinct()
-                        .ToList();
-
-                    var groupStats = igraciGrupe.Select(pid =>
+                    var tables = _standingsCalculationService.IzracunajTabeleGrupa(turnir);
+                    if (tables.Any())
                     {
-                        int wins = 0, setsWon = 0, setsLost = 0;
-                        foreach (var gm in grupniMecevi.Where(m => m.Odigran && (m.Igrac1ID == pid || m.Igrac2ID == pid)))
-                        {
-                            if (gm.Igrac1ID == pid)
-                            {
-                                setsWon  += gm.PoeniIgrac1 ?? 0;
-                                setsLost += gm.PoeniIgrac2 ?? 0;
-                                if (gm.PobjednikId == pid) wins++;
-                            }
-                            else
-                            {
-                                setsWon  += gm.PoeniIgrac2 ?? 0;
-                                setsLost += gm.PoeniIgrac1 ?? 0;
-                                if (gm.PobjednikId == pid) wins++;
-                            }
-                        }
-                        return new { PlayerId = pid, Wins = wins, SetDiff = setsWon - setsLost, SetsWon = setsWon };
-                    })
-                    .OrderByDescending(x => x.Wins)
-                    .ThenByDescending(x => x.SetDiff)
-                    .ThenByDescending(x => x.SetsWon)
-                    .ToList();
-
-                    if (groupStats.Count > 0) turnir.PobjednikID = groupStats[0].PlayerId;
-                    if (groupStats.Count > 1) turnir.DrugoplasiraniID = groupStats[1].PlayerId;
+                        var firstGroupTable = tables.Values.First();
+                        if (firstGroupTable.Count > 0) turnir.PobjednikID = firstGroupTable[0].PlayerId;
+                        if (firstGroupTable.Count > 1) turnir.DrugoplasiraniID = firstGroupTable[1].PlayerId;
+                    }
                 }
 
                 return true;
