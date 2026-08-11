@@ -89,7 +89,11 @@
                         <div class="match-card p-3 bg-dark-input border border-dark-glow rounded-3 d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center flex-grow-1">
                                 <div class="text-end flex-grow-1 pe-3">
-                                    @if (mec.Igrac1ID != null)
+                                    @if (mec.Igrac1ID == "SLOBODAN")
+                                    {
+                                        <span class="text-white-50 small fst-italic">Slobodan</span>
+                                    }
+                                    else if (mec.Igrac1ID != null)
                                     {
                                         <a href="/Korisnik/Index/@mec.Igrac1ID" class="text-white hover-orange fw-semibold">
                                             @mec.Igrac1?.Ime @mec.Igrac1?.Prezime
@@ -126,7 +130,11 @@
                                 </div>
 
                                 <div class="text-start flex-grow-1 ps-3">
-                                    @if (mec.Igrac2ID != null)
+                                    @if (mec.Igrac2ID == "SLOBODAN")
+                                    {
+                                        <span class="text-white-50 small fst-italic">Slobodan</span>
+                                    }
+                                    else if (mec.Igrac2ID != null)
                                     {
                                         <a href="/Korisnik/Index/@mec.Igrac2ID" class="text-white hover-orange fw-semibold">
                                             @mec.Igrac2?.Ime @mec.Igrac2?.Prezime
