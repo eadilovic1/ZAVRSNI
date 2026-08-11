@@ -58,6 +58,7 @@ namespace ePinPong.Controllers
         {
             var turnir = await _context.Turniri
                 .Include(t => t.Registracije)
+                    .ThenInclude(r => r.Korisnik)
                 .Include(t => t.Liga)
                 .FirstOrDefaultAsync(t => t.ID == turnirId);
 
@@ -122,7 +123,7 @@ namespace ePinPong.Controllers
             foreach (var registracija in turnir.Registracije)
             {
                 await _notificationService.ObavijestiKorisnikaAsync(
-                    registracija.KorisnikID,
+                    registracija.Korisnik,
                     "Počeo turnir na ePinPong!",
                     $"Raspored mečeva za turnir <strong>{turnir.Naziv}</strong> je generisan! Grupna faza je počela."
                 );
