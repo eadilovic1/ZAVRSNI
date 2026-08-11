@@ -301,29 +301,7 @@ namespace ePinPong.Services
                     .Distinct()
                     .ToList();
 
-                var stats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
-                foreach (var playerId in playersInGroup)
-                {
-                    int wins = 0, setsWon = 0, setsLost = 0;
-                    foreach (var m in groupList.Where(m => m.Odigran))
-                    {
-                        if (m.Igrac1ID == playerId)
-                        {
-                            setsWon += m.PoeniIgrac1 ?? 0;
-                            setsLost += m.PoeniIgrac2 ?? 0;
-                            if (m.PobjednikId == playerId) wins++;
-                        }
-                        else if (m.Igrac2ID == playerId)
-                        {
-                            setsWon += m.PoeniIgrac2 ?? 0;
-                            setsLost += m.PoeniIgrac1 ?? 0;
-                            if (m.PobjednikId == playerId) wins++;
-                        }
-                    }
-                    stats.Add((playerId, wins, setsWon - setsLost, setsWon));
-                }
-
-                var sortedStats = stats
+                var sortedStats = IzracunajStatistikuIgraca(groupList, playersInGroup)
                     .OrderByDescending(s => s.Wins)
                     .ThenByDescending(s => s.SetDiff)
                     .ThenByDescending(s => s.SetsWon)
@@ -389,32 +367,7 @@ namespace ePinPong.Services
 
             if (preostaliGrupnaFaza.Any())
             {
-                var groupStats = new List<(string PlayerId, int Wins, int SetDiff, int SetsWon)>();
-                foreach (var playerId in preostaliGrupnaFaza)
-                {
-                    int wins = 0, setsWon = 0, setsLost = 0;
-                    var igracMecevi = grupniMecevi
-                        .Where(m => m.Odigran && (m.Igrac1ID == playerId || m.Igrac2ID == playerId));
-
-                    foreach (var m in igracMecevi)
-                    {
-                        if (m.Igrac1ID == playerId)
-                        {
-                            setsWon += m.PoeniIgrac1 ?? 0;
-                            setsLost += m.PoeniIgrac2 ?? 0;
-                            if (m.PobjednikId == playerId) wins++;
-                        }
-                        else
-                        {
-                            setsWon += m.PoeniIgrac2 ?? 0;
-                            setsLost += m.PoeniIgrac1 ?? 0;
-                            if (m.PobjednikId == playerId) wins++;
-                        }
-                    }
-                    groupStats.Add((playerId, wins, setsWon - setsLost, setsWon));
-                }
-
-                var sortedGroup = groupStats
+                var sortedGroup = IzracunajStatistikuIgraca(grupniMecevi, preostaliGrupnaFaza)
                     .OrderByDescending(x => x.Wins)
                     .ThenByDescending(x => x.SetDiff)
                     .ThenByDescending(x => x.SetsWon)
