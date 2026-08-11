@@ -1,6 +1,5 @@
 using ePinPong.Data;
 using ePinPong.Helpers;
-using ePinPong.Interfaces;
 using ePinPong.Models;
 using ePinPong.Models.ViewModels;
 using ePinPong.Services;
@@ -21,7 +20,6 @@ namespace ePinPong.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IMailService _mailService;
         private readonly IBracketService _bracketService;
         private readonly ILeagueStandingsService _leagueStandingsService;
         private readonly ITurnirCompletionService _turnirCompletionService;
@@ -35,7 +33,6 @@ namespace ePinPong.Controllers
         public TurnirController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IMailService mailService,
             IBracketService bracketService,
             ILeagueStandingsService leagueStandingsService,
             ITurnirCompletionService turnirCompletionService,
@@ -47,7 +44,6 @@ namespace ePinPong.Controllers
         {
             _context = context;
             _userManager = userManager;
-            _mailService = mailService;
             _bracketService = bracketService;
             _leagueStandingsService = leagueStandingsService;
             _turnirCompletionService = turnirCompletionService;
