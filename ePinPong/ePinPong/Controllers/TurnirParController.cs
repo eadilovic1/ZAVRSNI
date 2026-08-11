@@ -147,9 +147,10 @@ namespace ePinPong.Controllers
             if (!isIgrac1Registered || !isIgrac2Registered)
                 return (false, "Oba igrača moraju biti prijavljena na glavni turnir.");
 
-            var isIgrac1Paired = turnir.TurnirParovi.Any(p => p.Igrac1ID == igrac1Id || p.Igrac2ID == igrac1Id || p.Igrac1ID == igrac2Id || p.Igrac2ID == igrac2Id);
-            var isIgrac2Paired = turnir.TurnirParovi.Any(p => p.Igrac1ID == igrac2Id || p.Igrac2ID == igrac2Id || p.Igrac1ID == igrac1Id || p.Igrac2ID == igrac1Id);
-            if (isIgrac1Paired || isIgrac2Paired)
+            bool jeNekoVecUParu = turnir.TurnirParovi.Any(p =>
+                p.Igrac1ID == igrac1Id || p.Igrac2ID == igrac1Id ||
+                p.Igrac1ID == igrac2Id || p.Igrac2ID == igrac2Id);
+            if (jeNekoVecUParu)
                 return (false, "Jedan od igrača je već prijavljen u nekom paru.");
 
             var noviPar = new TurnirPar

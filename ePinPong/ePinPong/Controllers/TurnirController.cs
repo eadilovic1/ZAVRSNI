@@ -569,11 +569,6 @@ namespace ePinPong.Controllers
                 return NotFound();
             }
 
-            if (!User.IsInRole(AppConstants.Roles.Administrator))
-            {
-                return Forbid();
-            }
-
             if (turnir.Registracije.Any())
             {
                 _context.Registracije.RemoveRange(turnir.Registracije);

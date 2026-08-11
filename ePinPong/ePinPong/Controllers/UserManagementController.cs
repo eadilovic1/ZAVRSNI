@@ -32,23 +32,31 @@ namespace ePinPong.Controllers
         // GET: /UserManagement
         public async Task<IActionResult> Index()
         {
-            var korisnici = await _userManager.Users.Where(u => u.Id != BracketService.SLOBODAN).ToListAsync();
-            var korisniciUloge = new List<UserRoleViewModel>();
+            var korisnici = await _userManager.Users
+                .Where(u => u.Id != BracketService.SLOBODAN)
+                .ToListAsync();
 
-            foreach (var user in korisnici)
+            // Batch-dohvat uloga jednim upitom umjesto N poziva GetRolesAsync.
+            // Join na AspNetUserRoles → AspNetRoles, grupisan po UserId.
+            var ulogePoKorisniku = await (
+                from ur in _context.UserRoles
+                join r  in _context.Roles on ur.RoleId equals r.Id
+                select new { ur.UserId, RoleName = r.Name }
+            ).GroupBy(x => x.UserId)
+             .ToDictionaryAsync(
+                 g => g.Key,
+                 g => g.Select(x => x.RoleName!).ToList());
+
+            var korisniciUloge = korisnici.Select(user => new UserRoleViewModel
             {
-                var uloge = await _userManager.GetRolesAsync(user);
-                korisniciUloge.Add(new UserRoleViewModel
-                {
-                    UserId = user.Id,
-                    Ime = user.Ime,
-                    Prezime = user.Prezime,
-                    Email = user.Email ?? string.Empty,
-                    Grad = user.Grad,
-                    Uloge = uloge.ToList(),
-                    IsGost = user.IsGost
-                });
-            }
+                UserId   = user.Id,
+                Ime      = user.Ime,
+                Prezime  = user.Prezime,
+                Email    = user.Email ?? string.Empty,
+                Grad     = user.Grad,
+                Uloge    = ulogePoKorisniku.TryGetValue(user.Id, out var uloge) ? uloge : new List<string>(),
+                IsGost   = user.IsGost
+            }).ToList();
 
             return View(korisniciUloge);
         }
