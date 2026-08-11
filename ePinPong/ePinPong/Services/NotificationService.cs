@@ -22,7 +22,16 @@ namespace ePinPong.Services
         {
             if (string.IsNullOrEmpty(userId)) return;
 
-            // 1. In-app notifikacija
+            if (posaljiEmail)
+            {
+                var korisnik = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                if (korisnik != null)
+                {
+                    await ObavijestiKorisnikaAsync(korisnik, naslov, poruka, emailPoruka, posaljiEmail);
+                    return;
+                }
+            }
+
             var notifikacija = new Notifikacija
             {
                 KorisnikId = userId,
@@ -31,16 +40,27 @@ namespace ePinPong.Services
                 Procitana = false
             };
             _context.Notifikacije.Add(notifikacija);
+        }
+
+        public async Task ObavijestiKorisnikaAsync(ApplicationUser korisnik, string naslov, string poruka, string? emailPoruka = null, bool posaljiEmail = true)
+        {
+            if (korisnik == null || string.IsNullOrEmpty(korisnik.Id)) return;
+
+            // 1. In-app notifikacija
+            var notifikacija = new Notifikacija
+            {
+                KorisnikId = korisnik.Id,
+                Sadrzaj = poruka,
+                DatumKreiranja = DateTime.Now,
+                Procitana = false
+            };
+            _context.Notifikacije.Add(notifikacija);
 
             // 2. Email notifikacija
-            if (posaljiEmail)
+            if (posaljiEmail && !string.IsNullOrEmpty(korisnik.Email))
             {
-                var korisnik = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-                if (korisnik != null && !string.IsNullOrEmpty(korisnik.Email))
-                {
-                    var mailText = emailPoruka ?? poruka;
-                    await _mailService.SendEmailAsync(korisnik.Email, naslov, mailText);
-                }
+                var mailText = emailPoruka ?? poruka;
+                await _mailService.SendEmailAsync(korisnik.Email, naslov, mailText);
             }
         }
     }

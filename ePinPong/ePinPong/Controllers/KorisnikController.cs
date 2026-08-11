@@ -106,13 +106,7 @@ namespace ePinPong.Controllers
                 .Where(l => l.Turniri.Any(t => t.Registracije.Any(r => r.KorisnikID == id)))
                 .ToList();
 
-            var ligeStandings = new List<KorisnikLigaStandingsViewModel>();
-            
-            foreach (var liga in relevantneLige)
-            {
-                var standing = await _leagueStandingsService.GetPlayerStandingAsync(liga, id);
-                ligeStandings.Add(standing);
-            }
+            var ligeStandings = await _leagueStandingsService.GetPlayersStandingsAsync(relevantneLige, id);
 
             var viewModel = new KorisnikTurniriViewModel
             {

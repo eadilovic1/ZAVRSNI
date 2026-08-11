@@ -342,20 +342,21 @@ namespace ePinPong.Controllers
                 // NAKON KREIRANJA - Posalji notifikacije pratiocima organizatora
                 var pratioci = await _context.Pracenja
                     .Where(p => p.PraceniID == turnir.OrganizatorId)
-                    .Select(p => p.PratilacID)
+                    .Include(p => p.Pratilac)
+                    .Select(p => p.Pratilac)
+                    .Where(u => u != null)
                     .ToListAsync();
 
                 var organizatorName = User.Identity?.Name ?? "Organizator";
 
-                foreach (var pratilacId in pratioci)
+                foreach (var korisnik in pratioci)
                 {
-                    var korisnik = await _userManager.FindByIdAsync(pratilacId);
-                    string? emailBody = korisnik != null && !string.IsNullOrEmpty(korisnik.Email)
+                    string? emailBody = !string.IsNullOrEmpty(korisnik!.Email)
                         ? $"Zdravo {korisnik.Ime},<br><br>Organizator <b>{organizatorName}</b> je objavio novi turnir: <b>{turnir.Naziv}</b>.<br>Datum pocetka: {turnir.DatumPocetka.ToShortDateString()}<br><br>Prijavite se odmah na ePinPong!"
                         : null;
 
                     await _notificationService.ObavijestiKorisnikaAsync(
-                        pratilacId,
+                        korisnik,
                         "Novi turnir na ePinPong!",
                         $"Organizator <strong>{organizatorName}</strong> je objavio novi turnir: <strong><a href='/Turnir/Details/{turnir.ID}'>{turnir.Naziv}</a></strong>!",
                         emailBody,

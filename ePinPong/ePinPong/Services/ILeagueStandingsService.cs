@@ -15,5 +15,8 @@ namespace ePinPong.Services
 
         // Zamjenjuje inline logiku u KorisnikController.Index
         Task<KorisnikLigaStandingsViewModel> GetPlayerStandingAsync(Liga liga, string korisnikId);
+
+        // Batch dohvat plasmana za igrača kroz više liga
+        Task<List<KorisnikLigaStandingsViewModel>> GetPlayersStandingsAsync(List<Liga> lige, string korisnikId);
     }
 }

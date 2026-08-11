@@ -52,29 +52,27 @@ namespace ePinPong.Services
             return playerPoints;
         }
 
-        public async Task<List<LigaStandingsViewModel>> GetLeagueTableAsync(Liga liga)
+        private List<LigaStandingsViewModel> IzracunajTabeluLige(List<Turnir> zavrseniTurniri)
         {
             var tabeleMap = new Dictionary<string, LigaStandingsViewModel>();
-            var sviKorisnici = await _context.Users.Where(u => u.Id != BracketService.SLOBODAN).ToListAsync();
 
-            foreach (var user in sviKorisnici)
+            // Populate tabeleMap dynamically using users from registrations of finished tournaments in this league
+            foreach (var turnir in zavrseniTurniri)
             {
-                tabeleMap[user.Id] = new LigaStandingsViewModel
+                foreach (var reg in turnir.Registracije)
                 {
-                    Korisnik = user,
-                    UkupnoBodova = 0,
-                    BrojOdigranihTurnira = 0,
-                    BodoviPoKolima = new List<int>()
-                };
+                    if (reg.Korisnik != null && reg.KorisnikID != BracketService.SLOBODAN && !tabeleMap.ContainsKey(reg.KorisnikID))
+                    {
+                        tabeleMap[reg.KorisnikID] = new LigaStandingsViewModel
+                        {
+                            Korisnik = reg.Korisnik,
+                            UkupnoBodova = 0,
+                            BrojOdigranihTurnira = 0,
+                            BodoviPoKolima = new List<int>()
+                        };
+                    }
+                }
             }
-
-            var zavrseniTurniri = await _context.Turniri
-                .Where(t => t.LigaID == liga.ID && t.Status == StatusTurnira.Zavrsen)
-                .Include(t => t.Registracije).ThenInclude(r => r.Korisnik)
-                .Include(t => t.Mecevi).ThenInclude(m => m.Igrac1)
-                .Include(t => t.Mecevi).ThenInclude(m => m.Igrac2)
-                .OrderBy(t => t.Kolo)
-                .ToListAsync();
 
             foreach (var turnir in zavrseniTurniri)
             {
@@ -102,6 +100,19 @@ namespace ePinPong.Services
                 .Where(v => v.BrojOdigranihTurnira > 0)
                 .OrderByDescending(v => v.UkupnoBodova)
                 .ToList();
+        }
+
+        public async Task<List<LigaStandingsViewModel>> GetLeagueTableAsync(Liga liga)
+        {
+            var zavrseniTurniri = await _context.Turniri
+                .Where(t => t.LigaID == liga.ID && t.Status == StatusTurnira.Zavrsen)
+                .Include(t => t.Registracije).ThenInclude(r => r.Korisnik)
+                .Include(t => t.Mecevi).ThenInclude(m => m.Igrac1)
+                .Include(t => t.Mecevi).ThenInclude(m => m.Igrac2)
+                .OrderBy(t => t.Kolo)
+                .ToListAsync();
+
+            return IzracunajTabeluLige(zavrseniTurniri);
         }
 
         public async Task<KorisnikLigaStandingsViewModel> GetPlayerStandingAsync(Liga liga, string korisnikId)
@@ -132,6 +143,65 @@ namespace ePinPong.Services
                 UkupnoUcesnika = standings.Count,
                 NijeZapoceo = true
             };
+        }
+
+        public async Task<List<KorisnikLigaStandingsViewModel>> GetPlayersStandingsAsync(List<Liga> lige, string korisnikId)
+        {
+            if (lige == null || !lige.Any()) return new List<KorisnikLigaStandingsViewModel>();
+
+            var ligaIds = lige.Select(l => l.ID).ToList();
+
+            // Load all completed tournaments for these leagues in a single batch query!
+            var allFinishedTournaments = await _context.Turniri
+                .Where(t => t.LigaID.HasValue && ligaIds.Contains(t.LigaID.Value) && t.Status == StatusTurnira.Zavrsen)
+                .Include(t => t.Registracije).ThenInclude(r => r.Korisnik)
+                .Include(t => t.Mecevi).ThenInclude(m => m.Igrac1)
+                .Include(t => t.Mecevi).ThenInclude(m => m.Igrac2)
+                .OrderBy(t => t.Kolo)
+                .ToListAsync();
+
+            var tournamentsByLeague = allFinishedTournaments
+                .GroupBy(t => t.LigaID!.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var result = new List<KorisnikLigaStandingsViewModel>();
+
+            foreach (var liga in lige)
+            {
+                tournamentsByLeague.TryGetValue(liga.ID, out var leagueTournaments);
+                leagueTournaments ??= new List<Turnir>();
+
+                var standings = IzracunajTabeluLige(leagueTournaments);
+                var index = standings.FindIndex(s => s.Korisnik.Id == korisnikId);
+
+                if (index >= 0)
+                {
+                    var mojStanding = standings[index];
+                    result.Add(new KorisnikLigaStandingsViewModel
+                    {
+                        Liga = liga,
+                        Pozicija = index + 1,
+                        UkupnoBodova = mojStanding.UkupnoBodova,
+                        BrojOdigranihTurnira = mojStanding.BrojOdigranihTurnira,
+                        UkupnoUcesnika = standings.Count,
+                        NijeZapoceo = false
+                    });
+                }
+                else
+                {
+                    result.Add(new KorisnikLigaStandingsViewModel
+                    {
+                        Liga = liga,
+                        Pozicija = 0,
+                        UkupnoBodova = 0,
+                        BrojOdigranihTurnira = 0,
+                        UkupnoUcesnika = standings.Count,
+                        NijeZapoceo = true
+                    });
+                }
+            }
+
+            return result;
         }
     }
 }
