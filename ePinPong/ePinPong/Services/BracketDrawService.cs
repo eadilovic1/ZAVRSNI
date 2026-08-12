@@ -114,7 +114,7 @@ namespace ePinPong.Services
             return mecevi;
         }
 
-        public static List<string?> RasporediSaSlobodanom(List<string?> players, int bracketSize, Random rng, string? filler = BracketService.SLOBODAN)
+        public static List<string?> RasporediSaSlobodanom(List<string?> players, int bracketSize, Func<int> nextInt, string? filler = BracketService.SLOBODAN)
         {
             int pCount = players.Count;
             int slobodanCount = bracketSize - pCount;
@@ -125,7 +125,7 @@ namespace ePinPong.Services
 
             if (pCount == 0) return result.ToList();
 
-            var pairIndices = Enumerable.Range(0, pairCount).OrderBy(_ => rng.Next()).ToList();
+            var pairIndices = Enumerable.Range(0, pairCount).OrderBy(_ => nextInt()).ToList();
 
             if (slobodanCount <= pairCount)
             {

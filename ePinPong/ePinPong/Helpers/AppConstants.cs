@@ -29,11 +29,13 @@ namespace ePinPong
         /// </summary>
         public static class MatchCodePrefixes
         {
-            public const string Zavrsnica = "Z_";
-            public const string Placement = "PL_";
-            public const string Utjesni = "UT_";
-            public const string UtjesniRoundRobin = "UT_RR_";
-            public const string UtjesniPlacement = "UT_PL_";
+            public const string Zavrsnica          = "Z_";
+            public const string Placement          = "PL_";
+            public const string Utjesni            = "UT_";
+            public const string UtjesniRoundRobin  = "UT_RR_";
+            public const string UtjesniPlacement   = "UT_PL_";
+            public const string ParTurnir          = "PAR_";
+            public const string ParTurnirRoundRobin = "PAR_RR_";
         }
     }
 }
