@@ -114,43 +114,14 @@ namespace ePinPong.Services
             return mecevi;
         }
 
-        public static List<string?> RasporediBye(List<string?> players, int bracketSize, Random rng)
-        {
-            int pCount = players.Count;
-            int byeCount = bracketSize - pCount;
-            int pairCount = bracketSize / 2;
-
-            var pairIndices = Enumerable.Range(0, pairCount).OrderBy(_ => rng.Next()).ToList();
-            var byePairSet = new HashSet<int>(pairIndices.Take(byeCount));
-
-            var result = new string?[bracketSize];
-            int playerIdx = 0;
-
-            for (int i = 0; i < pairCount; i++)
-            {
-                if (byePairSet.Contains(i))
-                {
-                    result[2 * i] = players[playerIdx++];
-                    result[2 * i + 1] = null;
-                }
-                else
-                {
-                    result[2 * i] = players[playerIdx++];
-                    result[2 * i + 1] = players[playerIdx++];
-                }
-            }
-
-            return result.ToList();
-        }
-
-        public static List<string?> RasporediSaSlobodanom(List<string?> players, int bracketSize, Random rng)
+        public static List<string?> RasporediSaSlobodanom(List<string?> players, int bracketSize, Random rng, string? filler = BracketService.SLOBODAN)
         {
             int pCount = players.Count;
             int slobodanCount = bracketSize - pCount;
             int pairCount = bracketSize / 2;
 
             var result = new string?[bracketSize];
-            for (int i = 0; i < bracketSize; i++) result[i] = BracketService.SLOBODAN;
+            for (int i = 0; i < bracketSize; i++) result[i] = filler;
 
             if (pCount == 0) return result.ToList();
 
@@ -166,7 +137,7 @@ namespace ePinPong.Services
                     if (slobodanPairs.Contains(i))
                     {
                         result[2 * i] = players[playerIdx++];
-                        result[2 * i + 1] = BracketService.SLOBODAN;
+                        result[2 * i + 1] = filler;
                     }
                     else
                     {
@@ -185,12 +156,12 @@ namespace ePinPong.Services
                     if (playerPairs.Contains(i))
                     {
                         result[2 * i] = players[playerIdx++];
-                        result[2 * i + 1] = BracketService.SLOBODAN;
+                        result[2 * i + 1] = filler;
                     }
                     else
                     {
-                        result[2 * i] = BracketService.SLOBODAN;
-                        result[2 * i + 1] = BracketService.SLOBODAN;
+                        result[2 * i] = filler;
+                        result[2 * i + 1] = filler;
                     }
                 }
             }
