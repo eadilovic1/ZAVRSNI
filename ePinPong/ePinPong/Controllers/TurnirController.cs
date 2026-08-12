@@ -148,12 +148,7 @@ namespace ePinPong.Controllers
             var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
 
             var lige = _context.Lige.Include(l => l.Turniri).ToList();
-            var dostupneLige = GetDostupneLige(lige, isAdmin, userId, ligaId);
-
-            ViewBag.Lige = dostupneLige.ToSelectList(
-                l => l.ID.ToString(),
-                l => l.Naziv,
-                optionLabel: "Ne pripada nijednoj ligi (Samostalni turnir)");
+            PopuniViewBagZaLigeSelect(lige, isAdmin, userId, ligaId);
 
             var standaloneSunday = LigaTurnirHelper.GetDefaultStandaloneTurnirDatum();
             var standaloneStartStr = standaloneSunday.AddHours(9).AddMinutes(30).ToString("yyyy-MM-ddTHH:mm");
@@ -345,12 +340,7 @@ namespace ePinPong.Controllers
 
             var isAdmin = User.IsInRole(AppConstants.Roles.Administrator);
             var sveLige = _context.Lige.Include(l => l.Turniri).ToList();
-            var dostupneLige = GetDostupneLige(sveLige, isAdmin, userId, turnir.LigaID);
-            ViewBag.Lige = dostupneLige.ToSelectList(
-                l => l.ID.ToString(),
-                l => l.Naziv,
-                turnir.LigaID?.ToString(),
-                "Ne pripada nijednoj ligi (Samostalni turnir)");
+            PopuniViewBagZaLigeSelect(sveLige, isAdmin, userId, turnir.LigaID);
 
             return View(turnir);
         }
@@ -393,13 +383,7 @@ namespace ePinPong.Controllers
                 .Include(l => l.Turniri)
                 .ToListAsync();
 
-            var dostupneLige = GetDostupneLige(sveLige, isAdmin, userId, turnir.LigaID);
-
-            ViewBag.Lige = dostupneLige.ToSelectList(
-                l => l.ID.ToString(),
-                l => l.Naziv,
-                turnir.LigaID?.ToString(),
-                "Ne pripada nijednoj ligi (Samostalni turnir)");
+            PopuniViewBagZaLigeSelect(sveLige, isAdmin, userId, turnir.LigaID);
 
             var odabranaLiga = turnir.LigaID.HasValue ? sveLige.FirstOrDefault(l => l.ID == turnir.LigaID.Value) : null;
             ViewBag.IsMasters = odabranaLiga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(odabranaLiga);
@@ -515,13 +499,7 @@ namespace ePinPong.Controllers
                 .Include(l => l.Turniri)
                 .ToListAsync();
 
-            var dostupneLige = GetDostupneLige(sveLige, isAdmin, userId, turnir.LigaID);
-
-            ViewBag.Lige = dostupneLige.ToSelectList(
-                l => l.ID.ToString(),
-                l => l.Naziv,
-                turnir.LigaID?.ToString(),
-                "Ne pripada nijednoj ligi (Samostalni turnir)");
+            PopuniViewBagZaLigeSelect(sveLige, isAdmin, userId, turnir.LigaID);
 
             var postojecaLiga = turnir.LigaID.HasValue ? sveLige.FirstOrDefault(l => l.ID == turnir.LigaID.Value) : null;
             ViewBag.IsMasters = postojecaLiga != null && turnir.Kolo.HasValue && turnir.Kolo.Value == LigaTurnirHelper.GetMastersKolo(postojecaLiga);
@@ -641,6 +619,16 @@ namespace ePinPong.Controllers
                     ((l.OrganizatorId == userId || !l.Turniri.Any() || l.Turniri.Any(t => t.OrganizatorId == userId))
                      && LigaTurnirHelper.CanCreateRegular(l)))
                 .ToList();
+        }
+
+        private void PopuniViewBagZaLigeSelect(List<Liga> lige, bool isAdmin, string? userId, int? trenutnaLigaId = null)
+        {
+            var dostupneLige = GetDostupneLige(lige, isAdmin, userId, trenutnaLigaId);
+            ViewBag.Lige = dostupneLige.ToSelectList(
+                l => l.ID.ToString(),
+                l => l.Naziv,
+                trenutnaLigaId?.ToString(),
+                "Ne pripada nijednoj ligi (Samostalni turnir)");
         }
 
         private bool TurnirExists(int id)

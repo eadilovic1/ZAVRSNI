@@ -9,6 +9,41 @@ namespace ePinPong.Helpers
     {
         public static int GetMastersKolo(Liga liga) => liga.BrojRegularnihTurnira + 1;
 
+        public static Turnir BuildStandardTurnir(Liga liga, int kolo, string organizatorId, bool isMasters = false)
+        {
+            if (liga == null) throw new ArgumentNullException(nameof(liga));
+
+            DateTime targetSunday = isMasters
+                ? GetNextTurnirDatumForLiga(liga)
+                : GetRegularTurnirDatum(liga, kolo);
+
+            DateTime datumPocetka = targetSunday.AddHours(10);
+            DateTime datumKraja = targetSunday.AddHours(18);
+
+            string naziv = isMasters
+                ? "ZAVRŠNI MASTERS"
+                : $"{liga.Naziv} - Kolo {kolo}";
+
+            string opis = isMasters
+                ? $"Završni Masters turnir za {liga.Naziv}."
+                : $"Mjesečni ligaški turnir za {liga.Naziv}. Kolo {kolo} od {liga.BrojRegularnihTurnira}. Nakon odigravanja svih kola, najbolji igrači će se plasirati na završni Masters.";
+
+            return new Turnir
+            {
+                Naziv = naziv,
+                Status = StatusTurnira.Planiran,
+                DatumPocetka = datumPocetka,
+                DatumKraja = datumKraja,
+                MaxIgraca = 64,
+                Lokacija = "Klupska Dvorana ePinPong",
+                Opis = opis,
+                LigaID = liga.ID,
+                Kolo = isMasters ? GetMastersKolo(liga) : kolo,
+                OrganizatorId = organizatorId ?? string.Empty,
+                SlikaUrl = AppConstants.DefaultTurnirSlikaUrl
+            };
+        }
+
         public static bool IsMastersTurnir(Turnir turnir, Liga liga)
             => turnir.Kolo == GetMastersKolo(liga);
 

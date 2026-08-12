@@ -112,7 +112,7 @@ namespace ePinPong.Controllers
                 return Forbid();
             }
 
-            var mastersKoloForLiga = liga.BrojRegularnihTurnira + 1;
+            var mastersKoloForLiga = LigaTurnirHelper.GetMastersKolo(liga);
             var completedRegularCount = await _context.Turniri
                 .CountAsync(t => t.LigaID == liga.ID && t.Status == StatusTurnira.Zavrsen && t.Kolo.HasValue && t.Kolo.Value != mastersKoloForLiga);
 
@@ -149,7 +149,7 @@ namespace ePinPong.Controllers
                 liga.BrojRegularnihTurnira = existingLiga.BrojRegularnihTurnira;
             }
 
-            var mastersKoloForExisting = existingLiga.BrojRegularnihTurnira + 1;
+            var mastersKoloForExisting = LigaTurnirHelper.GetMastersKolo(existingLiga);
             var completedRegularCount = await _context.Turniri
                 .CountAsync(t => t.LigaID == existingLiga.ID && t.Status == StatusTurnira.Zavrsen && t.Kolo.HasValue && t.Kolo.Value != mastersKoloForExisting);
             var minAllowed = Math.Max(1, completedRegularCount);
@@ -219,27 +219,12 @@ namespace ePinPong.Controllers
 
                 if (autoGenerisiTurnire)
                 {
-                    var userId = _userManager.GetUserId(User);
+                    var userId = _userManager.GetUserId(User) ?? string.Empty;
                     int brojKola = liga.BrojRegularnihTurnira;
 
                     for (int kolo = 1; kolo <= brojKola; kolo++)
                     {
-                        var lastSunday = LigaTurnirHelper.GetRegularTurnirDatum(liga, kolo);
-
-                        var turnir = new Turnir
-                        {
-                            Naziv = $"{liga.Naziv} - Kolo {kolo}",
-                            Status = StatusTurnira.Planiran,
-                            DatumPocetka = lastSunday.AddHours(10),
-                            DatumKraja = lastSunday.AddHours(18),
-                            MaxIgraca = 64,
-                            Lokacija = "Klupska Dvorana ePinPong",
-                            Opis = $"Mjesečni ligaški turnir za {liga.Naziv}. Kolo {kolo} od {brojKola}. Nakon odigravanja svih kola, najbolji igrači će se plasirati na završni Masters.",
-                            LigaID = liga.ID,
-                            Kolo = kolo,
-                            OrganizatorId = userId ?? string.Empty,
-                            SlikaUrl = AppConstants.DefaultTurnirSlikaUrl
-                        };
+                        var turnir = LigaTurnirHelper.BuildStandardTurnir(liga, kolo, userId, isMasters: false);
                         _context.Turniri.Add(turnir);
                     }
 
@@ -285,25 +270,7 @@ namespace ePinPong.Controllers
                 return Forbid();
             }
 
-            // Izračunaj datum mastersa: zadnja nedjelja u mjesecu nakon zadnjeg turnira u ligi
-            var zadnjaNedjelja = LigaTurnirHelper.GetNextTurnirDatumForLiga(liga);
-            var mastersStart = zadnjaNedjelja.AddHours(10);
-            var mastersEnd = mastersStart.AddHours(8);
-
-            var turnir = new Turnir
-            {
-                Naziv = "ZAVRŠNI MASTERS",
-                Status = StatusTurnira.Planiran,
-                DatumPocetka = mastersStart,
-                DatumKraja = mastersEnd,
-                MaxIgraca = 64,
-                Lokacija = "Klupska Dvorana ePinPong",
-                Opis = $"Završni Masters turnir za {liga.Naziv}.",
-                LigaID = liga.ID,
-                Kolo = LigaTurnirHelper.GetMastersKolo(liga),
-                OrganizatorId = userId,
-                SlikaUrl = AppConstants.DefaultTurnirSlikaUrl,
-            };
+            var turnir = LigaTurnirHelper.BuildStandardTurnir(liga, LigaTurnirHelper.GetMastersKolo(liga), userId, isMasters: true);
 
             _context.Turniri.Add(turnir);
             await _context.SaveChangesAsync();
