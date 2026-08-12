@@ -5,12 +5,12 @@ using System.Text.Json;
 
 namespace ePinPong.Services
 {
-    public class SesiranjeService : ISesiranjeService
+    public class SeedingPotsService : ISeedingPotsService
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<SesiranjeService> _logger;
+        private readonly ILogger<SeedingPotsService> _logger;
 
-        public SesiranjeService(ApplicationDbContext context, ILogger<SesiranjeService> logger)
+        public SeedingPotsService(ApplicationDbContext context, ILogger<SeedingPotsService> logger)
         {
             _context = context;
             _logger = logger;

@@ -24,7 +24,7 @@ namespace ePinPong.Controllers
         private readonly ILeagueStandingsService _leagueStandingsService;
         private readonly ITurnirCompletionService _turnirCompletionService;
         private readonly IAuthorizationService _authorizationService;
-        private readonly ISesiranjeService _sesiranjeService;
+        private readonly ISeedingPotsService _seedingPotsService;
         private readonly ILogger<MecController> _logger;
 
         public MecController(
@@ -36,7 +36,7 @@ namespace ePinPong.Controllers
             ILeagueStandingsService leagueStandingsService,
             ITurnirCompletionService turnirCompletionService,
             IAuthorizationService authorizationService,
-            ISesiranjeService sesiranjeService,
+            ISeedingPotsService seedingPotsService,
             ILogger<MecController> logger)
         {
             _context = context;
@@ -47,7 +47,7 @@ namespace ePinPong.Controllers
             _leagueStandingsService = leagueStandingsService;
             _turnirCompletionService = turnirCompletionService;
             _authorizationService = authorizationService;
-            _sesiranjeService = sesiranjeService;
+            _seedingPotsService = seedingPotsService;
             _logger = logger;
         }
 
@@ -81,7 +81,7 @@ namespace ePinPong.Controllers
             // Snimi ili auto-generiši šešire
             if (!string.IsNullOrEmpty(playerPotsJson))
             {
-                bool uspjelo = await _sesiranjeService.PrimijeniSesireAsync(turnir, playerPotsJson);
+                bool uspjelo = await _seedingPotsService.PrimijeniSesireAsync(turnir, playerPotsJson);
                 if (!uspjelo)
                 {
                     _logger.LogWarning("Parsiranje šešira nije uspjelo za turnir {TurnirId}, prelazim na automatski raspored.", turnirId);

@@ -20,7 +20,7 @@ namespace ePinPong.Controllers
         private readonly IAuthorizationService _authorizationService;
         private readonly ILogger<RegistracijaController> _logger;
         private readonly INotificationService _notificationService;
-        private readonly ISesiranjeService _sesiranjeService;
+        private readonly ISeedingPotsService _seedingPotsService;
 
         public RegistracijaController(
             ApplicationDbContext context,
@@ -28,14 +28,14 @@ namespace ePinPong.Controllers
             IAuthorizationService authorizationService,
             ILogger<RegistracijaController> logger,
             INotificationService notificationService,
-            ISesiranjeService sesiranjeService)
+            ISeedingPotsService seedingPotsService)
         {
             _context = context;
             _userManager = userManager;
             _authorizationService = authorizationService;
             _logger = logger;
             _notificationService = notificationService;
-            _sesiranjeService = sesiranjeService;
+            _seedingPotsService = seedingPotsService;
         }
 
         // POST: /Registracija/Registracija/5
@@ -364,7 +364,7 @@ namespace ePinPong.Controllers
 
             if (!string.IsNullOrEmpty(playerPotsJson))
             {
-                bool uspjelo = await _sesiranjeService.PrimijeniSesireAsync(turnir, playerPotsJson);
+                bool uspjelo = await _seedingPotsService.PrimijeniSesireAsync(turnir, playerPotsJson);
                 if (!uspjelo)
                 {
                     _logger.LogWarning("Parsiranje šešira nije uspjelo za turnir {TurnirId}.", turnirId);

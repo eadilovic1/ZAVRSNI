@@ -55,7 +55,7 @@ builder.Services.AddScoped<ILeagueStandingsService, LeagueStandingsService>();
 builder.Services.AddScoped<IMastersRegistrationService, MastersRegistrationService>();
 builder.Services.AddScoped<ITurnirCompletionService, TurnirCompletionService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<ISesiranjeService, SesiranjeService>();
+builder.Services.AddScoped<ISeedingPotsService, SeedingPotsService>();
 builder.Services.AddScoped<ITurnirCreatedNotifierService, TurnirCreatedNotifierService>();
 
 // Antiforgery konfiguracija za AJAX/fetch pozive

@@ -5,7 +5,7 @@ namespace ePinPong.Services
     /// <summary>
     /// Servis za primjenu šešira (pot assignment) na registracije turnira.
     /// </summary>
-    public interface ISesiranjeService
+    public interface ISeedingPotsService
     {
         /// <summary>
         /// Parsira playerPotsJson i primjenjuje šešire na registracije turnira.
