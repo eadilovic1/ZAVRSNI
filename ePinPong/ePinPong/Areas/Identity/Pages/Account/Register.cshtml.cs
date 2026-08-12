@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using ePinPong;
 using ePinPong.Models;
 
 namespace ePinPong.Areas.Identity.Pages.Account
@@ -98,14 +99,14 @@ namespace ePinPong.Areas.Identity.Pages.Account
                     _logger.LogInformation("Korisnik je kreirao novi račun sa lozinkom.");
 
                     // Automatsko dodjeljivanje uloge Korisnik
-                    await _userManager.AddToRoleAsync(user, "Korisnik");
+                    await _userManager.AddToRoleAsync(user, AppConstants.Roles.Korisnik);
 
                     await _signInManager.SignInAsync(user, isPersistent: false);
                     return LocalRedirect(returnUrl);
                 }
                 foreach (var error in result.Errors)
                 {
-                    ModelState.AddModelError(string.Empty, TranslateError(error.Description));
+                    ModelState.AddModelError(string.Empty, TranslateError(error));
                 }
             }
 
@@ -113,13 +114,13 @@ namespace ePinPong.Areas.Identity.Pages.Account
             return Page();
         }
 
-        private string TranslateError(string description)
+        private string TranslateError(IdentityError error)
         {
-            if (description.Contains("is already taken"))
+            if (error.Code == "DuplicateUserName" || error.Code == "DuplicateEmail")
                 return "Email adresa je već u upotrebi.";
-            if (description.Contains("Password requires"))
+            if (error.Code == "PasswordRequiresDigit")
                 return "Lozinka mora sadržavati barem jednu cifru (0-9).";
-            return description;
+            return error.Description;
         }
     }
 }

@@ -1,3 +1,4 @@
+using ePinPong.Helpers;
 using ePinPong.Models;
 using ePinPong.Models.ViewModels;
 using System;
@@ -221,11 +222,7 @@ namespace ePinPong.Services
 
                     var stats = IzracunajStatistikuIgraca(meceviGrupe, igraciGrupe!);
 
-                    var sorted = stats
-                        .OrderByDescending(x => x.Wins)
-                        .ThenByDescending(x => x.SetDiff)
-                        .ThenByDescending(x => x.SetsWon)
-                        .ToList();
+                    var sorted = stats.BySportskiPlasman().ToList();
 
                     int groupRank = 1;
                     foreach (var item in sorted)
@@ -246,9 +243,7 @@ namespace ePinPong.Services
             else if (!zavrsniMecevi.Any() && !utjesniMecevi.Any() && grupniMecevi.Any() && brojGrupa == 1)
             {
                 var sortedGroup = IzracunajStatistikuIgraca(grupniMecevi, grupnaFazaIds)
-                    .OrderByDescending(x => x.Wins)
-                    .ThenByDescending(x => x.SetDiff)
-                    .ThenByDescending(x => x.SetsWon)
+                    .BySportskiPlasman()
                     .ToList();
 
                 int pos = 1;
@@ -302,9 +297,7 @@ namespace ePinPong.Services
                     .ToList();
 
                 var sortedStats = IzracunajStatistikuIgraca(groupList, playersInGroup)
-                    .OrderByDescending(s => s.Wins)
-                    .ThenByDescending(s => s.SetDiff)
-                    .ThenByDescending(s => s.SetsWon)
+                    .BySportskiPlasman()
                     .ToList();
 
                 foreach (var item in sortedStats)
@@ -368,9 +361,7 @@ namespace ePinPong.Services
             if (preostaliGrupnaFaza.Any())
             {
                 var sortedGroup = IzracunajStatistikuIgraca(grupniMecevi, preostaliGrupnaFaza)
-                    .OrderByDescending(x => x.Wins)
-                    .ThenByDescending(x => x.SetDiff)
-                    .ThenByDescending(x => x.SetsWon)
+                    .BySportskiPlasman()
                     .ToList();
 
                 foreach (var item in sortedGroup)
@@ -514,9 +505,7 @@ namespace ePinPong.Services
                 var stats = IzracunajStatistikuIgraca(meceviGrupe, igraciIds);
 
                 var rows = stats
-                    .OrderByDescending(x => x.Wins)
-                    .ThenByDescending(x => x.SetDiff)
-                    .ThenByDescending(x => x.SetsWon)
+                    .BySportskiPlasman()
                     .Select(x =>
                     {
                         // Pronađi podatke o igraču iz prvog meča u kojem učestvuje
@@ -601,9 +590,7 @@ namespace ePinPong.Services
                 var stats = IzracunajStatistikuParova(meceviGrupe, paroviSet);
 
                 var rows = stats
-                    .OrderByDescending(x => x.Pobjede)
-                    .ThenByDescending(x => x.SetRazlika)
-                    .ThenByDescending(x => x.OsvojeniSetovi)
+                    .BySportskiPlasman(x => x.Pobjede, x => x.SetRazlika, x => x.OsvojeniSetovi)
                     .Select(x => new PairStandingViewModel
                     {
                         Igrac1Id       = x.I1Id,

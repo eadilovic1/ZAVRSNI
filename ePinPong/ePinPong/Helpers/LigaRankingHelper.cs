@@ -1,11 +1,12 @@
 using ePinPong.Data;
 using ePinPong.Models;
+using ePinPong.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace ePinPong.Services
+namespace ePinPong.Helpers
 {
     public static class LigaRankingHelper
     {

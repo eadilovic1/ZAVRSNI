@@ -2,6 +2,7 @@ using ePinPong.Models;
 using ePinPong.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,8 +12,14 @@ namespace ePinPong.Data
 {
     public static class DbSeeder
     {
-        public static async Task SeedAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public static async Task SeedAsync(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager,
+            IConfiguration? configuration = null)
         {
+            string defaultPassword = configuration?["SeedData:DefaultPassword"] ?? "Admin007.";
+
             // 1. Seed Uloga (Roles)
             string[] uloge = { AppConstants.Roles.Administrator, AppConstants.Roles.Organizator, AppConstants.Roles.Korisnik };
             foreach (var uloga in uloge)
@@ -24,89 +31,82 @@ namespace ePinPong.Data
             }
 
             // 2. Seed Korisnika
-            var adminUser = await userManager.FindByEmailAsync("admin@epinpong.com");
-            if (adminUser == null)
-            {
-                adminUser = new ApplicationUser
-                {
-                    UserName = "admin@epinpong.com",
-                    Email = "admin@epinpong.com",
-                    EmailConfirmed = true,
-                    Ime = "Admin",
-                    Prezime = "Babo",
-                    Grad = "Sarajevo",
-                    DatumRodjenja = new DateTime(1990, 1, 1),
-                    DatumRegistracije = DateTime.Now
-                };
-                var result = await userManager.CreateAsync(adminUser, "Admin007.");
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(adminUser, AppConstants.Roles.Administrator);
-                }
-            }
+            await CreateSeedUserIfNotExistsAsync(
+                userManager,
+                "admin@epinpong.com",
+                defaultPassword,
+                "Admin",
+                "Babo",
+                "Sarajevo",
+                new DateTime(1990, 1, 1),
+                AppConstants.Roles.Administrator);
 
-            var orgUser = await userManager.FindByEmailAsync("organizator@epinpong.com");
-            if (orgUser == null)
-            {
-                orgUser = new ApplicationUser
-                {
-                    UserName = "organizator@epinpong.com",
-                    Email = "organizator@epinpong.com",
-                    EmailConfirmed = true,
-                    Ime = "Organizator",
-                    Prezime = "Turnira",
-                    Grad = "Tuzla",
-                    DatumRodjenja = new DateTime(1985, 5, 12),
-                    DatumRegistracije = DateTime.Now
-                };
-                var result = await userManager.CreateAsync(orgUser, "Admin007.");
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRolesAsync(orgUser, new[] { "Organizator", "Korisnik" });
-                }
-            }
+            await CreateSeedUserIfNotExistsAsync(
+                userManager,
+                "organizator@epinpong.com",
+                defaultPassword,
+                "Organizator",
+                "Turnira",
+                "Tuzla",
+                new DateTime(1985, 5, 12),
+                AppConstants.Roles.Organizator,
+                AppConstants.Roles.Korisnik);
 
             // Podrška za stare skripte koje koriste org@epinpong.com
-            var legacyOrgUser = await userManager.FindByEmailAsync("org@epinpong.com");
-            if (legacyOrgUser == null)
-            {
-                legacyOrgUser = new ApplicationUser
-                {
-                    UserName = "org@epinpong.com",
-                    Email = "org@epinpong.com",
-                    EmailConfirmed = true,
-                    Ime = "Toni",
-                    Prezime = "Kukoč",
-                    Grad = "Split",
-                    DatumRodjenja = new DateTime(1985, 5, 12),
-                    DatumRegistracije = DateTime.Now
-                };
-                await userManager.CreateAsync(legacyOrgUser, "Admin007.");
-                await userManager.AddToRolesAsync(legacyOrgUser, new[] { "Organizator", "Korisnik" });
-            }
+            await CreateSeedUserIfNotExistsAsync(
+                userManager,
+                "org@epinpong.com",
+                defaultPassword,
+                "Toni",
+                "Kukoč",
+                "Split",
+                new DateTime(1985, 5, 12),
+                AppConstants.Roles.Organizator,
+                AppConstants.Roles.Korisnik);
 
-            var defaultIgrac = await userManager.FindByEmailAsync("igrac@epinpong.com");
-            if (defaultIgrac == null)
-            {
-                defaultIgrac = new ApplicationUser
-                {
-                    UserName = "igrac@epinpong.com",
-                    Email = "igrac@epinpong.com",
-                    EmailConfirmed = true,
-                    Ime = "Igrač",
-                    Prezime = "Pro",
-                    Grad = "Sarajevo",
-                    DatumRodjenja = new DateTime(1995, 2, 2),
-                    DatumRegistracije = DateTime.Now
-                };
-                var result = await userManager.CreateAsync(defaultIgrac, "Admin007.");
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(defaultIgrac, "Korisnik");
-                }
-            }
+            await CreateSeedUserIfNotExistsAsync(
+                userManager,
+                "igrac@epinpong.com",
+                defaultPassword,
+                "Igrač",
+                "Pro",
+                "Sarajevo",
+                new DateTime(1995, 2, 2),
+                AppConstants.Roles.Korisnik);
 
             await EnsureSlobodanUserExistsAsync(context);
+        }
+
+        private static async Task CreateSeedUserIfNotExistsAsync(
+            UserManager<ApplicationUser> userManager,
+            string email,
+            string password,
+            string ime,
+            string prezime,
+            string grad,
+            DateTime datumRodjenja,
+            params string[] uloge)
+        {
+            var user = await userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true,
+                    Ime = ime,
+                    Prezime = prezime,
+                    Grad = grad,
+                    DatumRodjenja = datumRodjenja,
+                    DatumRegistracije = DateTime.Now
+                };
+                var result = await userManager.CreateAsync(user, password);
+                if (result.Succeeded && uloge != null && uloge.Length > 0)
+                {
+                    await userManager.AddToRolesAsync(user, uloge);
+                }
+            }
         }
 
         public static async Task EnsureSlobodanUserExistsAsync(ApplicationDbContext context)

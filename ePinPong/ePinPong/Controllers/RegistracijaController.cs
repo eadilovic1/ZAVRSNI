@@ -271,7 +271,7 @@ namespace ePinPong.Controllers
                 return RedirectToAction("Details", "Turnir", new { id = turnirId });
             }
 
-            await _userManager.AddToRoleAsync(gostUser, "Korisnik");
+            await _userManager.AddToRoleAsync(gostUser, AppConstants.Roles.Korisnik);
 
             var registracija = new Registracija
             {

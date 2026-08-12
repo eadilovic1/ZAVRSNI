@@ -89,7 +89,7 @@
                                 <h5 class="text-white fw-bold mb-3"><i class="bi bi-sliders text-orange me-2"></i>Format i Sistem Turnira</h5>
 
                                 @{
-                                    var isMastersTurnir = (ViewBag.IsMasters as bool? == true) || (Model.Liga != null && Model.Kolo.HasValue && Model.Kolo.Value == ePinPong.Services.LigaTurnirHelper.GetMastersKolo(Model.Liga));
+                                    var isMastersTurnir = (ViewBag.IsMasters as bool? == true) || (Model.Liga != null && Model.Kolo.HasValue && Model.Kolo.Value == ePinPong.Helpers.LigaTurnirHelper.GetMastersKolo(Model.Liga));
                                 }
                                 @if (isMastersTurnir)
                                 {

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ePinPong.Services
+namespace ePinPong.Helpers
 {
     public static class LigaTurnirHelper
     {

@@ -87,8 +87,10 @@ using (var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
+        var configuration = services.GetRequiredService<IConfiguration>();
+
         // Asinhroni seeding podataka
-        await DbSeeder.SeedAsync(context, userManager, roleManager);
+        await DbSeeder.SeedAsync(context, userManager, roleManager, configuration);
     }
     catch (Exception ex)
     {
