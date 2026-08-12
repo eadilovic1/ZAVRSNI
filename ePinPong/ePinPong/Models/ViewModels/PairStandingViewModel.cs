@@ -1,12 +1,12 @@
-﻿using ePinPong.Models;
+using ePinPong.Models;
 
 namespace ePinPong.Models.ViewModels
 {
     /// <summary>
     /// Jedan red u tabeli grupnih standings-a turnira parova (dublova).
-    /// Analogno GroupStandingRow koji se koristi za singl grupe.
+    /// Analogno GroupStandingViewModel koji se koristi za singl grupe.
     /// </summary>
-    public class PairStandingRow
+    public class PairStandingViewModel
     {
         public string Igrac1Id { get; set; } = string.Empty;
         public string Igrac2Id { get; set; } = string.Empty;

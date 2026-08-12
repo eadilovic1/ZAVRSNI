@@ -1,4 +1,4 @@
-﻿@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
+@model ePinPong.Models.ViewModels.TurnirDetailsViewModel
 
 @{
     var meceviPoGrupamaMasters = Model.GrupniMecevi.GroupBy(m => m.NazivGrupe).OrderBy(g => g.Key).ToList();
@@ -53,7 +53,7 @@
                     // ÄŒitamo direktno umjesto ponovnog raÄunanja sa List<dynamic>.
                     var sortedRecords = Model.GroupStandings.TryGetValue(gNaziv, out var gsRows)
                         ? gsRows
-                        : new List<ePinPong.Models.ViewModels.GroupStandingRow>();
+                        : new List<ePinPong.Models.ViewModels.GroupStandingViewModel>();
 
                     <div class="tab-pane fade @(gIdx == 0 ? "show active" : "")" id="podium-pane-@gSlug" role="tabpanel" aria-labelledby="podium-tab-@gSlug">
                         <h5 class="text-orange fw-bold mb-3"><i class="bi bi-award-fill me-2"></i>PobjedniÄki podijum - @gNaziv</h5>

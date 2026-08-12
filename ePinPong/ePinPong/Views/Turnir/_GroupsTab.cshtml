@@ -21,7 +21,7 @@
             var meceviGrupe = grupaGroup.ToList();
             var sortiraniStandings = Model.GroupStandings.TryGetValue(nazivGrupe, out var standings)
                 ? standings
-                : new List<ePinPong.Models.ViewModels.GroupStandingRow>();
+                : new List<ePinPong.Models.ViewModels.GroupStandingViewModel>();
 
             <div class="mb-5 p-3 rounded-4 bg-dark-card border border-dark-glow shadow-sm">
                 <div class="d-flex justify-content-between align-items-center mb-3">

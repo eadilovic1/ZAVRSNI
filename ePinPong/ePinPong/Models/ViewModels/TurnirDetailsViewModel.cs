@@ -16,8 +16,8 @@ namespace ePinPong.Models.ViewModels
         public string? CurrentUserId { get; set; }
         public List<TurnirPlasmanViewModel> Ranking { get; set; } = new();
         public Dictionary<string, int> PlayerPoints { get; set; } = new();
-        public Dictionary<string, List<GroupStandingRow>> GroupStandings { get; set; } = new();
-        public Dictionary<string, List<PairStandingRow>> PairGroupStandings { get; set; } = new();
+        public Dictionary<string, List<GroupStandingViewModel>> GroupStandings { get; set; } = new();
+        public Dictionary<string, List<PairStandingViewModel>> PairGroupStandings { get; set; } = new();
         public List<SelectListItem> SlobodniKorisnici { get; set; } = new();
         public List<SelectListItem> LigeZaSeeding { get; set; } = new();
         public List<SelectListItem> TurniriZaSeeding { get; set; } = new();

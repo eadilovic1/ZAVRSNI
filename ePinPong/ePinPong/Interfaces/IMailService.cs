@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace ePinPong.Interfaces
+namespace ePinPong.Services
 {
     public interface IMailService
     {

@@ -483,12 +483,12 @@ namespace ePinPong.Services
         }
 
         /// <summary>
-        /// Za svaku grupu u turniru vraća sortiranu listu <see cref="GroupStandingRow"/>
+        /// Za svaku grupu u turniru vraća sortiranu listu <see cref="GroupStandingViewModel"/>
         /// (po pobjede desc, set-razlika desc, osvojeni setovi desc).
         /// </summary>
-        public Dictionary<string, List<GroupStandingRow>> IzracunajTabeleGrupa(Turnir turnir)
+        public Dictionary<string, List<GroupStandingViewModel>> IzracunajTabeleGrupa(Turnir turnir)
         {
-            var result = new Dictionary<string, List<GroupStandingRow>>();
+            var result = new Dictionary<string, List<GroupStandingViewModel>>();
 
             var grupniMecevi = turnir.Mecevi
                 .Where(m => m.TipMeca == TipMeca.GrupnaFaza)
@@ -525,7 +525,7 @@ namespace ePinPong.Services
                         var igrac = mecSaIgracem == null ? null
                             : mecSaIgracem.Igrac1ID == x.PlayerId ? mecSaIgracem.Igrac1 : mecSaIgracem.Igrac2;
 
-                        return new GroupStandingRow
+                        return new GroupStandingViewModel
                         {
                             PlayerId    = x.PlayerId,
                             ImePrezime  = igrac != null ? $"{igrac.Ime} {igrac.Prezime}" : string.Empty,
@@ -545,13 +545,13 @@ namespace ePinPong.Services
             return result;
         }
         /// <summary>
-        /// Za svaku grupu u turniru parova vraća sortiranu listu <see cref="PairStandingRow"/>
+        /// Za svaku grupu u turniru parova vraća sortiranu listu <see cref="PairStandingViewModel"/>
         /// (po pobjede desc, set-razlika desc, osvojeni setovi desc).
         /// Analogno <see cref="IzracunajTabeleGrupa"/> koji radi za singl grupe.
         /// </summary>
-        public Dictionary<string, List<PairStandingRow>> IzracunajTabeleGrupaParova(Turnir turnir)
+        public Dictionary<string, List<PairStandingViewModel>> IzracunajTabeleGrupaParova(Turnir turnir)
         {
-            var result = new Dictionary<string, List<PairStandingRow>>();
+            var result = new Dictionary<string, List<PairStandingViewModel>>();
 
             var paroviMecevi = turnir.Mecevi
                 .Where(m => m.TipMeca == TipMeca.TurnirParova)
@@ -604,7 +604,7 @@ namespace ePinPong.Services
                     .OrderByDescending(x => x.Pobjede)
                     .ThenByDescending(x => x.SetRazlika)
                     .ThenByDescending(x => x.OsvojeniSetovi)
-                    .Select(x => new PairStandingRow
+                    .Select(x => new PairStandingViewModel
                     {
                         Igrac1Id       = x.I1Id,
                         Igrac2Id       = x.I2Id,

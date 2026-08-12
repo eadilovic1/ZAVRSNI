@@ -1,6 +1,6 @@
 namespace ePinPong.Models.ViewModels
 {
-    public class GroupStandingRow
+    public class GroupStandingViewModel
     {
         public string PlayerId { get; set; } = string.Empty;
         public string ImePrezime { get; set; } = string.Empty;

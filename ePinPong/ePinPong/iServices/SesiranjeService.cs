@@ -20,7 +20,7 @@ namespace ePinPong.Services
         {
             try
             {
-                var playerPots = JsonSerializer.Deserialize<List<PlayerPotDto>>(
+                var playerPots = JsonSerializer.Deserialize<List<PlayerPotViewModel>>(
                     playerPotsJson,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 

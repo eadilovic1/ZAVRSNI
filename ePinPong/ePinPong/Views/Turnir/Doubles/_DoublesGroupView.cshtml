@@ -16,7 +16,7 @@
 {
     var nazivGrupe = grupaGroup.Key ?? "Grupa";
     var meceviGrupe = grupaGroup.ToList();
-    var sortiraniStandings = paroviStandingsMap.TryGetValue(nazivGrupe, out var sl) ? sl : new List<ePinPong.Models.ViewModels.PairStandingRow>();
+    var sortiraniStandings = paroviStandingsMap.TryGetValue(nazivGrupe, out var sl) ? sl : new List<ePinPong.Models.ViewModels.PairStandingViewModel>();
     var collapseId = "groupCollapsePar-" + nazivGrupe.Replace(" ", "").Replace("(", "").Replace(")", "");
 
     <div class="mb-5 p-3 rounded-4 bg-dark-card border border-dark-glow shadow-sm">
