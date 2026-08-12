@@ -1,4 +1,4 @@
-namespace ePinPong.Models
+namespace ePinPong.Models.ViewModels
 {
     public class ErrorViewModel
     {
