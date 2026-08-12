@@ -247,59 +247,10 @@ namespace ePinPong.Controllers
             if (!authResult.Succeeded)
                 return Forbid();
 
-            var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnirId).ToListAsync();
-
-            // Provjeri da faza još nije generisana
-            string prefiks = $"PL_{plL}_{plR}_R1_M";
-            if (sviMecevi.Any(m => m.MatchCode.StartsWith(prefiks)))
+            var (success, errorMessage) = await _bracketProgressionService.GenerisiPlasmanZaRangeAsync(turnir, plL, plR);
+            if (!success)
             {
-                TempData["Error"] = $"Razigravanje za mjesta {plL}–{plR} je već generisano.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            // Prikupi gubitnike iz odgovarajuće runde Z_ mečeva
-            int ukupnoIgraca = plR - plL + 1; // koliko treba gubitnika
-
-            var zMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
-            var zPoRundama = zMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
-
-            // Nađi rundu koja ima točno ukupnoIgraca mečeva
-            var ciljnaRunda = zPoRundama.FirstOrDefault(g => g.Count() == ukupnoIgraca);
-            if (ciljnaRunda == null || !ciljnaRunda.All(m => m.Odigran))
-            {
-                TempData["Error"] = $"Svi mečevi odgovarajuće runde moraju biti odigrani prije generisanja razigravanja za mjesta {plL}–{plR}.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            // Izvuci gubitnike
-            var gubitnici = new List<string?>();
-            foreach (var zm in ciljnaRunda)
-            {
-                string? loserId = null;
-                if (zm.Igrac1ID != null && zm.Igrac2ID != null)
-                {
-                    loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
-                }
-                loserId ??= BracketService.SLOBODAN;
-                gubitnici.Add(loserId);
-            }
-
-            if (gubitnici.Count != ukupnoIgraca)
-            {
-                TempData["Error"] = $"Nije moguće odrediti gubitnike za razigravanje {plL}–{plR}. Provjeri odigrane mečeve.";
-                return RedirectToAction("Details", "Turnir", new { id = turnirId });
-            }
-
-            await DbSeeder.EnsureSlobodanUserExistsAsync(_context);
-            var noviMecevi = _bracketService.GenerirajPlasmanFazu(turnir, plL, plR, gubitnici, sviMecevi);
-            if (noviMecevi.Any())
-            {
-                _context.Mecevi.AddRange(noviMecevi);
-                await _context.SaveChangesAsync();
-            }
-            else
-            {
-                TempData["Error"] = "Došlo je do greške pri generisanju razigravanja.";
+                TempData["Error"] = errorMessage;
             }
 
             return RedirectToAction("Details", "Turnir", new { id = turnirId });

@@ -89,23 +89,28 @@ namespace ePinPong.Helpers
                 .ToList();
         }
 
-        private static async Task<Dictionary<string, int>> GetPointsPerPlayerAsync(ApplicationDbContext context, IBracketService bracketService, Liga liga)
+        public static Dictionary<string, int> IzracunajBodovePoKorisniku(
+            IEnumerable<Turnir> finishedTournaments,
+            IStandingsCalculationService calculationService)
         {
-            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
-            var finishedRegularTurniri = await context.Turniri
-                .Include(t => t.Registracije)
-                    .ThenInclude(r => r.Korisnik)
-                .Include(t => t.Mecevi)
-                    .ThenInclude(m => m.Igrac1)
-                .Include(t => t.Mecevi)
-                    .ThenInclude(m => m.Igrac2)
-                .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo && t.Status == StatusTurnira.Zavrsen)
-                .ToListAsync();
+            return IzracunajBodovePoKorisniku(finishedTournaments, calculationService.IzracunajPlasman);
+        }
 
+        public static Dictionary<string, int> IzracunajBodovePoKorisniku(
+            IEnumerable<Turnir> finishedTournaments,
+            IBracketService bracketService)
+        {
+            return IzracunajBodovePoKorisniku(finishedTournaments, bracketService.IzracunajPlasman);
+        }
+
+        public static Dictionary<string, int> IzracunajBodovePoKorisniku(
+            IEnumerable<Turnir> finishedTournaments,
+            System.Func<Turnir, List<Models.ViewModels.TurnirPlasmanViewModel>> plasmanCalculator)
+        {
             var points = new Dictionary<string, int>();
-            foreach (var finishedTurnir in finishedRegularTurniri)
+            foreach (var ft in finishedTournaments)
             {
-                var plasmani = bracketService.IzracunajPlasman(finishedTurnir);
+                var plasmani = plasmanCalculator(ft);
                 foreach (var plasman in plasmani)
                 {
                     if (string.IsNullOrEmpty(plasman.KorisnikId) || plasman.KorisnikId == BracketService.SLOBODAN)
@@ -123,8 +128,23 @@ namespace ePinPong.Helpers
                     }
                 }
             }
-
             return points;
+        }
+
+        private static async Task<Dictionary<string, int>> GetPointsPerPlayerAsync(ApplicationDbContext context, IBracketService bracketService, Liga liga)
+        {
+            var mastersKolo = LigaTurnirHelper.GetMastersKolo(liga);
+            var finishedRegularTurniri = await context.Turniri
+                .Include(t => t.Registracije)
+                    .ThenInclude(r => r.Korisnik)
+                .Include(t => t.Mecevi)
+                    .ThenInclude(m => m.Igrac1)
+                .Include(t => t.Mecevi)
+                    .ThenInclude(m => m.Igrac2)
+                .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo && t.Status == StatusTurnira.Zavrsen)
+                .ToListAsync();
+
+            return IzracunajBodovePoKorisniku(finishedRegularTurniri, bracketService);
         }
     }
 }

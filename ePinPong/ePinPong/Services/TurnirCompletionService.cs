@@ -44,7 +44,7 @@ namespace ePinPong.Services
                     if (finalMec != null && finalMec.Odigran)
                     {
                         turnir.PobjednikID = finalMec.PobjednikId;
-                        turnir.DrugoplasiraniID = finalMec.PobjednikId == finalMec.Igrac1ID ? finalMec.Igrac2ID : finalMec.Igrac1ID;
+                        turnir.DrugoplasiraniID = finalMec.GubitnikId;
                     }
                 }
                 else if (grupniMecevi.Any())

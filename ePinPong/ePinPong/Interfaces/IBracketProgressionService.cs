@@ -12,5 +12,6 @@ namespace ePinPong.Services
         List<Mec> GenerirajTurnirParova(Turnir turnir, List<TurnirPar> parovi);
         Task PropagirajPobjednikaAsync(Mec odigraniMec);
         Task ProvjeriIGenerirajRazigravanjaAsync(int turnirId);
+        Task<(bool Success, string ErrorMessage)> GenerisiPlasmanZaRangeAsync(Turnir turnir, int plL, int plR);
     }
 }

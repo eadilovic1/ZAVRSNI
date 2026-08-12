@@ -751,6 +751,46 @@ namespace ePinPong.Services
             await _context.SaveChangesAsync();
         }
 
+        public async Task<(bool Success, string ErrorMessage)> GenerisiPlasmanZaRangeAsync(Turnir turnir, int plL, int plR)
+        {
+            var sviMecevi = await _context.Mecevi.Where(m => m.TurnirID == turnir.ID).ToListAsync();
+
+            string prefiks = $"PL_{plL}_{plR}_R1_M";
+            if (sviMecevi.Any(m => m.MatchCode.StartsWith(prefiks)))
+            {
+                return (false, $"Razigravanje za mjesta {plL}–{plR} je već generisano.");
+            }
+
+            int ukupnoIgraca = plR - plL + 1;
+
+            var zMecevi = sviMecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica && m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
+            var zPoRundama = zMecevi.GroupBy(m => m.Runda).OrderBy(g => g.Key).ToList();
+
+            var ciljnaRunda = zPoRundama.FirstOrDefault(g => g.Count() == ukupnoIgraca);
+            if (ciljnaRunda == null || !ciljnaRunda.All(m => m.Odigran))
+            {
+                return (false, $"Svi mečevi odgovarajuće runde moraju biti odigrani prije generisanja razigravanja za mjesta {plL}–{plR}.");
+            }
+
+            var gubitnici = ciljnaRunda.Select(zm => zm.GubitnikId ?? SLOBODAN).ToList();
+
+            if (gubitnici.Count != ukupnoIgraca)
+            {
+                return (false, $"Nije moguće odrediti gubitnike za razigravanje {plL}–{plR}. Provjeri odigrane mečeve.");
+            }
+
+            await DbSeeder.EnsureSlobodanUserExistsAsync(_context);
+            var noviMecevi = GenerirajPlasmanFazu(turnir, plL, plR, gubitnici, sviMecevi);
+            if (noviMecevi.Any())
+            {
+                _context.Mecevi.AddRange(noviMecevi);
+                await _context.SaveChangesAsync();
+                return (true, string.Empty);
+            }
+
+            return (false, "Došlo je do greške pri generisanju razigravanja.");
+        }
+
         private async Task GenerisiRazigravanjaZaSkupinuAsync(Turnir turnir, List<Mec> sviMecevi, List<Mec> meceviSkupine, bool isUtjesni)
         {
             var poRangeu = meceviSkupine.GroupBy(m => m.PlacingRange).ToList();
@@ -786,17 +826,7 @@ namespace ePinPong.Services
                     string searchPrefix = $"{codePrefix}_{L}_{R}_R1_M";
                     if (sviMecevi.Any(m => m.MatchCode.StartsWith(searchPrefix))) continue;
 
-                    var gubitnici = new List<string?>();
-                    foreach (var zm in meceviRunde)
-                    {
-                        string? loserId = null;
-                        if (zm.Igrac1ID != null && zm.Igrac2ID != null)
-                        {
-                            loserId = (zm.PoeniIgrac1 ?? 0) >= 3 ? zm.Igrac2ID : zm.Igrac1ID;
-                        }
-                        loserId ??= SLOBODAN;
-                        gubitnici.Add(loserId);
-                    }
+                    var gubitnici = meceviRunde.Select(zm => zm.GubitnikId ?? SLOBODAN).ToList();
 
                     if (gubitnici.Count != M) continue;
 

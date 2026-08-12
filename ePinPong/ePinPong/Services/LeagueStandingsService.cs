@@ -1,4 +1,5 @@
 using ePinPong.Data;
+using ePinPong.Helpers;
 using ePinPong.Models;
 using ePinPong.Models.ViewModels;
 using Microsoft.EntityFrameworkCore;
@@ -21,12 +22,6 @@ namespace ePinPong.Services
 
         public async Task<Dictionary<string, int>> GetPlayerPointsAsync(Turnir turnir)
         {
-            var playerPoints = new Dictionary<string, int>();
-            foreach (var reg in turnir.Registracije)
-            {
-                playerPoints[reg.KorisnikID] = 0;
-            }
-
             var finishedTournamentsQuery = turnir.LigaID != null
                 ? _context.Turniri.Where(t => t.LigaID == turnir.LigaID && t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID)
                 : _context.Turniri.Where(t => t.Status == StatusTurnira.Zavrsen && t.ID != turnir.ID);
@@ -37,14 +32,15 @@ namespace ePinPong.Services
                 .Include(t => t.Mecevi).ThenInclude(m => m.Igrac2)
                 .ToListAsync();
 
-            foreach (var ft in finishedTournaments)
+            var playerPoints = LigaRankingHelper.IzracunajBodovePoKorisniku(finishedTournaments, _standingsCalculationService);
+
+            if (turnir.Registracije != null)
             {
-                var plasmani = _standingsCalculationService.IzracunajPlasman(ft);
-                foreach (var pl in plasmani)
+                foreach (var reg in turnir.Registracije)
                 {
-                    if (playerPoints.ContainsKey(pl.KorisnikId))
+                    if (!playerPoints.ContainsKey(reg.KorisnikID))
                     {
-                        playerPoints[pl.KorisnikId] += pl.Bodovi;
+                        playerPoints[reg.KorisnikID] = 0;
                     }
                 }
             }
