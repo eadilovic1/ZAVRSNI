@@ -7,6 +7,13 @@ namespace ePinPong.Services
 {
     public class BracketDrawService : IBracketDrawService
     {
+        private readonly IRandomProvider _rng;
+
+        public BracketDrawService(IRandomProvider rng)
+        {
+            _rng = rng;
+        }
+
         public List<Mec> GenerirajGrupe(Turnir turnir, List<string> igracIds, bool useQualityGrouping = false)
         {
             var mecevi = new List<Mec>();
@@ -39,7 +46,6 @@ namespace ePinPong.Services
                 }
             }
 
-            var rng = new Random();
             var grupeIgraca = new List<List<string>>();
             for (int i = 0; i < ukGrupa; i++) grupeIgraca.Add(new List<string>());
 
@@ -50,10 +56,10 @@ namespace ePinPong.Services
             }
             else if (pot1.Count == ukGrupa && pot2.Count == ukGrupa && pot3.Count == ukGrupa && pot4.Count == expectedPot4Count)
             {
-                var shuffledPot1 = pot1.OrderBy(a => rng.Next()).ToList();
-                var shuffledPot2 = pot2.OrderBy(a => rng.Next()).ToList();
-                var shuffledPot3 = pot3.OrderBy(a => rng.Next()).ToList();
-                var shuffledPot4 = pot4.OrderBy(a => rng.Next()).ToList();
+                var shuffledPot1 = pot1.OrderBy(a => _rng.Next()).ToList();
+                var shuffledPot2 = pot2.OrderBy(a => _rng.Next()).ToList();
+                var shuffledPot3 = pot3.OrderBy(a => _rng.Next()).ToList();
+                var shuffledPot4 = pot4.OrderBy(a => _rng.Next()).ToList();
 
                 for (int g = 0; g < ukGrupa; g++)
                 {
@@ -73,7 +79,7 @@ namespace ePinPong.Services
             }
             else
             {
-                var shuffledIgracIds = igracIds.OrderBy(a => rng.Next()).ToList();
+                var shuffledIgracIds = igracIds.OrderBy(a => _rng.Next()).ToList();
                 int igracIdx = 0;
                 for (int g = 0; g < ukGrupa; g++)
                 {

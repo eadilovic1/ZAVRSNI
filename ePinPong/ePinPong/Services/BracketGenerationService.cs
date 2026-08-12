@@ -548,13 +548,18 @@ namespace ePinPong.Services
         /// <inheritdoc/>
         public void PropagirajBye(List<Mec> mecevi)
         {
+            // Mečevi grupne faze nemaju (i ne trebaju) MatchCode — nikad nisu
+            // odredište propagacije. Izuzimamo ih da izbjegnemo duplikat ključeva
+            // (svi bi dijelili MatchCode == string.Empty) prilikom gradnje mapa.
+            var bracketMecevi = mecevi.Where(m => !string.IsNullOrEmpty(m.MatchCode)).ToList();
+
             // O(1) lookup: MatchCode → Mec
-            var byCode = mecevi.ToDictionary(m => m.MatchCode);
+            var byCode = bracketMecevi.ToDictionary(m => m.MatchCode);
 
             // reverseMap["targetCode:slot"] → meč koji hrani taj slot
             // Jedanput se gradi — strukturalni linkovi su nepromjenljivi.
             var reverseMap = new Dictionary<string, Mec>(StringComparer.Ordinal);
-            foreach (var mec in mecevi)
+            foreach (var mec in bracketMecevi)
             {
                 foreach (var (code, slot) in ParseDestinations(mec.WinnerNextMatchCode, mec.WinnerNextMatchSlot))
                     reverseMap[$"{code}:{slot}"] = mec;
@@ -570,7 +575,7 @@ namespace ePinPong.Services
                 promijenjeno = false;
                 limitSigurnosti++;
 
-                foreach (var mec in mecevi.Where(m => !m.Odigran))
+                foreach (var mec in bracketMecevi.Where(m => !m.Odigran))
                 {
                     // O(1): provjeri je li svaki slot "otključan" (feeder odigran ili ne postoji)
                     bool slot1OK = !reverseMap.TryGetValue($"{mec.MatchCode}:1", out var pred1)
