@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ePinPong.Services
 {
-    public class TurnirCreatedNotifierService : ITurnirCreatedNotifier
+    public class TurnirCreatedNotifierService : ITurnirCreatedNotifierService
     {
         private readonly ApplicationDbContext _context;
         private readonly INotificationService _notificationService;

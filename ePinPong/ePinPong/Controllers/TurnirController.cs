@@ -27,7 +27,7 @@ namespace ePinPong.Controllers
         private readonly ILogger<TurnirController> _logger;
         private readonly IMastersRegistrationService _mastersRegistrationService;
         private readonly IStandingsCalculationService _standingsCalculationService;
-        private readonly ITurnirCreatedNotifier _turnirCreatedNotifier;
+        private readonly ITurnirCreatedNotifierService _turnirCreatedNotifier;
 
 
         public TurnirController(
@@ -40,7 +40,7 @@ namespace ePinPong.Controllers
             ILogger<TurnirController> logger,
             IMastersRegistrationService mastersRegistrationService,
             IStandingsCalculationService standingsCalculationService,
-            ITurnirCreatedNotifier turnirCreatedNotifier)
+            ITurnirCreatedNotifierService turnirCreatedNotifier)
         {
             _context = context;
             _userManager = userManager;

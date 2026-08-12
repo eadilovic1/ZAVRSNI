@@ -5,7 +5,7 @@ namespace ePinPong.Services
     /// <summary>
     /// Šalje obavještenja pratiocima organizatora kada kreira novi turnir.
     /// </summary>
-    public interface ITurnirCreatedNotifier
+    public interface ITurnirCreatedNotifierService
     {
         Task ObavijestiPratioceAsync(Turnir turnir, string organizatorName);
     }
