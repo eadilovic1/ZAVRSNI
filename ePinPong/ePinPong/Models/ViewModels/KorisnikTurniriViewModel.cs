@@ -16,14 +16,4 @@ namespace ePinPong.Models.ViewModels
         public Dictionary<int, string> TurnirRankings { get; set; } = new Dictionary<int, string>();
         public IEnumerable<KorisnikLigaStandingsViewModel> LigeStandings { get; set; } = new List<KorisnikLigaStandingsViewModel>();
     }
-
-    public class KorisnikLigaStandingsViewModel
-    {
-        public Liga Liga { get; set; } = null!;
-        public int Pozicija { get; set; }
-        public int UkupnoBodova { get; set; }
-        public int BrojOdigranihTurnira { get; set; }
-        public int UkupnoUcesnika { get; set; }
-        public bool NijeZapoceo { get; set; }
-    }
 }
