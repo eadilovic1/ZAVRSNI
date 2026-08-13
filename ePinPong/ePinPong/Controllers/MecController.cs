@@ -180,8 +180,8 @@ namespace ePinPong.Controllers
                 return Forbid();
             }
 
-            // Validacija da meč ide do tačno 3 osvojena seta
-            if (!((poeniIgrac1 == Mec.SETOVA_ZA_POBJEDU && poeniIgrac2 >= 0 && poeniIgrac2 <= Mec.SETOVA_ZA_POBJEDU - 1) || (poeniIgrac2 == Mec.SETOVA_ZA_POBJEDU && poeniIgrac1 >= 0 && poeniIgrac1 <= Mec.SETOVA_ZA_POBJEDU - 1)))
+            // Validacija domenskog pravila — logika živi u Mec.JeValidanRezultat
+            if (!Mec.JeValidanRezultat(poeniIgrac1, poeniIgrac2))
             {
                 TempData["Error"] = "Rezultat meča mora biti do 3 dobijena seta (npr. 3:0, 3:1, 3:2).";
                 // Preusmjeri na detalje turnira umjesto na posebnu stranicu, 

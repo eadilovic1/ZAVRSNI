@@ -44,6 +44,27 @@ namespace ePinPong.Models
             ? ((PoeniIgrac1 ?? 0) > (PoeniIgrac2 ?? 0) ? Igrac2ID : Igrac1ID)
             : null;
 
+        /// <summary>
+        /// Provjera da li je rezultat meča validan prema pravilima stonog tenisa.
+        /// Pobjednik mora imati tačno <see cref="SETOVA_ZA_POBJEDU"/> setova,
+        /// a gubitnik između 0 i <see cref="SETOVA_ZA_POBJEDU"/> - 1 setova.
+        /// </summary>
+        /// <param name="poeniIgrac1">Broj setova koje je osvojio igrač 1.</param>
+        /// <param name="poeniIgrac2">Broj setova koje je osvojio igrač 2.</param>
+        /// <returns>True ako je rezultat validan, inače false.</returns>
+        public static bool JeValidanRezultat(int poeniIgrac1, int poeniIgrac2)
+        {
+            bool igrac1Pobijedio = poeniIgrac1 == SETOVA_ZA_POBJEDU
+                                   && poeniIgrac2 >= 0
+                                   && poeniIgrac2 <= SETOVA_ZA_POBJEDU - 1;
+
+            bool igrac2Pobijedio = poeniIgrac2 == SETOVA_ZA_POBJEDU
+                                   && poeniIgrac1 >= 0
+                                   && poeniIgrac1 <= SETOVA_ZA_POBJEDU - 1;
+
+            return igrac1Pobijedio || igrac2Pobijedio;
+        }
+
         // Novi atributi za napredni turnirski sistem
         public TipMeca TipMeca { get; set; } = TipMeca.GrupnaFaza;
         public string MatchCode { get; set; } = string.Empty;
