@@ -1,6 +1,8 @@
 using ePinPong.Data;
 using ePinPong.Models;
 using ePinPong.Services;
+using ePinPong.Interfaces;
+using ePinPong.Services.BracketStrategies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
@@ -45,6 +47,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 // 4. Registracija Servisa i Interfejsa (SOLID principi!)
 builder.Services.AddScoped<IMailService, MailService>();
 builder.Services.AddScoped<IRandomProvider, DefaultRandomProvider>();
+builder.Services.AddScoped<IBracketDrawStrategy, SingleEliminationBracketStrategy>();
+builder.Services.AddScoped<IBracketDrawStrategy, DoubleEliminationBracketStrategy>();
+builder.Services.AddScoped<IBracketDrawStrategy, DoubleEliminationUtjesniBracketStrategy>();
 builder.Services.AddScoped<IBracketGenerationService, BracketGenerationService>();
 builder.Services.AddScoped<IBracketPropagationService, BracketPropagationService>();
 builder.Services.AddScoped<IBracketDrawService, BracketDrawService>();
