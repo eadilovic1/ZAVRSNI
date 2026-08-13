@@ -139,13 +139,7 @@ namespace ePinPong.Controllers
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> UnosRezultata(int id)
         {
-            var mec = await _context.Mecevi
-                .Include(m => m.Turnir)
-                .Include(m => m.Igrac1)
-                .Include(m => m.Igrac2)
-                .Include(m => m.Igrac1Partner)
-                .Include(m => m.Igrac2Partner)
-                .FirstOrDefaultAsync(m => m.ID == id);
+            var mec = await GetMecSaIgracimaAsync(id);
 
             if (mec == null) return NotFound();
 
@@ -164,13 +158,7 @@ namespace ePinPong.Controllers
         [Authorize(Roles = AppConstants.Roles.AdministratorOrOrganizator)]
         public async Task<IActionResult> UnosRezultata(int id, int poeniIgrac1, int poeniIgrac2)
         {
-            var mec = await _context.Mecevi
-                .Include(m => m.Turnir)
-                .Include(m => m.Igrac1)
-                .Include(m => m.Igrac2)
-                .Include(m => m.Igrac1Partner)
-                .Include(m => m.Igrac2Partner)
-                .FirstOrDefaultAsync(m => m.ID == id);
+            var mec = await GetMecSaIgracimaAsync(id);
 
             if (mec == null) return NotFound();
 
@@ -413,5 +401,24 @@ namespace ePinPong.Controllers
 
             return RedirectToAction("Details", "Turnir", new { id = turnirId, tab = "doubles-tab" });
         }
+
+        // ---------------------------------------------------------------------------
+        // Private helpers
+        // ---------------------------------------------------------------------------
+
+        /// <summary>
+        /// Učitava meč zajedno sa svim navigacionim propertyima igrača i turnira.
+        /// Centralizira Include-lanac kako bi se izbjeglo ponavljanje u GET i POST akcijama.
+        /// </summary>
+        /// <param name="id">Primarni ključ meča.</param>
+        /// <returns>Mec sa popunjenim navigacionim propertyima, ili null ako ne postoji.</returns>
+        private Task<Mec?> GetMecSaIgracimaAsync(int id) =>
+            _context.Mecevi
+                .Include(m => m.Turnir)
+                .Include(m => m.Igrac1)
+                .Include(m => m.Igrac2)
+                .Include(m => m.Igrac1Partner)
+                .Include(m => m.Igrac2Partner)
+                .FirstOrDefaultAsync(m => m.ID == id);
     }
 }
