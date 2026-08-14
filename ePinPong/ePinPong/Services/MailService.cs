@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Text;
 using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace ePinPong.Services
@@ -24,15 +23,8 @@ namespace ePinPong.Services
 
         public async Task SendEmailAsync(string email, string subject, string htmlMessage)
         {
-            // 1. Zadržavanje logiranja u terminalu i Debug konzoli (fake/console prikaz)
-            Console.WriteLine($"[MailService] Slanje maila na: {email}");
-            Console.WriteLine($"[MailService] Predmet: {subject}");
-            Debug.WriteLine($"[MailService] Email poslan na: {email}");
-            Debug.WriteLine($"[MailService] Predmet: {subject}");
-            Debug.WriteLine($"[MailService] Sadrzaj: {htmlMessage}");
             _logger.LogInformation("[MailService] Slanje emaila na {Email} | Predmet: {Subject}", email, subject);
 
-            // 2. Pravo slanje maila putem MailKit SMTP klijenta
             var emailMessage = new MimeMessage();
             emailMessage.From.Add(new MailboxAddress("ePinPong", _smtpOptions.Username));
             emailMessage.To.Add(MailboxAddress.Parse(email));
@@ -58,12 +50,20 @@ namespace ePinPong.Services
             }
             catch (Exception ex)
             {
+                // Namjerno ne bacamo exception dalje — slanje maila je "best effort" (fail-safe)
+                // i ne smije srušiti primarnu operaciju u aplikaciji.
                 _logger.LogError(ex, "[MailService] Greška prilikom slanja emaila na {Email} preko SMTP servera ({Host}:{Port}).", email, _smtpOptions.Host, _smtpOptions.Port);
-                throw;
             }
             finally
             {
-                await client.DisconnectAsync(true);
+                try
+                {
+                    await client.DisconnectAsync(true);
+                }
+                catch
+                {
+                    // Ignorišemo greške prilikom odspajanja ako konekcija nije u potpunosti uspostavljena
+                }
             }
         }
     }
