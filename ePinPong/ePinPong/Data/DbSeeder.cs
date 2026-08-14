@@ -30,50 +30,20 @@ namespace ePinPong.Data
                 }
             }
 
-            // 2. Seed Korisnika
+            // 2. Postavljanje glavnog administratora (enis123.adilovic@gmail.com) sa svim ovlastima
             await CreateSeedUserIfNotExistsAsync(
                 userManager,
-                "admin@epinpong.com",
+                "enis123.adilovic@gmail.com",
                 defaultPassword,
-                "Admin",
-                "Babo",
+                "Enis",
+                "Adilović",
                 "Sarajevo",
-                new DateTime(1990, 1, 1),
-                AppConstants.Roles.Administrator);
-
-            await CreateSeedUserIfNotExistsAsync(
-                userManager,
-                "organizator@epinpong.com",
-                defaultPassword,
-                "Organizator",
-                "Turnira",
-                "Tuzla",
-                new DateTime(1985, 5, 12),
+                new DateTime(1995, 1, 1),
+                AppConstants.Roles.Administrator,
                 AppConstants.Roles.Organizator,
                 AppConstants.Roles.Korisnik);
 
-            // Podrška za stare skripte koje koriste org@epinpong.com
-            await CreateSeedUserIfNotExistsAsync(
-                userManager,
-                "org@epinpong.com",
-                defaultPassword,
-                "Toni",
-                "Kukoč",
-                "Split",
-                new DateTime(1985, 5, 12),
-                AppConstants.Roles.Organizator,
-                AppConstants.Roles.Korisnik);
-
-            await CreateSeedUserIfNotExistsAsync(
-                userManager,
-                "igrac@epinpong.com",
-                defaultPassword,
-                "Igrač",
-                "Pro",
-                "Sarajevo",
-                new DateTime(1995, 2, 2),
-                AppConstants.Roles.Korisnik);
-
+            // 3. Sistemski nalog za slobodne igrače u žrijebu (BYE)
             await EnsureSlobodanUserExistsAsync(context);
         }
 
@@ -105,6 +75,21 @@ namespace ePinPong.Data
                 if (result.Succeeded && uloge != null && uloge.Length > 0)
                 {
                     await userManager.AddToRolesAsync(user, uloge);
+                }
+            }
+            else
+            {
+                user.EmailConfirmed = true;
+                await userManager.UpdateAsync(user);
+                if (uloge != null && uloge.Length > 0)
+                {
+                    foreach (var uloga in uloge)
+                    {
+                        if (!await userManager.IsInRoleAsync(user, uloga))
+                        {
+                            await userManager.AddToRoleAsync(user, uloga);
+                        }
+                    }
                 }
             }
         }
