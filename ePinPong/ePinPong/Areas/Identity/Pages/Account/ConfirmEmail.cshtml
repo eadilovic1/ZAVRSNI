@@ -1,0 +1,39 @@
+@page
+@model ePinPong.Areas.Identity.Pages.Account.ConfirmEmailModel
+@{
+    ViewData["Title"] = "Potvrda email adrese";
+}
+
+<div class="row justify-content-center py-5">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-lg overflow-hidden text-center p-4">
+            <div class="mb-3">
+                @if (Model.Uspjesno)
+                {
+                    <i class="bi bi-check-circle-fill text-success display-1"></i>
+                }
+                else
+                {
+                    <i class="bi bi-x-circle-fill text-danger display-1"></i>
+                }
+            </div>
+
+            @if (Model.Uspjesno)
+            {
+                <h2 class="text-white fw-bold mb-3">Potvrda uspješna!</h2>
+            }
+            else
+            {
+                <h2 class="text-white fw-bold mb-3">Greška pri potvrdi</h2>
+            }
+
+            <p class="text-white-50 mb-4">@Model.StatusMessage</p>
+
+            <div>
+                <a asp-page="Login" class="btn btn-orange px-4 py-2 fw-semibold rounded-3">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Idi na prijavu
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

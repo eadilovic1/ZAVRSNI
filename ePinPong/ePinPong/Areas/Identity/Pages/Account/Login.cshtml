@@ -37,7 +37,8 @@
                     <button type="submit" class="btn btn-orange w-100 py-2 text-white fw-bold shadow-glow">Prijavi se <i class="bi bi-box-arrow-in-right ms-1"></i></button>
 
                     <div class="text-center mt-3">
-                        <p class="text-white-50 small mb-0">Nemate račun? <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="text-orange fw-bold text-decoration-none">Registrujte se ovdje</a>.</p>
+                        <p class="text-white-50 small mb-1">Nemate račun? <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="text-orange fw-bold text-decoration-none">Registrujte se ovdje</a>.</p>
+                        <p class="text-white-50 small mb-0">Niste dobili email za potvrdu? <a asp-page="./ResendEmailConfirmation" class="text-warning text-decoration-none">Pošalji ponovo</a>.</p>
                     </div>
                 </form>
             </div>

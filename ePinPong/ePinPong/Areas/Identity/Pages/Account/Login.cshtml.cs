@@ -16,11 +16,16 @@ namespace ePinPong.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<ApplicationUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(
+            SignInManager<ApplicationUser> signInManager,
+            UserManager<ApplicationUser> userManager,
+            ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
+            _userManager = userManager;
             _logger = logger;
         }
 
@@ -73,8 +78,17 @@ namespace ePinPong.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+                var existingUser = await _userManager.FindByEmailAsync(Input.Email);
+                if (existingUser != null && !await _userManager.IsEmailConfirmedAsync(existingUser))
+                {
+                    var passwordCheck = await _userManager.CheckPasswordAsync(existingUser, Input.Password);
+                    if (passwordCheck)
+                    {
+                        ModelState.AddModelError(string.Empty, "Vaša email adresa nije potvrđena. Provjerite inbox za link za potvrdu ili zatražite ponovno slanje.");
+                        return Page();
+                    }
+                }
+
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {

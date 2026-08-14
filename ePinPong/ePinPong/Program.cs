@@ -6,6 +6,7 @@ using ePinPong.Interfaces;
 using ePinPong.Services.BracketStrategies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -27,7 +28,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // 2. Konfiguracija ASP.NET Identity
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = false;
+    options.SignIn.RequireConfirmedAccount = true;
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
@@ -48,6 +49,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 // 4. Registracija Servisa i Interfejsa (SOLID principi!)
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IMailService, MailService>();
+builder.Services.AddScoped<IEmailSender, IdentityEmailSenderAdapter>();
 builder.Services.AddScoped<IRandomProvider, DefaultRandomProvider>();
 builder.Services.AddScoped<IBracketDrawStrategy, SingleEliminationBracketStrategy>();
 builder.Services.AddScoped<IBracketDrawStrategy, DoubleEliminationBracketStrategy>();

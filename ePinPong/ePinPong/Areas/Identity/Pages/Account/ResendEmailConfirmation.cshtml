@@ -1,0 +1,38 @@
+@page
+@model ePinPong.Areas.Identity.Pages.Account.ResendEmailConfirmationModel
+@{
+    ViewData["Title"] = "Ponovno slanje potvrde emaila";
+}
+
+<div class="row justify-content-center py-5">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card bg-dark-card border border-dark-glow rounded-4 shadow-lg overflow-hidden">
+            <div class="card-header bg-dark-card-footer border-bottom border-dark-glow p-4 text-center">
+                <h3 class="text-white fw-bold mb-1"><i class="bi bi-envelope-at-fill text-orange me-2"></i>Ponovno slanje potvrde</h3>
+                <p class="text-white-50 mb-0">Unesite vašu email adresu kako bismo vam ponovo poslali link za potvrdu.</p>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Email" class="form-label text-white fw-semibold">Email adresa</label>
+                        <input asp-for="Input.Email" class="form-control bg-dark-input border-dark-glow text-white placeholder-muted" placeholder="vaš.email@domena.com" />
+                        <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-grid mt-4 mb-2">
+                        <button type="submit" class="btn btn-orange py-2 fw-bold text-white">
+                            <i class="bi bi-send-fill me-2"></i>Pošalji ponovo
+                        </button>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a asp-page="Login" class="text-orange text-decoration-none small">
+                            <i class="bi bi-arrow-left me-1"></i>Nazad na prijavu
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
