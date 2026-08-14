@@ -1,5 +1,6 @@
 using ePinPong.Data;
 using ePinPong.Models;
+using ePinPong.Models.Configuration;
 using ePinPong.Services;
 using ePinPong.Interfaces;
 using ePinPong.Services.BracketStrategies;
@@ -45,6 +46,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 // 4. Registracija Servisa i Interfejsa (SOLID principi!)
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IMailService, MailService>();
 builder.Services.AddScoped<IRandomProvider, DefaultRandomProvider>();
 builder.Services.AddScoped<IBracketDrawStrategy, SingleEliminationBracketStrategy>();
