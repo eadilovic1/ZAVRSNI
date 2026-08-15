@@ -26,7 +26,7 @@ namespace ePinPong.Services
 
             foreach (var korisnik in pratioci)
             {
-                string? emailBody = !string.IsNullOrEmpty(korisnik!.Email)
+                string? emailBody = (!korisnik!.IsGost && !string.IsNullOrEmpty(korisnik.Email))
                     ? $"Zdravo {korisnik.Ime},<br><br>Organizator <b>{organizatorName}</b> je objavio novi turnir: <b>{turnir.Naziv}</b>.<br>Datum pocetka: {turnir.DatumPocetka.ToShortDateString()}<br><br>Prijavite se odmah na ePinPong!"
                     : null;
 
@@ -35,7 +35,7 @@ namespace ePinPong.Services
                     "Novi turnir na ePinPong!",
                     $"Organizator <strong>{organizatorName}</strong> je objavio novi turnir: <strong><a href='/Turnir/Details/{turnir.ID}'>{turnir.Naziv}</a></strong>!",
                     emailBody,
-                    posaljiEmail: true
+                    posaljiEmail: !korisnik.IsGost
                 );
             }
 

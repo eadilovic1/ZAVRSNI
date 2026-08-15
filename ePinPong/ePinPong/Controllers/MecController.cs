@@ -188,12 +188,20 @@ namespace ePinPong.Controllers
             // POSALJI OBAVJEŠTENJE IGRAČIMA (in-app i email)
             var obavjestenjeTekst = $"Uneseni su rezultati meča između <strong>{mec.Igrac1?.Ime}</strong> i <strong>{mec.Igrac2?.Ime}</strong>: {poeniIgrac1} - {poeniIgrac2}.";
             
-            if (mec.Igrac1ID != null)
+            if (mec.Igrac1 != null)
+            {
+                await _notificationService.ObavijestiKorisnikaAsync(mec.Igrac1, "Novi rezultati meča", obavjestenjeTekst);
+            }
+            else if (mec.Igrac1ID != null)
             {
                 await _notificationService.ObavijestiKorisnikaAsync(mec.Igrac1ID, "Novi rezultati meča", obavjestenjeTekst);
             }
 
-            if (mec.Igrac2ID != null)
+            if (mec.Igrac2 != null)
+            {
+                await _notificationService.ObavijestiKorisnikaAsync(mec.Igrac2, "Novi rezultati meča", obavjestenjeTekst);
+            }
+            else if (mec.Igrac2ID != null)
             {
                 await _notificationService.ObavijestiKorisnikaAsync(mec.Igrac2ID, "Novi rezultati meča", obavjestenjeTekst);
             }

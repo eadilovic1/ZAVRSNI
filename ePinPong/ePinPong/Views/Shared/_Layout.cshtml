@@ -1,5 +1,6 @@
 @using Microsoft.AspNetCore.Identity
 @using ePinPong.Models
+@using Microsoft.EntityFrameworkCore
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 @inject ePinPong.Data.ApplicationDbContext DbContext
@@ -11,7 +12,7 @@
         var userId = UserManager.GetUserId(User);
         if (userId != null)
         {
-            neprocitaneNotifikacije = DbContext.Notifikacije.Count(n => n.KorisnikId == userId && !n.Procitana);
+            neprocitaneNotifikacije = await DbContext.Notifikacije.CountAsync(n => n.KorisnikId == userId && !n.Procitana);
         }
     }
 }
