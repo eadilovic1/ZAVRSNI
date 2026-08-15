@@ -16,12 +16,12 @@ namespace ePinPong.Areas.Identity.Pages.Account
     public class ResendEmailConfirmationModel : PageModel
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IMailService _mailService;
+        private readonly IEmailQueueService _emailQueue;
 
-        public ResendEmailConfirmationModel(UserManager<ApplicationUser> userManager, IMailService mailService)
+        public ResendEmailConfirmationModel(UserManager<ApplicationUser> userManager, IEmailQueueService emailQueue)
         {
             _userManager = userManager;
-            _mailService = mailService;
+            _emailQueue = emailQueue;
         }
 
         [BindProperty]
@@ -71,7 +71,7 @@ namespace ePinPong.Areas.Identity.Pages.Account
                 values: new { area = "Identity", userId = user.Id, code = code },
                 protocol: Request.Scheme);
 
-            await _mailService.SendEmailAsync(
+            _emailQueue.Enqueue(
                 Input.Email,
                 "ePinPong — Ponovno slanje potvrde email adrese",
                 $"<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; max-width: 600px; margin: 0 auto;'>" +

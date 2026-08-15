@@ -5,14 +5,17 @@ namespace ePinPong.Services
 {
     public class IdentityEmailSenderAdapter : IEmailSender
     {
-        private readonly IMailService _mailService;
+        private readonly IEmailQueueService _emailQueue;
 
-        public IdentityEmailSenderAdapter(IMailService mailService)
+        public IdentityEmailSenderAdapter(IEmailQueueService emailQueue)
         {
-            _mailService = mailService;
+            _emailQueue = emailQueue;
         }
 
         public Task SendEmailAsync(string email, string subject, string htmlMessage)
-            => _mailService.SendEmailAsync(email, subject, htmlMessage);
+        {
+            _emailQueue.Enqueue(email, subject, htmlMessage);
+            return Task.CompletedTask;
+        }
     }
 }
