@@ -11,7 +11,7 @@
             <h4 class="text-white fw-bold mb-1">
                 <i class="bi bi-trophy-fill text-warning me-2"></i>Plasman Mastersa - Podijumi po grupama
             </h4>
-            <p class="text-white-50 small mb-0">Prebacujte se izmeÄ‘u grupa za prikaz pobjedniÄkog podijuma i tabele pojedine grupe.</p>
+            <p class="text-white-50 small mb-0">Prebacujte se između grupa za prikaz pobjedničkog podijuma i tabele pojedine grupe.</p>
         </div>
         <button class="btn btn-outline-warning btn-sm btn-collapse-toggle rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" type="button" data-bs-toggle="collapse" data-bs-target="#mastersPodiumsCollapse" aria-expanded="true" aria-controls="mastersPodiumsCollapse">
             <i class="bi bi-chevron-up toggle-chevron"></i>
@@ -49,16 +49,16 @@
                     var gSlug = gNaziv.Replace(" ", "");
                     var meceviGrupe = grupaGroup.ToList();
 
-                    // Standings za ovu grupu su veÄ‡ izraÄunati u servisu i dostupni u view modelu.
-                    // ÄŒitamo direktno umjesto ponovnog raÄunanja sa List<dynamic>.
+                    // Standings za ovu grupu su već izračunati u servisu i dostupni u view modelu.
+                    // Čitamo direktno umjesto ponovnog računanja sa List<dynamic>.
                     var sortedRecords = Model.GroupStandings.TryGetValue(gNaziv, out var gsRows)
                         ? gsRows
                         : new List<ePinPong.Models.ViewModels.GroupStandingViewModel>();
 
                     <div class="tab-pane fade @(gIdx == 0 ? "show active" : "")" id="podium-pane-@gSlug" role="tabpanel" aria-labelledby="podium-tab-@gSlug">
-                        <h5 class="text-orange fw-bold mb-3"><i class="bi bi-award-fill me-2"></i>PobjedniÄki podijum - @gNaziv</h5>
+                        <h5 class="text-orange fw-bold mb-3"><i class="bi bi-award-fill me-2"></i>Pobjednički podijum - @gNaziv</h5>
 
-                        <!-- Vizuelni podijum top 3 igraÄa -->
+                        <!-- Vizuelni podijum top 3 igrača -->
                         <div class="row g-3 mb-4 justify-content-center align-items-end">
                             @if (sortedRecords.Count > 1)
                             {
@@ -67,7 +67,7 @@
                                 <div class="col-12 col-md-4 order-2 order-md-1">
                                     <div class="card bg-dark-card border border-secondary rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
                                         <div class="position-absolute top-0 start-50 translate-middle-x bg-secondary text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
-                                            ðŸ¥ˆ 2. Mjesto
+                                            🥈 2. Mjesto
                                         </div>
                                         <div class="pt-4 mb-2">
                                             <div class="user-avatar-mini mx-auto mb-2 border border-secondary" style="width: 50px; height: 50px; font-size: 1.2rem;">
@@ -90,11 +90,11 @@
                             @if (sortedRecords.Count > 0)
                             {
                                 var p1 = sortedRecords[0];
-                                <!-- 1. Mjesto (Zlato - Sredina i ViÅ¡e) -->
+                                <!-- 1. Mjesto (Zlato - Sredina i Više) -->
                                 <div class="col-12 col-md-4 order-1 order-md-2">
                                     <div class="card bg-dark-card border border-warning rounded-4 text-center p-3 shadow-lg h-100 d-flex flex-column justify-content-between position-relative overflow-hidden" style="background: linear-gradient(180deg, rgba(255, 193, 7, 0.12) 0%, rgba(20, 20, 20, 0.95) 100%);">
                                         <div class="position-absolute top-0 start-50 translate-middle-x bg-warning text-dark px-4 py-1 rounded-bottom fw-bold text-nowrap shadow-sm">
-                                            ðŸ‘‘ 1. Mjesto
+                                            👑 1. Mjesto
                                         </div>
                                         <div class="pt-4 mb-2">
                                             <div class="user-avatar-mini mx-auto mb-2 bg-warning text-dark border border-warning shadow-sm" style="width: 64px; height: 64px; font-size: 1.5rem;">
@@ -107,7 +107,7 @@
                                             <small class="text-white-50 d-block mb-2">@p1.Grad</small>
                                         </div>
                                         <div class="p-2 bg-dark border border-warning rounded-3 shadow-sm">
-                                            <span class="text-warning fw-bold me-2">ðŸ† @p1.Pobjede pobjeda</span>
+                                            <span class="text-warning fw-bold me-2">🏆 @p1.Pobjede pobjeda</span>
                                             <span class="text-white-50 small">(Set razlika: @(p1.SetRazlika >= 0 ? "+" : "")@p1.SetRazlika)</span>
                                         </div>
                                     </div>
@@ -121,7 +121,7 @@
                                 <div class="col-12 col-md-4 order-3">
                                     <div class="card bg-dark-card border border-danger rounded-4 text-center p-3 shadow-sm h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
                                         <div class="position-absolute top-0 start-50 translate-middle-x bg-danger text-white px-3 py-1 rounded-bottom fw-bold small text-nowrap">
-                                            ðŸ¥‰ 3. Mjesto
+                                            🥉 3. Mjesto
                                         </div>
                                         <div class="pt-4 mb-2">
                                             <div class="user-avatar-mini mx-auto mb-2 border border-danger text-orange" style="width: 50px; height: 50px; font-size: 1.2rem;">
@@ -148,7 +148,7 @@
                                 <thead>
                                     <tr class="text-muted small border-bottom border-dark-glow">
                                         <th style="width: 10%;">Pozicija</th>
-                                        <th class="text-start" style="width: 35%;">IgraÄ</th>
+                                        <th class="text-start" style="width: 35%;">Igrač</th>
                                         <th style="width: 15%;">Pobjede</th>
                                         <th style="width: 15%;">Porazi</th>
                                         <th style="width: 25%;">Set razlika</th>
@@ -163,9 +163,9 @@
                                         var isTreci = idx == 2;
                                         <tr class="@(isPob ? "border-start border-3 border-warning bg-warning-transparent-row" : (isDrugi ? "border-start border-3 border-secondary" : (isTreci ? "border-start border-3 border-danger" : "")))">
                                             <td class="fw-bold fs-5">
-                                                @if (isPob) { <span class="text-warning">ðŸ¥‡ 1.</span> }
-                                                else if (isDrugi) { <span class="text-light">ðŸ¥ˆ 2.</span> }
-                                                else if (isTreci) { <span class="text-orange">ðŸ¥‰ 3.</span> }
+                                                @if (isPob) { <span class="text-warning">🥇 1.</span> }
+                                                else if (isDrugi) { <span class="text-light">🥈 2.</span> }
+                                                else if (isTreci) { <span class="text-orange">🥉 3.</span> }
                                                 else { <span class="text-muted">@(idx + 1).</span> }
                                             </td>
                                             <td class="text-start">
