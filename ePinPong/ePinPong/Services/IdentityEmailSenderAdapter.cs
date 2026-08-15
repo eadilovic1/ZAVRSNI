@@ -5,9 +5,9 @@ namespace ePinPong.Services
 {
     public class IdentityEmailSenderAdapter : IEmailSender
     {
-        private readonly IEmailQueueService _emailQueue;
+        private readonly IMailQueueService _emailQueue;
 
-        public IdentityEmailSenderAdapter(IEmailQueueService emailQueue)
+        public IdentityEmailSenderAdapter(IMailQueueService emailQueue)
         {
             _emailQueue = emailQueue;
         }

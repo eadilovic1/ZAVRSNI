@@ -16,9 +16,9 @@ namespace ePinPong.Areas.Identity.Pages.Account
     public class ResendEmailConfirmationModel : PageModel
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IEmailQueueService _emailQueue;
+        private readonly IMailQueueService _emailQueue;
 
-        public ResendEmailConfirmationModel(UserManager<ApplicationUser> userManager, IEmailQueueService emailQueue)
+        public ResendEmailConfirmationModel(UserManager<ApplicationUser> userManager, IMailQueueService emailQueue)
         {
             _userManager = userManager;
             _emailQueue = emailQueue;
