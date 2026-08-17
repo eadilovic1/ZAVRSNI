@@ -38,7 +38,7 @@ namespace ePinPong.Data
                 "Enis",
                 "Adilović",
                 "Sarajevo",
-                new DateTime(1995, 1, 1),
+                new DateTime(1995, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 AppConstants.Roles.Administrator,
                 AppConstants.Roles.Organizator,
                 AppConstants.Roles.Korisnik);
@@ -68,8 +68,8 @@ namespace ePinPong.Data
                     Ime = ime,
                     Prezime = prezime,
                     Grad = grad,
-                    DatumRodjenja = datumRodjenja,
-                    DatumRegistracije = DateTime.Now
+                    DatumRodjenja = datumRodjenja.Kind == DateTimeKind.Utc ? datumRodjenja : DateTime.SpecifyKind(datumRodjenja, DateTimeKind.Utc),
+                    DatumRegistracije = DateTime.UtcNow
                 };
                 var result = await userManager.CreateAsync(user, password);
                 if (result.Succeeded && uloge != null && uloge.Length > 0)
@@ -109,8 +109,8 @@ namespace ePinPong.Data
                     Ime = "Slobodan",
                     Prezime = "",
                     Grad = "N/A",
-                    DatumRodjenja = DateTime.MinValue,
-                    DatumRegistracije = DateTime.Now
+                    DatumRodjenja = DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc),
+                    DatumRegistracije = DateTime.UtcNow
                 };
                 context.Users.Add(slobodanUser);
                 await context.SaveChangesAsync();

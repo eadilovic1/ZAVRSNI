@@ -120,7 +120,7 @@ namespace ePinPong.Services.BracketStrategies
 
             // ── 4. Generiši runde završnice ──────────────────────────────
             DateTime start = meceviGrupneFaze.Any()
-                ? meceviGrupneFaze.Max(m => m.VrijemeMeca).AddHours(2) : DateTime.Now;
+                ? meceviGrupneFaze.Max(m => m.VrijemeMeca).AddHours(2) : DateTime.UtcNow;
 
             var sviMecevi = BracketGenerationService.GenerirajSingleEliminationRunde(
                 turnir, S,

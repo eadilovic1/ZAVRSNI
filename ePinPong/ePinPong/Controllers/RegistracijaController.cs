@@ -75,7 +75,7 @@ namespace ePinPong.Controllers
             {
                 TurnirID = turnir.ID,
                 KorisnikID = userId,
-                DatumRegistracije = DateTime.Now,
+                DatumRegistracije = DateTime.UtcNow,
                 Odobren = true
             };
 
@@ -155,7 +155,7 @@ namespace ePinPong.Controllers
             {
                 TurnirID = turnirId,
                 KorisnikID = korisnikId,
-                DatumRegistracije = DateTime.Now,
+                DatumRegistracije = DateTime.UtcNow,
                 Odobren = true
             };
 
@@ -207,7 +207,7 @@ namespace ePinPong.Controllers
             {
                 TurnirID = turnirId,
                 KorisnikID = kId,
-                DatumRegistracije = DateTime.Now,
+                DatumRegistracije = DateTime.UtcNow,
                 Odobren = true
             }).ToList();
 
@@ -260,8 +260,8 @@ namespace ePinPong.Controllers
                 Ime = ime.Trim(),
                 Prezime = prezime.Trim(),
                 Grad = string.IsNullOrWhiteSpace(grad) ? "Nepoznato" : grad.Trim(),
-                DatumRodjenja = new DateTime(1970, 1, 1),
-                DatumRegistracije = DateTime.Now
+                DatumRodjenja = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                DatumRegistracije = DateTime.UtcNow
             };
 
             var result = await _userManager.CreateAsync(gostUser);
@@ -277,7 +277,7 @@ namespace ePinPong.Controllers
             {
                 TurnirID = turnirId,
                 KorisnikID = gostUser.Id,
-                DatumRegistracije = DateTime.Now,
+                DatumRegistracije = DateTime.UtcNow,
                 Odobren = true
             };
 

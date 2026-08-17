@@ -1,12 +1,13 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace ePinPong.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialPostgres : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,10 +16,10 @@ namespace ePinPong.Migrations
                 name: "AspNetRoles",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -29,26 +30,26 @@ namespace ePinPong.Migrations
                 name: "AspNetUsers",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Ime = table.Column<string>(type: "TEXT", nullable: false),
-                    Prezime = table.Column<string>(type: "TEXT", nullable: false),
-                    Grad = table.Column<string>(type: "TEXT", nullable: false),
-                    DatumRodjenja = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    DatumRegistracije = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedUserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedEmail = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    EmailConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    PasswordHash = table.Column<string>(type: "TEXT", nullable: true),
-                    SecurityStamp = table.Column<string>(type: "TEXT", nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "TEXT", nullable: true),
-                    PhoneNumber = table.Column<string>(type: "TEXT", nullable: true),
-                    PhoneNumberConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    TwoFactorEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    LockoutEnd = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    LockoutEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    AccessFailedCount = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Ime = table.Column<string>(type: "text", nullable: false),
+                    Prezime = table.Column<string>(type: "text", nullable: false),
+                    Grad = table.Column<string>(type: "text", nullable: false),
+                    DatumRodjenja = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DatumRegistracije = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedEmail = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    EmailConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: true),
+                    SecurityStamp = table.Column<string>(type: "text", nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true),
+                    PhoneNumber = table.Column<string>(type: "text", nullable: true),
+                    PhoneNumberConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    TwoFactorEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    LockoutEnd = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    LockoutEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    AccessFailedCount = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,11 +60,11 @@ namespace ePinPong.Migrations
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    RoleId = table.Column<string>(type: "TEXT", nullable: false),
-                    ClaimType = table.Column<string>(type: "TEXT", nullable: true),
-                    ClaimValue = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RoleId = table.Column<string>(type: "text", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -80,11 +81,11 @@ namespace ePinPong.Migrations
                 name: "AspNetUserClaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    ClaimType = table.Column<string>(type: "TEXT", nullable: true),
-                    ClaimValue = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -101,10 +102,10 @@ namespace ePinPong.Migrations
                 name: "AspNetUserLogins",
                 columns: table => new
                 {
-                    LoginProvider = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    ProviderKey = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    ProviderDisplayName = table.Column<string>(type: "TEXT", nullable: true),
-                    UserId = table.Column<string>(type: "TEXT", nullable: false)
+                    LoginProvider = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    ProviderKey = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    ProviderDisplayName = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -121,8 +122,8 @@ namespace ePinPong.Migrations
                 name: "AspNetUserRoles",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    RoleId = table.Column<string>(type: "TEXT", nullable: false)
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    RoleId = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -145,10 +146,10 @@ namespace ePinPong.Migrations
                 name: "AspNetUserTokens",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    LoginProvider = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    Value = table.Column<string>(type: "TEXT", nullable: true)
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    LoginProvider = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    Name = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    Value = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -165,14 +166,14 @@ namespace ePinPong.Migrations
                 name: "Lige",
                 columns: table => new
                 {
-                    ID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Naziv = table.Column<string>(type: "TEXT", nullable: false),
-                    Opis = table.Column<string>(type: "TEXT", nullable: false),
-                    Sezona = table.Column<string>(type: "TEXT", nullable: false),
-                    DatumPocetka = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    BrojRegularnihTurnira = table.Column<int>(type: "INTEGER", nullable: false),
-                    OrganizatorId = table.Column<string>(type: "TEXT", nullable: true)
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Naziv = table.Column<string>(type: "text", nullable: false),
+                    Opis = table.Column<string>(type: "text", nullable: false),
+                    Sezona = table.Column<string>(type: "text", nullable: false),
+                    DatumPocetka = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    BrojRegularnihTurnira = table.Column<int>(type: "integer", nullable: false),
+                    OrganizatorId = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -189,12 +190,12 @@ namespace ePinPong.Migrations
                 name: "Notifikacije",
                 columns: table => new
                 {
-                    ID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Sadrzaj = table.Column<string>(type: "TEXT", nullable: false),
-                    DatumKreiranja = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Procitana = table.Column<bool>(type: "INTEGER", nullable: false),
-                    KorisnikId = table.Column<string>(type: "TEXT", nullable: false)
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Sadrzaj = table.Column<string>(type: "text", nullable: false),
+                    DatumKreiranja = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Procitana = table.Column<bool>(type: "boolean", nullable: false),
+                    KorisnikId = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -211,10 +212,10 @@ namespace ePinPong.Migrations
                 name: "Pracenja",
                 columns: table => new
                 {
-                    ID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    PratilacID = table.Column<string>(type: "TEXT", nullable: false),
-                    PraceniID = table.Column<string>(type: "TEXT", nullable: false)
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    PratilacID = table.Column<string>(type: "text", nullable: false),
+                    PraceniID = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -237,24 +238,24 @@ namespace ePinPong.Migrations
                 name: "Turniri",
                 columns: table => new
                 {
-                    ID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Naziv = table.Column<string>(type: "TEXT", nullable: false),
-                    Status = table.Column<int>(type: "INTEGER", nullable: false),
-                    DatumPocetka = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    DatumKraja = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    MaxIgraca = table.Column<int>(type: "INTEGER", nullable: false),
-                    Lokacija = table.Column<string>(type: "TEXT", nullable: false),
-                    Opis = table.Column<string>(type: "TEXT", nullable: false),
-                    SlikaUrl = table.Column<string>(type: "TEXT", nullable: true),
-                    TipTakmicenja = table.Column<int>(type: "INTEGER", nullable: false),
-                    SistemTurnira = table.Column<int>(type: "INTEGER", nullable: false),
-                    OrganizatorId = table.Column<string>(type: "TEXT", nullable: false),
-                    LigaID = table.Column<int>(type: "INTEGER", nullable: true),
-                    Kolo = table.Column<int>(type: "INTEGER", nullable: true),
-                    PobjednikID = table.Column<string>(type: "TEXT", nullable: true),
-                    DrugoplasiraniID = table.Column<string>(type: "TEXT", nullable: true),
-                    TrecaplasiraniID = table.Column<string>(type: "TEXT", nullable: true)
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Naziv = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    DatumPocetka = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DatumKraja = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    MaxIgraca = table.Column<int>(type: "integer", nullable: false),
+                    Lokacija = table.Column<string>(type: "text", nullable: false),
+                    Opis = table.Column<string>(type: "text", nullable: false),
+                    SlikaUrl = table.Column<string>(type: "text", nullable: true),
+                    TipTakmicenja = table.Column<int>(type: "integer", nullable: false),
+                    SistemTurnira = table.Column<int>(type: "integer", nullable: false),
+                    OrganizatorId = table.Column<string>(type: "text", nullable: false),
+                    LigaID = table.Column<int>(type: "integer", nullable: true),
+                    Kolo = table.Column<int>(type: "integer", nullable: true),
+                    PobjednikID = table.Column<string>(type: "text", nullable: true),
+                    DrugoplasiraniID = table.Column<string>(type: "text", nullable: true),
+                    TrecaplasiraniID = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -277,26 +278,26 @@ namespace ePinPong.Migrations
                 name: "Mecevi",
                 columns: table => new
                 {
-                    ID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    TurnirID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Igrac1ID = table.Column<string>(type: "TEXT", nullable: true),
-                    Igrac2ID = table.Column<string>(type: "TEXT", nullable: true),
-                    Igrac1PartnerID = table.Column<string>(type: "TEXT", nullable: true),
-                    Igrac2PartnerID = table.Column<string>(type: "TEXT", nullable: true),
-                    PoeniIgrac1 = table.Column<int>(type: "INTEGER", nullable: true),
-                    PoeniIgrac2 = table.Column<int>(type: "INTEGER", nullable: true),
-                    VrijemeMeca = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Runda = table.Column<int>(type: "INTEGER", nullable: false),
-                    Odigran = table.Column<bool>(type: "INTEGER", nullable: false),
-                    TipMeca = table.Column<int>(type: "INTEGER", nullable: false),
-                    MatchCode = table.Column<string>(type: "TEXT", nullable: false),
-                    WinnerNextMatchCode = table.Column<string>(type: "TEXT", nullable: true),
-                    LoserNextMatchCode = table.Column<string>(type: "TEXT", nullable: true),
-                    WinnerNextMatchSlot = table.Column<int>(type: "INTEGER", nullable: true),
-                    LoserNextMatchSlot = table.Column<int>(type: "INTEGER", nullable: true),
-                    PlacingRange = table.Column<string>(type: "TEXT", nullable: false),
-                    NazivGrupe = table.Column<string>(type: "TEXT", nullable: true)
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    TurnirID = table.Column<int>(type: "integer", nullable: false),
+                    Igrac1ID = table.Column<string>(type: "text", nullable: true),
+                    Igrac2ID = table.Column<string>(type: "text", nullable: true),
+                    Igrac1PartnerID = table.Column<string>(type: "text", nullable: true),
+                    Igrac2PartnerID = table.Column<string>(type: "text", nullable: true),
+                    PoeniIgrac1 = table.Column<int>(type: "integer", nullable: true),
+                    PoeniIgrac2 = table.Column<int>(type: "integer", nullable: true),
+                    VrijemeMeca = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Runda = table.Column<int>(type: "integer", nullable: false),
+                    Odigran = table.Column<bool>(type: "boolean", nullable: false),
+                    TipMeca = table.Column<int>(type: "integer", nullable: false),
+                    MatchCode = table.Column<string>(type: "text", nullable: false),
+                    WinnerNextMatchCode = table.Column<string>(type: "text", nullable: true),
+                    LoserNextMatchCode = table.Column<string>(type: "text", nullable: true),
+                    WinnerNextMatchSlot = table.Column<int>(type: "integer", nullable: true),
+                    LoserNextMatchSlot = table.Column<int>(type: "integer", nullable: true),
+                    PlacingRange = table.Column<string>(type: "text", nullable: false),
+                    NazivGrupe = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -337,13 +338,13 @@ namespace ePinPong.Migrations
                 name: "Registracije",
                 columns: table => new
                 {
-                    ID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    TurnirID = table.Column<int>(type: "INTEGER", nullable: false),
-                    KorisnikID = table.Column<string>(type: "TEXT", nullable: false),
-                    DatumRegistracije = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Odobren = table.Column<bool>(type: "INTEGER", nullable: false),
-                    Sesir = table.Column<int>(type: "INTEGER", nullable: false)
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    TurnirID = table.Column<int>(type: "integer", nullable: false),
+                    KorisnikID = table.Column<string>(type: "text", nullable: false),
+                    DatumRegistracije = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Odobren = table.Column<bool>(type: "boolean", nullable: false),
+                    Sesir = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -366,12 +367,12 @@ namespace ePinPong.Migrations
                 name: "TurnirParovi",
                 columns: table => new
                 {
-                    ID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    TurnirID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Igrac1ID = table.Column<string>(type: "TEXT", nullable: false),
-                    Igrac2ID = table.Column<string>(type: "TEXT", nullable: false),
-                    DatumPrijave = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    TurnirID = table.Column<int>(type: "integer", nullable: false),
+                    Igrac1ID = table.Column<string>(type: "text", nullable: false),
+                    Igrac2ID = table.Column<string>(type: "text", nullable: false),
+                    DatumPrijave = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {

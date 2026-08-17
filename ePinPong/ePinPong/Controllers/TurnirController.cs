@@ -237,7 +237,7 @@ namespace ePinPong.Controllers
             ModelState.Remove("OrganizatorId");
             ModelState.Remove("Liga");
 
-            if (turnir.DatumPocetka.Date < DateTime.Today)
+            if (turnir.DatumPocetka.Date < DateTime.UtcNow.Date)
             {
                 ModelState.AddModelError(nameof(turnir.DatumPocetka), "Datum početka turnira ne može biti u prošlosti.");
             }

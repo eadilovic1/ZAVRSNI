@@ -15,6 +15,6 @@ namespace ePinPong.Models
         public string Igrac2ID { get; set; } = string.Empty;
         public virtual ApplicationUser? Igrac2 { get; set; }
 
-        public DateTime DatumPrijave { get; set; } = DateTime.Now;
+        public DateTime DatumPrijave { get; set; } = DateTime.UtcNow;
     }
 }

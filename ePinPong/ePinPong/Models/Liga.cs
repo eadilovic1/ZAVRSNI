@@ -9,7 +9,7 @@ namespace ePinPong.Models
         public string Naziv { get; set; } = string.Empty;
         public string Opis { get; set; } = string.Empty;
         public string Sezona { get; set; } = string.Empty;
-        public DateTime DatumPocetka { get; set; } = DateTime.Today;
+        public DateTime DatumPocetka { get; set; } = DateTime.UtcNow.Date;
         public int BrojRegularnihTurnira { get; set; } = 1;
 
         // Organizator

@@ -159,7 +159,7 @@ namespace ePinPong.Controllers
                 ModelState.AddModelError(nameof(liga.BrojRegularnihTurnira), $"Broj regularnih turnira ne može biti manji od {minAllowed} jer je već odigrano {completedRegularCount} kola.");
             }
 
-            if (liga.DatumPocetka.Date < DateTime.Today)
+            if (liga.DatumPocetka.Date < DateTime.UtcNow.Date)
             {
                 ModelState.AddModelError(nameof(liga.DatumPocetka), "Datum početka lige ne može biti u prošlosti.");
             }
@@ -174,7 +174,7 @@ namespace ePinPong.Controllers
                 existingLiga.Naziv = liga.Naziv;
                 existingLiga.Opis = liga.Opis;
                 existingLiga.Sezona = liga.Sezona;
-                existingLiga.DatumPocetka = liga.DatumPocetka;
+                existingLiga.DatumPocetka = DateTime.SpecifyKind(liga.DatumPocetka, DateTimeKind.Utc);
                 if (!isOkoncana)
                 {
                     existingLiga.BrojRegularnihTurnira = liga.BrojRegularnihTurnira;
@@ -200,8 +200,12 @@ namespace ePinPong.Controllers
             {
                 liga.DatumPocetka = LigaTurnirHelper.GetDefaultStandaloneTurnirDatum();
             }
+            else
+            {
+                liga.DatumPocetka = DateTime.SpecifyKind(liga.DatumPocetka, DateTimeKind.Utc);
+            }
 
-            if (liga.DatumPocetka.Date < DateTime.Today)
+            if (liga.DatumPocetka.Date < DateTime.UtcNow.Date)
             {
                 ModelState.AddModelError(nameof(liga.DatumPocetka), "Datum početka lige ne može biti u prošlosti.");
             }

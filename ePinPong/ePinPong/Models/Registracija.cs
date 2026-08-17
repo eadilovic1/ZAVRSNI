@@ -12,7 +12,7 @@ namespace ePinPong.Models
         public string KorisnikID { get; set; } = string.Empty;
         public virtual ApplicationUser? Korisnik { get; set; }
 
-        public DateTime DatumRegistracije { get; set; } = DateTime.Now;
+        public DateTime DatumRegistracije { get; set; } = DateTime.UtcNow;
         public bool Odobren { get; set; } = false;
 
         public int Sesir { get; set; } = 1;

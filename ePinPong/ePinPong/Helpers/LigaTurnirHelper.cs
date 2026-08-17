@@ -82,7 +82,7 @@ namespace ePinPong.Helpers
 
         public static DateTime GetDefaultStandaloneTurnirDatum()
         {
-            var today = DateTime.Today;
+            var today = DateTime.UtcNow.Date;
             var candidate = GetLastSundayOfMonth(today.Year, today.Month);
             if (candidate < today)
             {
@@ -99,17 +99,17 @@ namespace ePinPong.Helpers
             if (liga.Turniri != null && liga.Turniri.Any())
             {
                 var lastTurnirDate = liga.Turniri.Max(t => t.DatumPocetka);
-                var targetMonth = new DateTime(lastTurnirDate.Year, lastTurnirDate.Month, 1).AddMonths(1);
+                var targetMonth = new DateTime(lastTurnirDate.Year, lastTurnirDate.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
                 return GetLastSundayOfMonth(targetMonth.Year, targetMonth.Month);
             }
             else
             {
-                var targetMonth = new DateTime(liga.DatumPocetka.Year, liga.DatumPocetka.Month, 1);
+                var targetMonth = new DateTime(liga.DatumPocetka.Year, liga.DatumPocetka.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                 var candidate = GetLastSundayOfMonth(targetMonth.Year, targetMonth.Month);
-                if (candidate < DateTime.Today)
+                if (candidate < DateTime.UtcNow.Date)
                 {
-                    var today = DateTime.Today;
-                    var nextMonth = new DateTime(today.Year, today.Month, 1);
+                    var today = DateTime.UtcNow.Date;
+                    var nextMonth = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                     candidate = GetLastSundayOfMonth(nextMonth.Year, nextMonth.Month);
                     if (candidate < today)
                     {
@@ -132,11 +132,11 @@ namespace ePinPong.Helpers
                 return GetNextTurnirDatumForLiga(liga);
             }
 
-            var monthBase = new DateTime(liga.DatumPocetka.Year, liga.DatumPocetka.Month, 1);
+            var monthBase = new DateTime(liga.DatumPocetka.Year, liga.DatumPocetka.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var targetMonth = monthBase.AddMonths(kolo - 1);
             var candidate = GetLastSundayOfMonth(targetMonth.Year, targetMonth.Month);
 
-            if (kolo == 1 && candidate < DateTime.Today)
+            if (kolo == 1 && candidate < DateTime.UtcNow.Date)
             {
                 var nextMonth = targetMonth.AddMonths(1);
                 return GetLastSundayOfMonth(nextMonth.Year, nextMonth.Month);
@@ -168,7 +168,7 @@ namespace ePinPong.Helpers
 
         public static DateTime GetLastSundayOfMonth(int year, int month)
         {
-            var lastDay = new DateTime(year, month, DateTime.DaysInMonth(year, month));
+            var lastDay = new DateTime(year, month, DateTime.DaysInMonth(year, month), 0, 0, 0, DateTimeKind.Utc);
             int diff = (7 + (int)lastDay.DayOfWeek - (int)DayOfWeek.Sunday) % 7;
             return lastDay.AddDays(-diff).Date;
         }

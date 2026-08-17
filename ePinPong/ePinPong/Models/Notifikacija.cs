@@ -6,7 +6,7 @@ namespace ePinPong.Models
     {
         public int ID { get; set; }
         public string Sadrzaj { get; set; } = string.Empty;
-        public DateTime DatumKreiranja { get; set; } = DateTime.Now;
+        public DateTime DatumKreiranja { get; set; } = DateTime.UtcNow;
         public bool Procitana { get; set; } = false;
 
         public string KorisnikId { get; set; } = string.Empty;

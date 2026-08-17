@@ -60,7 +60,7 @@ namespace ePinPong.Areas.Identity.Pages.Account
             [Required(ErrorMessage = "Datum rođenja je obavezan.")]
             [DataType(DataType.Date)]
             [Display(Name = "Datum Rođenja")]
-            public DateTime DatumRodjenja { get; set; } = DateTime.Now.AddYears(-20);
+            public DateTime DatumRodjenja { get; set; } = DateTime.UtcNow.AddYears(-20);
 
             [Required(ErrorMessage = "Email adresa je obavezna.")]
             [EmailAddress(ErrorMessage = "Nevaljana email adresa.")]
@@ -96,8 +96,8 @@ namespace ePinPong.Areas.Identity.Pages.Account
                     Ime = Input.Ime,
                     Prezime = Input.Prezime,
                     Grad = Input.Grad,
-                    DatumRodjenja = Input.DatumRodjenja,
-                    DatumRegistracije = DateTime.Now
+                    DatumRodjenja = DateTime.SpecifyKind(Input.DatumRodjenja, DateTimeKind.Utc),
+                    DatumRegistracije = DateTime.UtcNow
                 };
 
                 var result = await _userManager.CreateAsync(user, Input.Password);

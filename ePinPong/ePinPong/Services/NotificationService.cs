@@ -32,7 +32,7 @@ namespace ePinPong.Services
             {
                 KorisnikId = userId,
                 Sadrzaj = poruka,
-                DatumKreiranja = DateTime.Now,
+                DatumKreiranja = DateTime.UtcNow,
                 Procitana = false
             };
             _context.Notifikacije.Add(notifikacija);
@@ -47,7 +47,7 @@ namespace ePinPong.Services
             {
                 KorisnikId = korisnik.Id,
                 Sadrzaj = poruka,
-                DatumKreiranja = DateTime.Now,
+                DatumKreiranja = DateTime.UtcNow,
                 Procitana = false
             };
             _context.Notifikacije.Add(notifikacija);

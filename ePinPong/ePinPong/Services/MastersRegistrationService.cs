@@ -39,7 +39,7 @@ namespace ePinPong.Services
                     TurnirID = turnirId,
                     KorisnikID = korisnikId,
                     Odobren = true,
-                    DatumRegistracije = DateTime.Now,
+                    DatumRegistracije = DateTime.UtcNow,
                     Sesir = 1
                 })
                 .ToList();

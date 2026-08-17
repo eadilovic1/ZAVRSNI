@@ -158,7 +158,7 @@ namespace ePinPong.Controllers
                 TurnirID = turnir.ID,
                 Igrac1ID = igrac1Id,
                 Igrac2ID = igrac2Id,
-                DatumPrijave = DateTime.Now
+                DatumPrijave = DateTime.UtcNow
             };
             _context.TurnirParovi.Add(noviPar);
             await _context.SaveChangesAsync();

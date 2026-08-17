@@ -23,7 +23,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseNpgsql(connectionString));
 
 // 2. Konfiguracija ASP.NET Identity
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>

@@ -10,7 +10,7 @@ namespace ePinPong.Models
         public string Prezime { get; set; } = string.Empty;
         public string Grad { get; set; } = string.Empty;
         public DateTime DatumRodjenja { get; set; }
-        public DateTime DatumRegistracije { get; set; } = DateTime.Now;
+        public DateTime DatumRegistracije { get; set; } = DateTime.UtcNow;
 
         [System.ComponentModel.DataAnnotations.Schema.NotMapped]
         public bool IsGost => string.IsNullOrEmpty(PasswordHash) || Email?.EndsWith("@epinpong.local") == true;

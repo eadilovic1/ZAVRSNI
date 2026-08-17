@@ -233,7 +233,7 @@ namespace ePinPong.Services
 
             DateTime pocetak = turnir.Mecevi?.Any() == true
                 ? turnir.Mecevi.Max(m => m.VrijemeMeca).AddHours(2)
-                : DateTime.Now;
+                : DateTime.UtcNow;
 
             var shuffledParovi = parovi.OrderBy(_ => _rng.Next()).ToList();
 
@@ -306,7 +306,7 @@ namespace ePinPong.Services
 
             var shuffled  = gubitnici.OrderBy(_ => _rng.Next()).ToList();
             DateTime start = postojeciMecevi.Any()
-                ? postojeciMecevi.Max(m => m.VrijemeMeca).AddHours(2) : DateTime.Now;
+                ? postojeciMecevi.Max(m => m.VrijemeMeca).AddHours(2) : DateTime.UtcNow;
 
             GenerirajPlasmanRekurzivno(turnir, noviMecevi, L, R, shuffled, start, 0, isUtjesni);
 
