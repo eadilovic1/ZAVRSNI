@@ -12,5 +12,9 @@
 *.db-shm
 *.db-wal
 
+# Sakrij appsettings fajlove sa tajnama
+appsettings.json
+appsettings.Development.json
+
 # Ostalo
 *.log
