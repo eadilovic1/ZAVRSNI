@@ -117,17 +117,20 @@ namespace ePinPong.Services
 
                     mecevi.Add(new Mec
                     {
-                        TurnirID            = turnir.ID,
-                        MatchCode           = $"{matchCodePrefix}R{r}_M{m}",
-                        Runda               = r,
-                        Odigran             = false,
-                        TipMeca             = tip,
-                        PlacingRange        = placingRange,
-                        VrijemeMeca         = timeBuilder(r, m),
-                        WinnerNextMatchCode = winnerNext,
-                        WinnerNextMatchSlot = winnerSlot,
-                        LoserNextMatchCode  = loserNext,
-                        LoserNextMatchSlot  = loserSlot
+                        TurnirID     = turnir.ID,
+                        MatchCode    = $"{matchCodePrefix}R{r}_M{m}",
+                        Runda        = r,
+                        Odigran      = false,
+                        TipMeca      = tip,
+                        PlacingRange = placingRange,
+                        VrijemeMeca  = timeBuilder(r, m),
+                        MecKodovi    = (winnerNext != null || loserNext != null) ? new MecKodovi
+                        {
+                            WinnerNextMatchCode = winnerNext,
+                            WinnerNextMatchSlot = winnerSlot,
+                            LoserNextMatchCode  = loserNext,
+                            LoserNextMatchSlot  = loserSlot
+                        } : null
                     });
                 }
             }
@@ -353,19 +356,22 @@ namespace ePinPong.Services
 
                 mecevi.Add(new Mec
                 {
-                    TurnirID            = turnir.ID,
-                    MatchCode           = $"{prefix}_{L}_{R}_R1_M{m}",
-                    Runda               = 1,
-                    Odigran             = false,
-                    TipMeca             = tip,
-                    PlacingRange        = $"{L}-{R}",
-                    VrijemeMeca         = startTime.AddHours(m + dubina * 2),
-                    WinnerNextMatchCode = winnerNext,
-                    WinnerNextMatchSlot = winnerSlot,
-                    LoserNextMatchCode  = loserNext,
-                    LoserNextMatchSlot  = loserSlot,
-                    Igrac1ID            = igrac1,
-                    Igrac2ID            = igrac2
+                    TurnirID     = turnir.ID,
+                    MatchCode    = $"{prefix}_{L}_{R}_R1_M{m}",
+                    Runda        = 1,
+                    Odigran      = false,
+                    TipMeca      = tip,
+                    PlacingRange = $"{L}-{R}",
+                    VrijemeMeca  = startTime.AddHours(m + dubina * 2),
+                    MecKodovi    = (winnerNext != null || loserNext != null) ? new MecKodovi
+                    {
+                        WinnerNextMatchCode = winnerNext,
+                        WinnerNextMatchSlot = winnerSlot,
+                        LoserNextMatchCode  = loserNext,
+                        LoserNextMatchSlot  = loserSlot
+                    } : null,
+                    Igrac1ID     = igrac1,
+                    Igrac2ID     = igrac2
                 });
             }
 
@@ -394,9 +400,9 @@ namespace ePinPong.Services
             var reverseMap = new Dictionary<string, Mec>(StringComparer.Ordinal);
             foreach (var mec in bracketMecevi)
             {
-                foreach (var (code, slot) in ParseDestinations(mec.WinnerNextMatchCode, mec.WinnerNextMatchSlot))
+                foreach (var (code, slot) in ParseDestinations(mec.MecKodovi?.WinnerNextMatchCode, mec.MecKodovi?.WinnerNextMatchSlot))
                     reverseMap[$"{code}:{slot}"] = mec;
-                foreach (var (code, slot) in ParseDestinations(mec.LoserNextMatchCode, mec.LoserNextMatchSlot))
+                foreach (var (code, slot) in ParseDestinations(mec.MecKodovi?.LoserNextMatchCode, mec.MecKodovi?.LoserNextMatchSlot))
                     reverseMap[$"{code}:{slot}"] = mec;
             }
 
@@ -449,9 +455,9 @@ namespace ePinPong.Services
                         winnerPartnerId = null;    loserPartnerId = null;
                     }
 
-                    PropagujIgracaUSljedeci(byCode, mec.WinnerNextMatchCode, mec.WinnerNextMatchSlot,
+                    PropagujIgracaUSljedeci(byCode, mec.MecKodovi?.WinnerNextMatchCode, mec.MecKodovi?.WinnerNextMatchSlot,
                         winnerId, winnerPartnerId, ref promijenjeno);
-                    PropagujIgracaUSljedeci(byCode, mec.LoserNextMatchCode, mec.LoserNextMatchSlot,
+                    PropagujIgracaUSljedeci(byCode, mec.MecKodovi?.LoserNextMatchCode, mec.MecKodovi?.LoserNextMatchSlot,
                         loserId, loserPartnerId, ref promijenjeno);
                 }
             }

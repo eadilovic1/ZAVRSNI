@@ -40,7 +40,7 @@ namespace ePinPong.Services
 
                 if (imaZavrsnicu)
                 {
-                    var finalMec = meceviList.FirstOrDefault(m => m.TipMeca == TipMeca.Zavrsnica && string.IsNullOrEmpty(m.WinnerNextMatchCode));
+                    var finalMec = meceviList.FirstOrDefault(m => m.TipMeca == TipMeca.Zavrsnica && string.IsNullOrEmpty(m.MecKodovi?.WinnerNextMatchCode));
                     if (finalMec != null && finalMec.Odigran)
                     {
                         // Plasman se ne čuva denormalizovano — izračunava se iz Mecevi putem IzracunajPlasman

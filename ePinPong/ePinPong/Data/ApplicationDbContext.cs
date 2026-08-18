@@ -18,6 +18,7 @@ namespace ePinPong.Data
         public DbSet<Pracenje> Pracenja { get; set; }
         public DbSet<Liga> Lige { get; set; }
         public DbSet<TurnirPar> TurnirParovi { get; set; }
+        public DbSet<MecKodovi> MecKodovi { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -128,6 +129,13 @@ namespace ePinPong.Data
                 .WithMany()
                 .HasForeignKey(m => m.Igrac2PartnerID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Mec -> MecKodovi (1:1)
+            builder.Entity<Mec>()
+                .HasOne(m => m.MecKodovi)
+                .WithOne(mk => mk.Mec)
+                .HasForeignKey<MecKodovi>(mk => mk.MecID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // UTC DateTime ValueConverter for PostgreSQL compatibility
             var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(

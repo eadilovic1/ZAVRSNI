@@ -89,7 +89,7 @@ namespace ePinPong.Services
         {
             var zavrsniMecevi = turnir.Mecevi.Where(m => m.TipMeca == TipMeca.Zavrsnica).ToList();
             var zMatchesList = zavrsniMecevi.Where(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Zavrsnica)).ToList();
-            var zFinale = zMatchesList.FirstOrDefault(m => string.IsNullOrEmpty(m.WinnerNextMatchCode));
+            var zFinale = zMatchesList.FirstOrDefault(m => string.IsNullOrEmpty(m.MecKodovi?.WinnerNextMatchCode));
 
             if (zFinale != null)
             {
@@ -311,7 +311,7 @@ namespace ePinPong.Services
             }
             else
             {
-                var utFinale = utMatches.FirstOrDefault(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni + "R") && string.IsNullOrEmpty(m.WinnerNextMatchCode));
+                var utFinale = utMatches.FirstOrDefault(m => m.MatchCode.StartsWith(AppConstants.MatchCodePrefixes.Utjesni + "R") && string.IsNullOrEmpty(m.MecKodovi?.WinnerNextMatchCode));
                 if (utFinale != null)
                 {
                     var orderedUtFinalists = UredjeniIgraciMeca(utFinale);

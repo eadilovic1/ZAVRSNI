@@ -48,6 +48,9 @@ namespace ePinPong.Controllers
                 .Include(r => r.Turnir)
                     .ThenInclude(t => t!.Mecevi)
                         .ThenInclude(m => m.Igrac2)
+                .Include(r => r.Turnir)
+                    .ThenInclude(t => t!.Mecevi)
+                        .ThenInclude(m => m.MecKodovi)
                 .Where(r => r.KorisnikID == id)
                 .OrderByDescending(r => r.DatumRegistracije)
                 .ToListAsync();

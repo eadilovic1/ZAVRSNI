@@ -68,6 +68,8 @@ namespace ePinPong.Controllers
                     .ThenInclude(m => m.Igrac1Partner)
                 .Include(t => t.Mecevi)
                     .ThenInclude(m => m.Igrac2Partner)
+                .Include(t => t.Mecevi)
+                    .ThenInclude(m => m.MecKodovi)
                 .Include(t => t.Registracije)
                     .ThenInclude(r => r.Korisnik)
                 .Include(t => t.TurnirParovi)
@@ -587,6 +589,8 @@ namespace ePinPong.Controllers
                         .ThenInclude(m => m.Igrac1)
                     .Include(t => t.Mecevi)
                         .ThenInclude(m => m.Igrac2)
+                    .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.MecKodovi)
                     .FirstOrDefaultAsync(t => t.ID == sourceId);
 
                 if (turnir != null)

@@ -30,6 +30,7 @@ namespace ePinPong.Services
                 .Include(t => t.Registracije).ThenInclude(r => r.Korisnik)
                 .Include(t => t.Mecevi).ThenInclude(m => m.Igrac1)
                 .Include(t => t.Mecevi).ThenInclude(m => m.Igrac2)
+                .Include(t => t.Mecevi).ThenInclude(m => m.MecKodovi)
                 .ToListAsync();
 
             var playerPoints = LigaRankingHelper.IzracunajBodovePoKorisniku(finishedTournaments, _standingsCalculationService);
@@ -105,6 +106,7 @@ namespace ePinPong.Services
                 .Include(t => t.Registracije).ThenInclude(r => r.Korisnik)
                 .Include(t => t.Mecevi).ThenInclude(m => m.Igrac1)
                 .Include(t => t.Mecevi).ThenInclude(m => m.Igrac2)
+                .Include(t => t.Mecevi).ThenInclude(m => m.MecKodovi)
                 .OrderBy(t => t.Kolo)
                 .ToListAsync();
 
@@ -153,6 +155,7 @@ namespace ePinPong.Services
                 .Include(t => t.Registracije).ThenInclude(r => r.Korisnik)
                 .Include(t => t.Mecevi).ThenInclude(m => m.Igrac1)
                 .Include(t => t.Mecevi).ThenInclude(m => m.Igrac2)
+                .Include(t => t.Mecevi).ThenInclude(m => m.MecKodovi)
                 .OrderBy(t => t.Kolo)
                 .ToListAsync();
 

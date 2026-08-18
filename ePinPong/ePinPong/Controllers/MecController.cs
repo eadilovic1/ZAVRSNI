@@ -214,6 +214,7 @@ namespace ePinPong.Controllers
                 var turnir = await _context.Turniri
                     .Include(t => t.Liga)
                     .Include(t => t.Mecevi)
+                        .ThenInclude(m => m.MecKodovi)
                     .FirstOrDefaultAsync(t => t.ID == mec.TurnirID);
 
                 if (turnir != null)
@@ -427,6 +428,7 @@ namespace ePinPong.Controllers
                 .Include(m => m.Igrac2)
                 .Include(m => m.Igrac1Partner)
                 .Include(m => m.Igrac2Partner)
+                .Include(m => m.MecKodovi)
                 .FirstOrDefaultAsync(m => m.ID == id);
     }
 }

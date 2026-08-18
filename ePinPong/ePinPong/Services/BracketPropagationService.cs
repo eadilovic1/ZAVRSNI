@@ -45,11 +45,11 @@ namespace ePinPong.Services
             string? loserPartnerId  = poeniIgrac1 == 3 ? mec.Igrac2PartnerID : mec.Igrac1PartnerID;
 
             // Pobjednik → sljedeći meč(evi)
-            await PropagujNaSljedeciMecAsync(mec, mec.WinnerNextMatchCode, mec.WinnerNextMatchSlot,
+            await PropagujNaSljedeciMecAsync(mec, mec.MecKodovi?.WinnerNextMatchCode, mec.MecKodovi?.WinnerNextMatchSlot,
                 winnerId, winnerPartnerId);
 
             // Gubitnik → razigravanje / sljedeći meč(evi)
-            await PropagujNaSljedeciMecAsync(mec, mec.LoserNextMatchCode, mec.LoserNextMatchSlot,
+            await PropagujNaSljedeciMecAsync(mec, mec.MecKodovi?.LoserNextMatchCode, mec.MecKodovi?.LoserNextMatchSlot,
                 loserId, loserPartnerId);
 
             // Provjeri treba li generisati nova razigravanja za plasman

@@ -68,10 +68,7 @@ namespace ePinPong.Models
         // Novi atributi za napredni turnirski sistem
         public TipMeca TipMeca { get; set; } = TipMeca.GrupnaFaza;
         public string MatchCode { get; set; } = string.Empty;
-        public string? WinnerNextMatchCode { get; set; }
-        public string? LoserNextMatchCode { get; set; }
-        public int? WinnerNextMatchSlot { get; set; }
-        public int? LoserNextMatchSlot { get; set; }
+        public MecKodovi? MecKodovi { get; set; }
         public string PlacingRange { get; set; } = string.Empty;
         public string? NazivGrupe { get; set; }
     }

@@ -141,6 +141,8 @@ namespace ePinPong.Helpers
                     .ThenInclude(m => m.Igrac1)
                 .Include(t => t.Mecevi)
                     .ThenInclude(m => m.Igrac2)
+                .Include(t => t.Mecevi)
+                    .ThenInclude(m => m.MecKodovi)
                 .Where(t => t.LigaID == liga.ID && t.Kolo.HasValue && t.Kolo.Value != mastersKolo && t.Status == StatusTurnira.Zavrsen)
                 .ToListAsync();
 
