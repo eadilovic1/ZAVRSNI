@@ -12,8 +12,8 @@ using ePinPong.Data;
 namespace ePinPong.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260817134353_InitialPostgres")]
-    partial class InitialPostgres
+    [Migration("20260818104123_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -299,12 +299,6 @@ namespace ePinPong.Migrations
                     b.Property<string>("Igrac2PartnerID")
                         .HasColumnType("text");
 
-                    b.Property<string>("LoserNextMatchCode")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("LoserNextMatchSlot")
-                        .HasColumnType("integer");
-
                     b.Property<string>("MatchCode")
                         .IsRequired()
                         .HasColumnType("text");
@@ -337,12 +331,6 @@ namespace ePinPong.Migrations
                     b.Property<DateTime>("VrijemeMeca")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("WinnerNextMatchCode")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("WinnerNextMatchSlot")
-                        .HasColumnType("integer");
-
                     b.HasKey("ID");
 
                     b.HasIndex("Igrac1ID");
@@ -356,6 +344,28 @@ namespace ePinPong.Migrations
                     b.HasIndex("TurnirID");
 
                     b.ToTable("Mecevi");
+                });
+
+            modelBuilder.Entity("ePinPong.Models.MecKodovi", b =>
+                {
+                    b.Property<int>("MecID")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LoserNextMatchCode")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("LoserNextMatchSlot")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WinnerNextMatchCode")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("WinnerNextMatchSlot")
+                        .HasColumnType("integer");
+
+                    b.HasKey("MecID");
+
+                    b.ToTable("MecKodovi");
                 });
 
             modelBuilder.Entity("ePinPong.Models.Notifikacija", b =>
@@ -459,9 +469,6 @@ namespace ePinPong.Migrations
                     b.Property<DateTime>("DatumPocetka")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("DrugoplasiraniID")
-                        .HasColumnType("text");
-
                     b.Property<int?>("Kolo")
                         .HasColumnType("integer");
 
@@ -487,9 +494,6 @@ namespace ePinPong.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("PobjednikID")
-                        .HasColumnType("text");
-
                     b.Property<int>("SistemTurnira")
                         .HasColumnType("integer");
 
@@ -501,9 +505,6 @@ namespace ePinPong.Migrations
 
                     b.Property<int>("TipTakmicenja")
                         .HasColumnType("integer");
-
-                    b.Property<string>("TrecaplasiraniID")
-                        .HasColumnType("text");
 
                     b.HasKey("ID");
 
@@ -647,6 +648,17 @@ namespace ePinPong.Migrations
                     b.Navigation("Turnir");
                 });
 
+            modelBuilder.Entity("ePinPong.Models.MecKodovi", b =>
+                {
+                    b.HasOne("ePinPong.Models.Mec", "Mec")
+                        .WithOne("MecKodovi")
+                        .HasForeignKey("ePinPong.Models.MecKodovi", "MecID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mec");
+                });
+
             modelBuilder.Entity("ePinPong.Models.Notifikacija", b =>
                 {
                     b.HasOne("ePinPong.Models.ApplicationUser", "Korisnik")
@@ -751,6 +763,11 @@ namespace ePinPong.Migrations
             modelBuilder.Entity("ePinPong.Models.Liga", b =>
                 {
                     b.Navigation("Turniri");
+                });
+
+            modelBuilder.Entity("ePinPong.Models.Mec", b =>
+                {
+                    b.Navigation("MecKodovi");
                 });
 
             modelBuilder.Entity("ePinPong.Models.Turnir", b =>
