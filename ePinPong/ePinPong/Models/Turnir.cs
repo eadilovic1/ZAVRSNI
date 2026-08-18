@@ -27,10 +27,7 @@ namespace ePinPong.Models
         public virtual Liga? Liga { get; set; }
         public int? Kolo { get; set; }
 
-        // Rezultati plasmana
-        public string? PobjednikID { get; set; }
-        public string? DrugoplasiraniID { get; set; }
-        public string? TrecaplasiraniID { get; set; }
+
 
         // Kolekcije
         public virtual ICollection<Registracija> Registracije { get; set; } = new List<Registracija>();

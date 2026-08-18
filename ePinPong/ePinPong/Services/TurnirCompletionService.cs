@@ -43,19 +43,13 @@ namespace ePinPong.Services
                     var finalMec = meceviList.FirstOrDefault(m => m.TipMeca == TipMeca.Zavrsnica && string.IsNullOrEmpty(m.WinnerNextMatchCode));
                     if (finalMec != null && finalMec.Odigran)
                     {
-                        turnir.PobjednikID = finalMec.PobjednikId;
-                        turnir.DrugoplasiraniID = finalMec.GubitnikId;
+                        // Plasman se ne čuva denormalizovano — izračunava se iz Mecevi putem IzracunajPlasman
                     }
                 }
                 else if (grupniMecevi.Any())
                 {
                     var tables = _standingsCalculationService.IzracunajTabeleGrupa(turnir);
-                    if (tables.Any())
-                    {
-                        var firstGroupTable = tables.Values.First();
-                        if (firstGroupTable.Count > 0) turnir.PobjednikID = firstGroupTable[0].PlayerId;
-                        if (firstGroupTable.Count > 1) turnir.DrugoplasiraniID = firstGroupTable[1].PlayerId;
-                    }
+                    // Plasman se ne čuva denormalizovano — izračunava se iz Mecevi putem IzracunajPlasman
                 }
 
                 return true;

@@ -454,11 +454,8 @@ namespace ePinPong.Controllers
                 }
             }
 
-            // Očuvaj organizatora i plasmane
+            // Očuvaj organizatora
             turnir.OrganizatorId = postojeci.OrganizatorId;
-            turnir.PobjednikID = postojeci.PobjednikID;
-            turnir.DrugoplasiraniID = postojeci.DrugoplasiraniID;
-            turnir.TrecaplasiraniID = postojeci.TrecaplasiraniID;
 
             if (!turnir.LigaID.HasValue)
             {
