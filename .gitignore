@@ -18,3 +18,4 @@ appsettings.Development.json
 
 # Ostalo
 *.log
+/Diplomski/
