@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Konfiguracija baze podataka (SQLite za brz i samostalan prototip!)
+// 1. Konfiguracija baze podataka
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -38,7 +38,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
-// 3. Konfiguracija aplikacijskih cookia za login/logout rute
+// 3. Konfiguracija aplikacijskih kolačića za login/logout rute
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Identity/Account/Login";
